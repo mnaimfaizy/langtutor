@@ -17,8 +17,9 @@ learner data and cached content live in IndexedDB (Dexie). No auth, no backend, 
 ## Current phase / next step
 
 - **Phase 0 — Foundation & seams** (in progress).
-- Done: **0.1** Scaffold · **0.2** AI agent guidance & skills · **0.3** UI layer over Base UI · **0.4** Dexie DB + `ContentRepository` seam.
-- **Next: 0.5** — `LLMClient` seam + server proxy (`app/api/llm`) + a mock impl for tests.
+- Done: **0.1** Scaffold · **0.2** AI agent guidance & skills · **0.3** UI layer over Base UI · **0.4** Dexie DB + `ContentRepository` seam · **0.5** `LLMClient` seam + `app/api/llm` proxy.
+- **Next: 0.6** — Config & Settings shell: view/override Mac endpoints + model names (→ `profile.settings`); connectivity indicator backed by `/api/llm/health`.
+- **LLM access:** server-only `OllamaLLMClient` (Vercel AI SDK → Ollama) behind `getLLMClient()`, reached **only** via `app/api/llm/{chat,embeddings,health}`. Mac endpoint/models come from server env — copy `.env.example` → `.env.local`. `MockLLMClient` (`lib/llm/mock-llm-client.ts`) backs offline tests.
 - Base UI ships as **`@base-ui/react`** (renamed from the deprecated `@base-ui-components/react`); all usage is wrapped in `ui/`.
 - **Vitest + `fake-indexeddb` were brought forward in 0.4** so the DB seam self-verifies (`pnpm test`). The _full_ harness (Playwright, `test:e2e`, CI `verify` wiring) still lands in **0.8**.
 - Husky pre-commit gate is **deferred to Phase 0.8** (no full suite to gate on yet).
@@ -73,7 +74,7 @@ tests/      Vitest unit + Playwright e2e.
 .claude/    skills/ (implement-plan-step, seam-discipline, stack-conventions) + settings.json.
 ```
 
-(`app/`, `ui/`, `lib/db` + `lib/registry.ts`, and `tests/` exist today; the rest land as their phases arrive.)
+(`app/` + `app/api/llm`, `ui/`, `lib/db` + `lib/llm` + `lib/registry.ts`, and `tests/` exist today; the rest land as their phases arrive.)
 
 ## Definition of Done (every step — PLAN.md §3.3)
 
