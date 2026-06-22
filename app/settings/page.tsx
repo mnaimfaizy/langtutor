@@ -147,12 +147,7 @@ export default function SettingsPage() {
 
           {banner && (
             <p
-              className={cn(
-                "text-sm",
-                banner.tone === "ok"
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-red-600 dark:text-red-400",
-              )}
+              className={cn("text-sm", banner.tone === "ok" ? "text-success" : "text-danger")}
               role="status"
             >
               {banner.text}

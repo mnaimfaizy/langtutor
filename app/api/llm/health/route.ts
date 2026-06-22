@@ -14,9 +14,8 @@ export async function GET() {
     const models = await client.listModels();
     return Response.json({ ok: true, models });
   } catch (error) {
-    return Response.json(
-      { ok: false, error: error instanceof Error ? error.message : "Mac unreachable" },
-      { status: 503 },
-    );
+    // Generic client message; log detail server-side so the Mac endpoint never leaks (hard rule #8).
+    console.error("[api/llm/health]", error);
+    return Response.json({ ok: false, error: "Mac unreachable" }, { status: 503 });
   }
 }

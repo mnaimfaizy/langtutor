@@ -68,10 +68,10 @@ export function ConnectivityIndicator() {
   const dot = !online
     ? "bg-muted"
     : mac === "reachable"
-      ? "bg-green-500"
+      ? "bg-success"
       : mac === "checking"
-        ? "bg-amber-400"
-        : "bg-red-500";
+        ? "bg-warning"
+        : "bg-danger";
 
   return (
     <span

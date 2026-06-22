@@ -16,31 +16,32 @@ learner data and cached content live in IndexedDB (Dexie). No auth, no backend, 
 
 ## Current phase / next step
 
-- **Phase 0 — Foundation & seams** (in progress).
-- Done: **0.1** Scaffold · **0.2** AI agent guidance & skills · **0.3** UI layer over Base UI · **0.4** Dexie DB + `ContentRepository` seam · **0.5** `LLMClient` seam + `app/api/llm` proxy · **0.6** Config & Settings shell · **0.7** PWA shell (Serwist).
-- **Next: 0.8** — Test harness: finalize Vitest config (+ fake-indexeddb, already here), add Playwright config + `test:e2e`, wire `test`/`test:e2e` into `verify`, sample unit + e2e. Then run the **Phase 0 close-out** (PLAN §3.5: `/code-review` + `/security-review` for the proxy/network/storage/SW).
+- **Phase 0 — Foundation & seams — ✅ complete** (all 8 steps + the §3.5 close-out: `/code-review` + `/security-review`).
+- Done: **0.1** Scaffold · **0.2** AI agent guidance & skills · **0.3** UI layer over Base UI · **0.4** Dexie DB + `ContentRepository` seam · **0.5** `LLMClient` seam + `app/api/llm` proxy · **0.6** Config & Settings shell · **0.7** PWA shell (Serwist) · **0.8** Test harness (Vitest + Playwright).
+- **Next: Phase 1.1** — Bundle a WordNet subset into `data/` + `lib/lexicon` queries (definition/synonyms/hypernyms/hyponyms) behind the `LexiconProvider` seam; verify with Vitest fixtures.
+- **Status tokens** (added in the 0.8 close-out): use `bg-success`/`text-success`, `bg-warning`, `bg-danger`/`text-danger` for state colors — never raw palette utilities (hard rule #7). Defined in `app/globals.css` (light + dark).
+- **Proxy hardening** (0.8 close-out): `app/api/llm/*` redact upstream errors (generic client message + `console.error` server-side) and cap request sizes. Residual SSRF/CSRF on the user-set endpoint is **accepted** under the single-user/local/no-auth model (see `app/api/llm/config/route.ts`); revisit on any multi-user/cloud move.
 - **PWA (0.7):** Serwist via **`@serwist/turbopack`** — the SW (`app/sw.ts`) is compiled by **esbuild inside `app/serwist/[path]/route.ts`**, served at `/serwist/sw.js`, registered by `SerwistProvider` in the layout. Turbopack build works with **no `--webpack`** (the §8 risk is resolved). `app/sw.ts` is excluded from `tsc` + ESLint (webworker globals). Manifest: `app/manifest.ts`; offline fallback: `app/~offline`; placeholder icons in `public/icons` (regen: `node scripts/generate-icons.mjs`).
 - **Composition roots (split by environment):** `lib/registry.ts` is **client-safe** (`getContentRepository`); `lib/llm/server.ts` is **server-only** (`getLLMClient`). Client components may import the registry; only `app/api/llm/*` route handlers import `lib/llm/server`. (Dynamic `import()` does **not** keep `server-only` out of the client graph — splitting does.)
 - **LLM access:** server-only `OllamaLLMClient` (Vercel AI SDK → Ollama) behind `getLLMClient()` (`lib/llm/server.ts`), reached **only** via `app/api/llm/{chat,embeddings,health}`. Mac endpoint/models from server env — copy `.env.example` → `.env.local`. `MockLLMClient` backs offline tests.
 - **Runtime config (0.6):** Settings (`app/settings`) persist Mac endpoint/models to `profile.settings` (IndexedDB) **and** push them to a server-held override via `POST /api/llm/config`, so server-side calls route there. A boot component re-pushes on load. Connectivity indicator polls `/api/llm/health`. State-changing/Mac-calling POSTs are origin-guarded (`lib/server/origin.ts`). "Onboarded" ⇔ `profile.cefrLevel` is set (a profile may exist pre-onboarding just to hold settings).
 - Base UI ships as **`@base-ui/react`** (renamed from the deprecated `@base-ui-components/react`); all usage is wrapped in `ui/`.
-- **Vitest + `fake-indexeddb` were brought forward in 0.4** so the DB seam self-verifies (`pnpm test`). The _full_ harness (Playwright, `test:e2e`, CI `verify` wiring) still lands in **0.8**.
-- Husky pre-commit gate is **deferred to Phase 0.8** (no full suite to gate on yet).
+- **Test harness (0.8):** Vitest (node + `fake-indexeddb`) for unit/logic in `tests/**/*.test.ts`; Playwright for e2e in `tests/e2e/**/*.spec.ts` (chromium; auto-starts `pnpm dev`). `pnpm verify` runs typecheck + lint + format + **unit** tests; **e2e is separate** (`pnpm test:e2e`) — too heavy for the per-change gate. Run `pnpm exec playwright install chromium` once on a fresh machine.
+- Husky pre-commit gate stays **optional/deferred** — agents run `pnpm verify` before committing; add Husky + lint-staged later if a non-agent committer needs gating.
 
 ## Commands
 
-| Command                             | What it does                                                                    |
-| ----------------------------------- | ------------------------------------------------------------------------------- |
-| `pnpm dev`                          | Dev server (Turbopack) at http://localhost:3000                                 |
-| `pnpm build`                        | Production build (Turbopack)                                                    |
-| `pnpm start`                        | Serve the production build                                                      |
-| `pnpm lint` / `pnpm lint:fix`       | ESLint (flat config)                                                            |
-| `pnpm typecheck`                    | `tsc --noEmit`                                                                  |
-| `pnpm format` / `pnpm format:check` | Prettier (+ Tailwind class sort)                                                |
-| `pnpm test` / `pnpm test:watch`     | Vitest (unit; node env + `fake-indexeddb`) — added in 0.4                       |
-| `pnpm verify`                       | typecheck + lint + format:check (CI-style gate; gains `test`/`test:e2e` in 0.8) |
-
-`pnpm test:e2e` (Playwright) and the `verify` wiring of `test` arrive with the full harness in **Phase 0.8**.
+| Command                             | What it does                                                                      |
+| ----------------------------------- | --------------------------------------------------------------------------------- |
+| `pnpm dev`                          | Dev server (Turbopack) at http://localhost:3000                                   |
+| `pnpm build`                        | Production build (Turbopack)                                                      |
+| `pnpm start`                        | Serve the production build                                                        |
+| `pnpm lint` / `pnpm lint:fix`       | ESLint (flat config)                                                              |
+| `pnpm typecheck`                    | `tsc --noEmit`                                                                    |
+| `pnpm format` / `pnpm format:check` | Prettier (+ Tailwind class sort)                                                  |
+| `pnpm test` / `pnpm test:watch`     | Vitest (unit; node env + `fake-indexeddb`)                                        |
+| `pnpm test:e2e`                     | Playwright e2e (chromium; auto-starts the dev server)                             |
+| `pnpm verify`                       | typecheck + lint + format:check + **unit** tests (CI-style gate; e2e is separate) |
 
 ## Architecture (detail in PLAN.md §2)
 

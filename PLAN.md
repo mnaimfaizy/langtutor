@@ -252,6 +252,8 @@ Phases ship in order; the app is genuinely usable from the end of **Phase 2** on
 - Build: Vitest config (+ fake-indexeddb), Playwright config, npm scripts (`test`, `test:e2e`), a CI-style `verify` script.
 - Accept: a sample unit + a sample e2e both run and pass.
 - Verify: `pnpm test && pnpm test:e2e` green.
+- _Done (notes): Vitest (+ fake-indexeddb) + `pnpm test` were already in place (brought forward in 0.4); 0.8 added Playwright (`@playwright/test`, chromium) with `playwright.config.ts` (auto-starts `pnpm dev`) and `tests/e2e/smoke.spec.ts` (2 specs green). `pnpm verify` now also runs **unit** tests; **e2e is intentionally NOT in `verify`** (browser + dev-server spin-up too heavy for the per-change gate) — run `pnpm test:e2e` separately / as its own CI job. The PWA offline Playwright test (deferred from 0.7) and the Husky pre-commit gate remain open, low-priority follow-ups. Fresh machines need `pnpm exec playwright install chromium`._
+- _Phase 0 close-out (§3.5): `/code-review` + `/security-review` run. **Fixed:** added semantic status tokens (`success`/`warning`/`danger`) so the connectivity indicator + Settings banner stop hard-coding palette colors (hard rule #7); proxy routes now **redact upstream errors** (generic client message + server-side log, hard rule #8) and **cap request sizes** (chat ≤64 msgs ×20k chars, embeddings ≤256 ×10k — basic DoS guard). **Accepted residual risk** (single-user/local/no-auth per §1): the user-set `baseURL` is SSRF-shaped and the runtime override persists until restart; the same-origin guard blocks cross-origin callers, full mitigation (auth / allow-list) deferred to any multi-user/cloud move. **Deferred follow-ups:** stream abort/`request.signal` wiring, Playwright offline test, Husky gate._
 
 ---
 

@@ -6,16 +6,18 @@ import { isSameOrigin } from "@/lib/server/origin";
 export const dynamic = "force-dynamic";
 
 // The request body is untrusted external input → Zod-parse it at the boundary (hard rule #3).
+// Bounds cap memory/forwarded payload (basic DoS guard for the no-auth local proxy).
 const ChatRequest = z.object({
   messages: z
     .array(
       z.object({
         role: z.enum(["system", "user", "assistant"]),
-        content: z.string(),
+        content: z.string().max(20_000),
       }),
     )
-    .min(1),
-  model: z.string().optional(),
+    .min(1)
+    .max(64),
+  model: z.string().max(200).optional(),
   temperature: z.number().min(0).max(2).optional(),
   stream: z.boolean().optional(),
 });
@@ -74,9 +76,8 @@ export async function POST(request: Request) {
     const text = await client.chat(messages, { model, temperature });
     return Response.json({ text });
   } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : "LLM request failed" },
-      { status: 502 },
-    );
+    // Log detail server-side; never echo the upstream error (it can leak the Mac endpoint/model — hard rule #8).
+    console.error("[api/llm/chat]", error);
+    return Response.json({ error: "LLM request failed" }, { status: 502 });
   }
 }

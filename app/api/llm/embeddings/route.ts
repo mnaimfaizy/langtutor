@@ -5,8 +5,9 @@ import { isSameOrigin } from "@/lib/server/origin";
 
 export const dynamic = "force-dynamic";
 
+// Bounds cap memory/forwarded payload (basic DoS guard for the no-auth local proxy).
 const EmbeddingsRequest = z.object({
-  texts: z.array(z.string()).min(1),
+  texts: z.array(z.string().max(10_000)).min(1).max(256),
 });
 
 /**
@@ -38,9 +39,7 @@ export async function POST(request: Request) {
     const embeddings = await client.embed(parsed.data.texts);
     return Response.json({ embeddings });
   } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Embedding request failed" },
-      { status: 502 },
-    );
+    console.error("[api/llm/embeddings]", error);
+    return Response.json({ error: "Embedding request failed" }, { status: 502 });
   }
 }

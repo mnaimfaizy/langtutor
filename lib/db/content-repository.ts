@@ -51,7 +51,7 @@ export interface ContentRepository {
   addCard(card: NewCard): Promise<number>;
   getCard(id: number): Promise<Card | undefined>;
   getAllCards(): Promise<Card[]>;
-  /** Cards whose next review is due at or before `now`. */
+  /** Cards whose next review is due at or before `now`, ascending by due date (`fsrs.due` index). */
   getDueCards(now: Date): Promise<Card[]>;
   updateCard(id: number, changes: Partial<NewCard>): Promise<void>;
   deleteCard(id: number): Promise<void>;
