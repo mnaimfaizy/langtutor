@@ -17,10 +17,11 @@ learner data and cached content live in IndexedDB (Dexie). No auth, no backend, 
 ## Current phase / next step
 
 - **Phase 0 — Foundation & seams** (in progress).
-- Done: **0.1** Scaffold · **0.2** AI agent guidance & skills · **0.3** UI layer over Base UI.
-- **Next: 0.4** — Dexie database + `ContentRepository` seam.
+- Done: **0.1** Scaffold · **0.2** AI agent guidance & skills · **0.3** UI layer over Base UI · **0.4** Dexie DB + `ContentRepository` seam.
+- **Next: 0.5** — `LLMClient` seam + server proxy (`app/api/llm`) + a mock impl for tests.
 - Base UI ships as **`@base-ui/react`** (renamed from the deprecated `@base-ui-components/react`); all usage is wrapped in `ui/`.
-- Husky pre-commit gate is **deferred to Phase 0.8** (no test suite to gate on yet).
+- **Vitest + `fake-indexeddb` were brought forward in 0.4** so the DB seam self-verifies (`pnpm test`). The _full_ harness (Playwright, `test:e2e`, CI `verify` wiring) still lands in **0.8**.
+- Husky pre-commit gate is **deferred to Phase 0.8** (no full suite to gate on yet).
 
 ## Commands
 
@@ -32,9 +33,10 @@ learner data and cached content live in IndexedDB (Dexie). No auth, no backend, 
 | `pnpm lint` / `pnpm lint:fix`       | ESLint (flat config)                                                            |
 | `pnpm typecheck`                    | `tsc --noEmit`                                                                  |
 | `pnpm format` / `pnpm format:check` | Prettier (+ Tailwind class sort)                                                |
+| `pnpm test` / `pnpm test:watch`     | Vitest (unit; node env + `fake-indexeddb`) — added in 0.4                       |
 | `pnpm verify`                       | typecheck + lint + format:check (CI-style gate; gains `test`/`test:e2e` in 0.8) |
 
-`pnpm test` and `pnpm test:e2e` arrive with the test harness in **Phase 0.8**.
+`pnpm test:e2e` (Playwright) and the `verify` wiring of `test` arrive with the full harness in **Phase 0.8**.
 
 ## Architecture (detail in PLAN.md §2)
 
@@ -71,7 +73,7 @@ tests/      Vitest unit + Playwright e2e.
 .claude/    skills/ (implement-plan-step, seam-discipline, stack-conventions) + settings.json.
 ```
 
-(`app/` and `ui/` exist today; the rest land as their phases arrive.)
+(`app/`, `ui/`, `lib/db` + `lib/registry.ts`, and `tests/` exist today; the rest land as their phases arrive.)
 
 ## Definition of Done (every step — PLAN.md §3.3)
 

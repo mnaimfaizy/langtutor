@@ -229,6 +229,7 @@ Phases ship in order; the app is genuinely usable from the end of **Phase 2** on
 - Build: Dexie schema for all §4 tables; `ContentRepository` interface + Dexie impl; migrations/versioning.
 - Accept: CRUD round-trips for `profile` and `cards`; schema versioned.
 - Verify: Vitest against fake-indexeddb.
+- _Done (deviation): Vitest + `fake-indexeddb` + a minimal `vitest.config.ts` and `pnpm test` were installed here (originally scoped to 0.8) so this seam self-verifies. The full harness — Playwright, `test:e2e`, and wiring `test` into `verify` — still lands in 0.8._
 
 **0.5 LLMClient seam + server proxy**
 - Build: `LLMClient` interface (`chat` with optional Zod schema + streaming, `embed`); Vercel-AI-SDK impl pointing at Ollama; `app/api/llm/` proxy; `app/api/llm/health`; a **mock** impl for tests.
