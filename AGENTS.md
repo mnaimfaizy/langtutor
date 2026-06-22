@@ -17,8 +17,9 @@ learner data and cached content live in IndexedDB (Dexie). No auth, no backend, 
 ## Current phase / next step
 
 - **Phase 0 — Foundation & seams** (in progress).
-- Done: **0.1** Scaffold · **0.2** AI agent guidance & skills · **0.3** UI layer over Base UI · **0.4** Dexie DB + `ContentRepository` seam · **0.5** `LLMClient` seam + `app/api/llm` proxy · **0.6** Config & Settings shell.
-- **Next: 0.7** — PWA shell (Serwist): manifest, app-shell precache, offline fallback, per-asset cache strategies. ⚠ validate Serwist↔Turbopack build early (PLAN §8).
+- Done: **0.1** Scaffold · **0.2** AI agent guidance & skills · **0.3** UI layer over Base UI · **0.4** Dexie DB + `ContentRepository` seam · **0.5** `LLMClient` seam + `app/api/llm` proxy · **0.6** Config & Settings shell · **0.7** PWA shell (Serwist).
+- **Next: 0.8** — Test harness: finalize Vitest config (+ fake-indexeddb, already here), add Playwright config + `test:e2e`, wire `test`/`test:e2e` into `verify`, sample unit + e2e. Then run the **Phase 0 close-out** (PLAN §3.5: `/code-review` + `/security-review` for the proxy/network/storage/SW).
+- **PWA (0.7):** Serwist via **`@serwist/turbopack`** — the SW (`app/sw.ts`) is compiled by **esbuild inside `app/serwist/[path]/route.ts`**, served at `/serwist/sw.js`, registered by `SerwistProvider` in the layout. Turbopack build works with **no `--webpack`** (the §8 risk is resolved). `app/sw.ts` is excluded from `tsc` + ESLint (webworker globals). Manifest: `app/manifest.ts`; offline fallback: `app/~offline`; placeholder icons in `public/icons` (regen: `node scripts/generate-icons.mjs`).
 - **Composition roots (split by environment):** `lib/registry.ts` is **client-safe** (`getContentRepository`); `lib/llm/server.ts` is **server-only** (`getLLMClient`). Client components may import the registry; only `app/api/llm/*` route handlers import `lib/llm/server`. (Dynamic `import()` does **not** keep `server-only` out of the client graph — splitting does.)
 - **LLM access:** server-only `OllamaLLMClient` (Vercel AI SDK → Ollama) behind `getLLMClient()` (`lib/llm/server.ts`), reached **only** via `app/api/llm/{chat,embeddings,health}`. Mac endpoint/models from server env — copy `.env.example` → `.env.local`. `MockLLMClient` backs offline tests.
 - **Runtime config (0.6):** Settings (`app/settings`) persist Mac endpoint/models to `profile.settings` (IndexedDB) **and** push them to a server-held override via `POST /api/llm/config`, so server-side calls route there. A boot component re-pushes on load. Connectivity indicator polls `/api/llm/health`. State-changing/Mac-calling POSTs are origin-guarded (`lib/server/origin.ts`). "Onboarded" ⇔ `profile.cefrLevel` is set (a profile may exist pre-onboarding just to hold settings).
@@ -76,7 +77,7 @@ tests/      Vitest unit + Playwright e2e.
 .claude/    skills/ (implement-plan-step, seam-discipline, stack-conventions) + settings.json.
 ```
 
-(`app/` + `app/api/llm` + `app/settings`, `ui/`, `lib/db` + `lib/llm` + `lib/server` + `lib/registry.ts`, and `tests/` exist today; the rest land as their phases arrive.)
+(`app/` + `app/api/llm` + `app/settings` + PWA files (`app/sw.ts`, `app/serwist`, `app/~offline`, `app/manifest.ts`), `ui/`, `lib/db` + `lib/llm` + `lib/server` + `lib/registry.ts`, `public/icons`, `scripts/`, and `tests/` exist today; the rest land as their phases arrive.)
 
 ## Definition of Done (every step — PLAN.md §3.3)
 

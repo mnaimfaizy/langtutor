@@ -1,6 +1,10 @@
 # Approve post-install build scripts for these native deps (pnpm 11 blocks them by default).
 # sharp         → Next.js production image optimization
 # unrs-resolver → native module resolver used by eslint-config-next
+# esbuild       → compiles the Serwist service worker (@serwist/turbopack)
+# @swc/core     → native transform used by the Serwist Turbopack integration
 allowBuilds:
+  "@swc/core": true
+  esbuild: true
   sharp: true
   unrs-resolver: true

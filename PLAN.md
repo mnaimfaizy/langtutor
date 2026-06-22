@@ -246,6 +246,7 @@ Phases ship in order; the app is genuinely usable from the end of **Phase 2** on
 - Build: `@serwist/next`, manifest via dynamic route handler, app-shell precache, offline fallback page; cache strategies per asset class (static=cache-first; lexicon/content=stale-while-revalidate; API=network-first).
 - Accept: app installable; with network off, shell + an offline page load; with Mac off but net on, cached content still renders.
 - Verify: Playwright offline test + manual install + Lighthouse PWA check. **⚠ Risk:** confirm Serwist↔Turbopack build works (see §8); if blocked, use Serwist's documented build step.
+- _Done (notes): risk **resolved** — used **`@serwist/turbopack`** (not `@serwist/next`), which compiles `app/sw.ts` with esbuild inside `app/serwist/[path]/route.ts`; `pnpm build` (Turbopack) emits `/serwist/sw.js`, `/manifest.webmanifest`, `/~offline` with **no `--webpack`**. Approved native build scripts for `esbuild`/`@swc/core` (pnpm gate). Icons are placeholders (`public/icons`, `scripts/generate-icons.mjs`). The **Playwright offline test is deferred to 0.8** (e2e harness lands there); 0.7's automated check is the build emitting the SW/manifest/offline page — manual install + offline + Lighthouse are the user's checks._
 
 **0.8 Test harness**
 - Build: Vitest config (+ fake-indexeddb), Playwright config, npm scripts (`test`, `test:e2e`), a CI-style `verify` script.

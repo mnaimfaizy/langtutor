@@ -25,6 +25,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Service worker source (compiled by esbuild, webworker globals) + tooling scripts.
+    "app/sw.ts",
+    "scripts/**",
   ]),
 ]);
 
