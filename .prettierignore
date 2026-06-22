@@ -1,0 +1,14 @@
+# Build output & deps
+node_modules
+.next
+out
+build
+coverage
+
+# Generated / lockfiles
+pnpm-lock.yaml
+next-env.d.ts
+
+# Hand-authored long-form docs (avoid reflowing tables)
+PLAN.md
+English Learning Web App Guide.md

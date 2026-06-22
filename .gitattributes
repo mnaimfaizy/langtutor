@@ -1,0 +1,14 @@
+# Normalize line endings to LF in the repo (consistent across Windows laptop + macOS).
+# Matches Prettier's default and avoids CRLF churn in diffs.
+* text=auto eol=lf
+
+# Binary assets — never normalize.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.mp3 binary
+*.wav binary
