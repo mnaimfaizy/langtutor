@@ -1,0 +1,12 @@
+// Public surface of our UI layer. Feature code imports from here (or "@/ui/*"),
+// never from "@base-ui/react/*" directly — keeps the primitive library swappable.
+
+export { cn } from "./cn";
+export * from "./button";
+export * from "./input";
+export * from "./card";
+export * from "./dialog";
+export * from "./tooltip";
+export * from "./popover";
+export * from "./tabs";
+export * from "./progress";

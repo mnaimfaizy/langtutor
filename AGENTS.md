@@ -17,8 +17,9 @@ learner data and cached content live in IndexedDB (Dexie). No auth, no backend, 
 ## Current phase / next step
 
 - **Phase 0 — Foundation & seams** (in progress).
-- Done: **0.1** Scaffold · **0.2** AI agent guidance & skills.
-- **Next: 0.3** — UI component layer over Base UI (`ui/` wrappers; no feature code imports Base UI directly).
+- Done: **0.1** Scaffold · **0.2** AI agent guidance & skills · **0.3** UI layer over Base UI.
+- **Next: 0.4** — Dexie database + `ContentRepository` seam.
+- Base UI ships as **`@base-ui/react`** (renamed from the deprecated `@base-ui-components/react`); all usage is wrapped in `ui/`.
 - Husky pre-commit gate is **deferred to Phase 0.8** (no test suite to gate on yet).
 
 ## Commands
@@ -70,7 +71,7 @@ tests/      Vitest unit + Playwright e2e.
 .claude/    skills/ (implement-plan-step, seam-discipline, stack-conventions) + settings.json.
 ```
 
-(Only `app/` exists today; the rest land as their phases arrive.)
+(`app/` and `ui/` exist today; the rest land as their phases arrive.)
 
 ## Definition of Done (every step — PLAN.md §3.3)
 
