@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { getLLMClient } from "@/lib/registry";
+import { getLLMClient } from "@/lib/llm/server";
+import { isSameOrigin } from "@/lib/server/origin";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,10 @@ const EmbeddingsRequest = z.object({
  * Returns `{ embeddings }`, row-aligned with `texts`.
  */
 export async function POST(request: Request) {
+  if (!isSameOrigin(request)) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();

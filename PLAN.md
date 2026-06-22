@@ -240,6 +240,7 @@ Phases ship in order; the app is genuinely usable from the end of **Phase 2** on
 - Build: env loading (server-only); Settings page to view/override Mac endpoints + model names (persisted to `profile.settings`); connectivity indicator (online/offline + Mac reachable).
 - Accept: changing endpoint in Settings routes subsequent calls there; indicator reflects real reachability.
 - Verify: manual (toggle endpoints, kill Mac → indicator flips).
+- _Done (notes): overrides live in `profile.settings` as planned; `Profile.cefrLevel` is now optional so the Settings shell works pre-onboarding ("onboarded" ⇔ `cefrLevel` set). Because server-side generation can't read the browser's IndexedDB, settings are also pushed to a **server-held runtime override** via `POST /api/llm/config` (restored on app load) — that's how `getLLMClient()` routes server-side calls. Composition root split into client-safe `lib/registry.ts` + server-only `lib/llm/server.ts` (dynamic import alone doesn't keep `server-only` out of the client graph). State-changing/Mac-calling POSTs get a same-origin CSRF guard — flag for the §3.5 `/security-review` at the Phase 0 close-out (0.8)._
 
 **0.7 PWA shell (Serwist)**
 - Build: `@serwist/next`, manifest via dynamic route handler, app-shell precache, offline fallback page; cache strategies per asset class (static=cache-first; lexicon/content=stale-while-revalidate; API=network-first).

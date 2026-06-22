@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { getLLMClient } from "@/lib/registry";
+import { getLLMClient } from "@/lib/llm/server";
+import { isSameOrigin } from "@/lib/server/origin";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,10 @@ const ChatRequest = z.object({
  * intentionally not exposed over HTTP (a Zod schema can't cross the wire).
  */
 export async function POST(request: Request) {
+  if (!isSameOrigin(request)) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();

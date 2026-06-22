@@ -8,6 +8,7 @@ import type {
   GamificationState,
   LexiconCacheEntry,
   Profile,
+  ProfileSettings,
   Skill,
   Weakness,
 } from "./schema";
@@ -41,6 +42,10 @@ export interface ContentRepository {
   // profile (single row)
   getProfile(): Promise<Profile | undefined>;
   saveProfile(profile: Profile): Promise<void>;
+
+  // settings (the `settings` slice of the profile; usable before onboarding)
+  getSettings(): Promise<ProfileSettings>;
+  saveSettings(settings: ProfileSettings): Promise<void>;
 
   // cards (vocab SRS)
   addCard(card: NewCard): Promise<number>;

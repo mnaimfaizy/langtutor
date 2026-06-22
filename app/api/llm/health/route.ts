@@ -1,4 +1,4 @@
-import { getLLMClient } from "@/lib/registry";
+import { getLLMClient } from "@/lib/llm/server";
 
 // Always hit the Mac live — never serve a cached health result.
 export const dynamic = "force-dynamic";

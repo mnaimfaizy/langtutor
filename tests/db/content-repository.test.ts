@@ -198,3 +198,34 @@ describe("clear()", () => {
     expect(await repo.queryContent()).toEqual([]);
   });
 });
+
+describe("settings (profile.settings)", () => {
+  it("defaults to empty settings before any profile exists", async () => {
+    expect(await repo.getSettings()).toEqual({});
+  });
+
+  it("round-trips settings, creating a settings-only (not-yet-onboarded) profile", async () => {
+    await repo.saveSettings({ macLlmBaseUrl: "http://mac:11434/v1", macLlmModel: "qwen" });
+
+    expect(await repo.getSettings()).toEqual({
+      macLlmBaseUrl: "http://mac:11434/v1",
+      macLlmModel: "qwen",
+    });
+    expect((await repo.getProfile())?.cefrLevel).toBeUndefined();
+  });
+
+  it("preserves onboarding data when saving settings onto an existing profile", async () => {
+    await repo.saveProfile({
+      cefrLevel: "B1",
+      goals: ["work"],
+      createdAt: new Date(0),
+      settings: {},
+    });
+    await repo.saveSettings({ macLlmModel: "qwen" });
+
+    const profile = await repo.getProfile();
+    expect(profile?.cefrLevel).toBe("B1");
+    expect(profile?.goals).toEqual(["work"]);
+    expect(profile?.settings).toEqual({ macLlmModel: "qwen" });
+  });
+});

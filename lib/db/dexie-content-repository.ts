@@ -14,6 +14,7 @@ import type {
   GamificationState,
   LexiconCacheEntry,
   Profile,
+  ProfileSettings,
   Weakness,
 } from "./schema";
 
@@ -37,6 +38,19 @@ export class DexieContentRepository implements ContentRepository {
 
   async saveProfile(profile: Profile): Promise<void> {
     await this.db.profile.put({ ...profile, id: SINGLETON_KEY });
+  }
+
+  async getSettings(): Promise<ProfileSettings> {
+    return (await this.getProfile())?.settings ?? {};
+  }
+
+  async saveSettings(settings: ProfileSettings): Promise<void> {
+    // Works before onboarding: create a settings-only profile (no cefrLevel yet) if none exists.
+    const existing = await this.getProfile();
+    const profile: Profile = existing
+      ? { ...existing, settings }
+      : { goals: [], createdAt: new Date(), settings };
+    await this.saveProfile(profile);
   }
 
   // cards -------------------------------------------------------------------

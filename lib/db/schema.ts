@@ -36,9 +36,15 @@ export interface ProfileSettings {
   ttsVoiceUri?: string;
 }
 
-/** Single-row learner profile (PLAN §4 `profile`). */
+/**
+ * Single-row learner profile (PLAN §4 `profile`).
+ *
+ * `cefrLevel`/`goals` are populated by onboarding (Phase 2); a profile can exist before
+ * then to hold `settings` (the Settings shell, Phase 0.6, runs pre-onboarding). Treat
+ * "onboarded" as `cefrLevel != null`, not "profile row exists".
+ */
 export interface Profile {
-  cefrLevel: Cefr;
+  cefrLevel?: Cefr;
   goals: LearnerGoal[];
   createdAt: Date;
   settings: ProfileSettings;
