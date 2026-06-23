@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 
+import { buildNewCard, isDuplicate } from "@/lib/deck";
 import { DefineResponseSchema } from "@/lib/lexicon/define-response";
 import type { DefineFound } from "@/lib/lexicon/define-response";
 import { getContentRepository } from "@/lib/registry";
@@ -25,8 +26,11 @@ type LookupState =
   | { status: "not-found" }
   | { status: "error" };
 
+type AddState = "idle" | "adding" | "added" | "duplicate" | "error";
+
 export function WordPopover({ word }: { word: string }) {
   const [state, setState] = useState<LookupState>({ status: "idle" });
+  const [addState, setAddState] = useState<AddState>("idle");
   const loadingRef = useRef(false);
 
   async function load() {
@@ -80,19 +84,57 @@ export function WordPopover({ word }: { word: string }) {
     }
   }
 
+  async function handleAdd(data: DefineFound) {
+    if (addState === "adding" || addState === "added" || addState === "duplicate") return;
+    setAddState("adding");
+    try {
+      const repo = getContentRepository();
+      const existing = await repo.getAllCards();
+      if (
+        isDuplicate(
+          data.word,
+          existing.map((c) => c.word),
+        )
+      ) {
+        setAddState("duplicate");
+        return;
+      }
+      const card = buildNewCard({
+        word: data.word,
+        definition: data.definition,
+        examples: data.examples,
+        cefr: data.cefr ?? "B1",
+      });
+      await repo.addCard(card);
+      setAddState("added");
+    } catch {
+      setAddState("error");
+    }
+  }
+
   return (
     <Popover>
       <PopoverInlineTrigger onClick={() => void load()} data-testid="word-btn" aria-label={word}>
         {word}
       </PopoverInlineTrigger>
       <PopoverContent className="w-72">
-        <PopoverBody state={state} word={word} />
+        <PopoverBody state={state} word={word} addState={addState} onAdd={handleAdd} />
       </PopoverContent>
     </Popover>
   );
 }
 
-function PopoverBody({ state, word }: { state: LookupState; word: string }) {
+function PopoverBody({
+  state,
+  word,
+  addState,
+  onAdd,
+}: {
+  state: LookupState;
+  word: string;
+  addState: AddState;
+  onAdd: (data: DefineFound) => void;
+}) {
   if (state.status === "idle" || state.status === "loading") {
     return <p className="text-muted text-sm">Loading…</p>;
   }
@@ -133,7 +175,10 @@ function PopoverBody({ state, word }: { state: LookupState; word: string }) {
       {data.examples.length > 0 && (
         <p className="text-muted text-xs italic">&ldquo;{data.examples[0]}&rdquo;</p>
       )}
-      {data.audioUrl && <AudioButton url={data.audioUrl} />}
+      <div className="flex items-center justify-between gap-2 pt-1">
+        {data.audioUrl && <AudioButton url={data.audioUrl} />}
+        <AddToDeckButton addState={addState} onAdd={() => onAdd(data)} />
+      </div>
     </div>
   );
 }
@@ -149,6 +194,34 @@ function AudioButton({ url }: { url: string }) {
       className="text-accent hover:text-accent/80 flex items-center gap-1 text-xs transition-colors"
     >
       ▶ Play
+    </button>
+  );
+}
+
+const ADD_LABEL: Record<AddState, string> = {
+  idle: "+ Add to deck",
+  adding: "Adding…",
+  added: "Added ✓",
+  duplicate: "In deck",
+  error: "Error",
+};
+
+function AddToDeckButton({ addState, onAdd }: { addState: AddState; onAdd: () => void }) {
+  const done = addState === "added" || addState === "duplicate";
+  return (
+    <button
+      data-testid="btn-add-to-deck"
+      disabled={addState === "adding" || done}
+      onClick={onAdd}
+      className={`ml-auto text-xs transition-colors ${
+        done
+          ? "text-success cursor-default"
+          : addState === "error"
+            ? "text-danger"
+            : "text-accent hover:text-accent/80"
+      }`}
+    >
+      {ADD_LABEL[addState]}
     </button>
   );
 }
