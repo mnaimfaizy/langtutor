@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Content } from "@/lib/db";
 import { FeedbackSchema } from "@/lib/content/feedback";
 import type { Correction, FeedbackPayload } from "@/lib/content/feedback";
+import { createWritingErrorEvents } from "@/lib/diagnostics";
 import { PromptSchema } from "@/lib/content/prompt";
 import { getContentRepository } from "@/lib/registry";
 import { Button } from "@/ui/button";
@@ -145,6 +146,15 @@ export function PromptView({ id }: { id: number }) {
       const parsed = FeedbackSchema.parse(data.feedback);
       setFeedback(parsed);
       setSubmitPhase("done");
+      const repo = getContentRepository();
+      const now = new Date();
+      for (const event of createWritingErrorEvents(parsed.corrections, content.level, now)) {
+        try {
+          await repo.addErrorEvent(event);
+        } catch {
+          // partial write failure — continue logging remaining events
+        }
+      }
     } catch {
       setSubmitPhase("error");
     } finally {
