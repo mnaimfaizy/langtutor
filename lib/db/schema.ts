@@ -63,6 +63,8 @@ export interface FsrsState {
   scheduledDays: number;
   reps: number;
   lapses: number;
+  /** ts-fsrs v5 learning-step counter (tracks position within learning steps). */
+  learningSteps?: number;
   state: number;
   lastReview?: Date;
 }
