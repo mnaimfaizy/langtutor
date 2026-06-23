@@ -1,10 +1,11 @@
 /**
- * Tiny starter seed (PLAN §1.8).
+ * Tiny starter seed (PLAN §1.8 + Phase 4.1 prompts).
  *
- * Hand-authored passages and vocab cards that cover A1–B2 and are available
- * offline from day one — no Mac, no network required. Loaded on first run
- * via {@link loadSeedIfEmpty}. Never call this on the server (IndexedDB is
- * browser-only); invoke it from a client component.
+ * Hand-authored passages, writing prompts, and vocab cards that cover A1–C2
+ * (passages/prompts) and A1–B2 (cards). Available offline from day one — no
+ * Mac, no network required. Loaded on first run via {@link loadSeedIfEmpty}.
+ * Never call this on the server (IndexedDB is browser-only); invoke it from
+ * a client component.
  */
 import type { ContentRepository, NewCard, NewContent } from "@/lib/db";
 
@@ -319,32 +320,211 @@ const SEED_CARDS: NewCard[] = [
   },
 ];
 
+// ── writing prompts ───────────────────────────────────────────────────────────
+
+const SEED_PROMPTS: NewContent[] = [
+  // A1 ──────────────────────────────────────────────────────────────────────
+  {
+    type: "prompt",
+    level: "A1",
+    topic: "family and friends",
+    payload: {
+      title: "My Family",
+      instruction:
+        "Write about your family. Who is in your family? How old are they? What do they like to do? Write 3 to 5 sentences.",
+      context: "Example: My name is Sara. I have a mother, a father, and one sister.",
+    },
+    source: "seed",
+    validatedAt: SEED_DATE,
+  },
+  {
+    type: "prompt",
+    level: "A1",
+    topic: "personal experience",
+    payload: {
+      title: "My Favourite Food",
+      instruction:
+        "Write about your favourite food. What is it? Where do you eat it? Why do you like it? Write 3 to 5 sentences.",
+      context: "Example: My favourite food is pizza. I eat pizza with my family on Fridays.",
+    },
+    source: "seed",
+    validatedAt: SEED_DATE,
+  },
+
+  // A2 ──────────────────────────────────────────────────────────────────────
+  {
+    type: "prompt",
+    level: "A2",
+    topic: "travel and places",
+    payload: {
+      title: "A Place I Visited",
+      instruction:
+        "Write about a place you visited recently. Where did you go? What did you do there? How did you feel? Write 5 to 8 sentences.",
+      context: "Example: Last weekend, I went to the park with my friends.",
+    },
+    source: "seed",
+    validatedAt: SEED_DATE,
+  },
+  {
+    type: "prompt",
+    level: "A2",
+    topic: "personal experience",
+    payload: {
+      title: "My Typical Morning",
+      instruction:
+        "Write about what you usually do on a typical morning. Use time phrases like 'first', 'then', and 'after that'. Write 5 to 8 sentences.",
+    },
+    source: "seed",
+    validatedAt: SEED_DATE,
+  },
+
+  // B1 ──────────────────────────────────────────────────────────────────────
+  {
+    type: "prompt",
+    level: "B1",
+    topic: "personal experience",
+    payload: {
+      title: "A New Skill",
+      instruction:
+        "Write about a skill you would like to learn in the future. Why do you want to learn it? How do you plan to practise? What challenges might you face? Write 80 to 120 words.",
+    },
+    source: "seed",
+    validatedAt: SEED_DATE,
+  },
+  {
+    type: "prompt",
+    level: "B1",
+    topic: "technology",
+    payload: {
+      title: "Technology and Communication",
+      instruction:
+        "How has technology changed the way you stay in touch with friends and family? What are the advantages and disadvantages? Write 80 to 120 words.",
+    },
+    source: "seed",
+    validatedAt: SEED_DATE,
+  },
+
+  // B2 ──────────────────────────────────────────────────────────────────────
+  {
+    type: "prompt",
+    level: "B2",
+    topic: "work and career",
+    payload: {
+      title: "Work-Life Balance",
+      instruction:
+        "Do you think it is possible to maintain a healthy work-life balance in today's world? Discuss both sides of the argument and give your own view. Write 120 to 180 words.",
+    },
+    source: "seed",
+    validatedAt: SEED_DATE,
+  },
+  {
+    type: "prompt",
+    level: "B2",
+    topic: "education",
+    payload: {
+      title: "Online vs In-Person Learning",
+      instruction:
+        "Compare the advantages and disadvantages of studying online versus attending classes in person. Which approach do you prefer and why? Support your answer with specific reasons. Write 120 to 180 words.",
+    },
+    source: "seed",
+    validatedAt: SEED_DATE,
+  },
+
+  // C1 ──────────────────────────────────────────────────────────────────────
+  {
+    type: "prompt",
+    level: "C1",
+    topic: "technology",
+    payload: {
+      title: "AI in Education",
+      instruction:
+        "To what extent will artificial intelligence transform the way people learn over the next decade? Develop a well-structured argument that considers both the opportunities and the potential risks. Write 180 to 250 words.",
+    },
+    source: "seed",
+    validatedAt: SEED_DATE,
+  },
+  {
+    type: "prompt",
+    level: "C1",
+    topic: "nature and environment",
+    payload: {
+      title: "Urban Growth and Sustainability",
+      instruction:
+        "Discuss the tension between rapid urban growth and the goal of environmental sustainability. What policies or approaches might help reconcile these competing demands? Write 180 to 250 words.",
+    },
+    source: "seed",
+    validatedAt: SEED_DATE,
+  },
+
+  // C2 ──────────────────────────────────────────────────────────────────────
+  {
+    type: "prompt",
+    level: "C2",
+    topic: "culture and society",
+    payload: {
+      title: "The Paradox of Choice",
+      instruction:
+        "The psychologist Barry Schwartz argued that having more choices does not make people happier — it paralyses them. Critically evaluate this proposition, drawing on examples from everyday life or relevant research. Develop a coherent, well-argued response of 250 to 350 words.",
+    },
+    source: "seed",
+    validatedAt: SEED_DATE,
+  },
+  {
+    type: "prompt",
+    level: "C2",
+    topic: "culture and society",
+    payload: {
+      title: "Language and Thought",
+      instruction:
+        "To what extent does the language we speak shape the way we perceive and understand the world? Engage critically with this question, considering the theory of linguistic relativity and its counterarguments. Write 250 to 350 words.",
+    },
+    source: "seed",
+    validatedAt: SEED_DATE,
+  },
+];
+
 // ── loader ────────────────────────────────────────────────────────────────────
 
 /**
- * Imports seed passages and cards into @repo on first run.
+ * Imports seed passages, prompts, and cards into @repo on first run.
  *
- * Idempotency: checks that ALL expected seed passages are present before
- * skipping. Checking `> 0` would be too loose — a mid-run failure (e.g. tab
- * closed after the first passage write) would look "done" and leave the DB
- * permanently without seed cards. Checking the full count means a partial
- * load is retried on next mount.
+ * Idempotency: passages and prompts are checked separately by (type, source)
+ * so that adding a new content type (e.g. prompts) only loads the missing
+ * type — existing passages are not duplicated. Cards are bundled with passages
+ * on initial install. A partial load (tab closed mid-run) is retried on the
+ * next mount because the count check will still fail.
  *
  * Must be called from a browser context — IndexedDB is not available on the
  * server.
  */
 export async function loadSeedIfEmpty(repo: ContentRepository): Promise<void> {
-  const existing = await repo.queryContent({ source: "seed" });
-  if (existing.length >= SEED_PASSAGES.length) return;
+  const [seedPassages, seedPrompts] = await Promise.all([
+    repo.queryContent({ type: "passage", source: "seed" }),
+    repo.queryContent({ type: "prompt", source: "seed" }),
+  ]);
 
-  for (const passage of SEED_PASSAGES) {
-    await repo.putContent(passage);
+  const passagesDone = seedPassages.length >= SEED_PASSAGES.length;
+  const promptsDone = seedPrompts.length >= SEED_PROMPTS.length;
+
+  if (passagesDone && promptsDone) return;
+
+  if (!passagesDone) {
+    for (const passage of SEED_PASSAGES) {
+      await repo.putContent(passage);
+    }
+    for (const card of SEED_CARDS) {
+      await repo.addCard(card);
+    }
   }
-  for (const card of SEED_CARDS) {
-    await repo.addCard(card);
+
+  if (!promptsDone) {
+    for (const prompt of SEED_PROMPTS) {
+      await repo.putContent(prompt);
+    }
   }
 }
 
 /** Expected totals — used by SeedBootstrap to verify the load completed. */
 export const SEED_PASSAGE_COUNT = SEED_PASSAGES.length;
+export const SEED_PROMPT_COUNT = SEED_PROMPTS.length;
 export const SEED_CARD_COUNT = SEED_CARDS.length;

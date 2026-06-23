@@ -7,6 +7,7 @@ import { loadSeedIfEmpty } from "@/lib/content/seed";
 
 interface SeedStatus {
   passages: number;
+  prompts: number;
   cards: number;
 }
 
@@ -25,12 +26,13 @@ export function SeedBootstrap() {
     void loadSeedIfEmpty(repo)
       .then(async () => {
         if (!active) return;
-        const [passages, cards] = await Promise.all([
-          repo.queryContent({ source: "seed" }),
+        const [passages, prompts, cards] = await Promise.all([
+          repo.queryContent({ type: "passage", source: "seed" }),
+          repo.queryContent({ type: "prompt", source: "seed" }),
           repo.getAllCards(),
         ]);
         if (!active) return; // re-check after the async DB reads
-        setStatus({ passages: passages.length, cards: cards.length });
+        setStatus({ passages: passages.length, prompts: prompts.length, cards: cards.length });
       })
       .catch(() => {
         // IndexedDB unavailable (SSR edge case) — fail silently.
@@ -48,7 +50,7 @@ export function SeedBootstrap() {
       data-testid="seed-ready"
       className="border-border/50 bg-success/5 text-success border-b px-6 py-1.5 text-center text-xs"
     >
-      {status.passages} passages · {status.cards} cards ready offline
+      {status.passages} passages · {status.prompts} prompts · {status.cards} cards ready offline
     </div>
   );
 }

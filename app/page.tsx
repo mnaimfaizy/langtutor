@@ -13,7 +13,7 @@ export default function Home() {
       <div className="w-full max-w-2xl">
         <span className="border-foreground/10 bg-foreground/[0.03] text-muted inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium">
           <span className="bg-accent size-1.5 rounded-full" />
-          Phase 3 · reading
+          Phase 4 · writing
         </span>
 
         <h1 className="text-foreground mt-6 text-4xl font-semibold tracking-tight sm:text-5xl">
@@ -31,6 +31,13 @@ export default function Home() {
             data-testid="btn-reading"
           >
             Start reading
+          </Link>
+          <Link
+            href="/writing"
+            className="border-border text-foreground hover:bg-foreground/[0.04] inline-flex h-11 items-center rounded-xl border px-6 text-base font-medium transition-colors"
+            data-testid="btn-writing"
+          >
+            Start writing
           </Link>
           <Link
             href="/review"
