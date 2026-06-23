@@ -16,18 +16,25 @@ learner data and cached content live in IndexedDB (Dexie). No auth, no backend, 
 
 ## Current phase / next step
 
-- **Phase 0 — Foundation & seams — ✅ complete** (all 8 steps + the §3.5 close-out: `/code-review` + `/security-review`).
-- Done: **0.1** Scaffold · **0.2** AI agent guidance & skills · **0.3** UI layer over Base UI · **0.4** Dexie DB + `ContentRepository` seam · **0.5** `LLMClient` seam + `app/api/llm` proxy · **0.6** Config & Settings shell · **0.7** PWA shell (Serwist) · **0.8** Test harness (Vitest + Playwright).
-- **Next: Phase 1.1** — Bundle a WordNet subset into `data/` + `lib/lexicon` queries (definition/synonyms/hypernyms/hyponyms) behind the `LexiconProvider` seam; verify with Vitest fixtures.
+- **Phase 0 — Foundation & seams — ✅ complete** (all 8 steps + the §3.5 close-out).
+- **Phase 1 — Data backbone & content infrastructure — ✅ complete** (all 8 steps + `/code-review`).
+- Done (Phase 1): **1.1** WordNet bundle + lexicon queries · **1.2** Words-CEFR mapping + `cefrLevel` · **1.3** `LexiconProvider` seam + `LocalLexiconProvider` · **1.4** CEFR grammar progression map · **1.5** `ContentValidator` (word + grammar gate) · **1.6** Cosine-similarity search helper · **1.7** Generate-and-cache pipeline.
+- **Next: Phase 2.1** — Placement quiz (adaptive vocab yes/no) + onboarding shell.
+- **Phase 1 close-out notes:**
+  - `lib/lexicon/server.ts` — server-only `getLexiconProvider()` (mirrors `lib/llm/server.ts`). Audio caching is intentionally **omitted** on the server (`repo: null`) because IndexedDB (Dexie) is browser-only. Client-side audio caching is wired in Phase 3.2.
+  - `lib/lexicon/data-loader.ts` — synchronous `readFileSync` with a friendly ENOENT message directing devs to run `node scripts/build-wordnet.mjs` / `node scripts/build-words-cefr.mjs`.
+  - `data/grammar-map.json` is validated at module-load time via Zod (`z.enum(["A1"…"C2"])`) so authoring typos surface at startup, not silently at runtime.
+  - `LocalContentValidator` pre-compiles regex markers once in the constructor (no per-call `new RegExp`).
+  - Pipeline corrective-retry sends `JSON.stringify(parsed)` as the assistant turn (not just the text field) so multi-field schemas retain full context across retries.
+  - **Generated data files** (`data/wordnet.json`, `data/words-cefr.json`) are **gitignored**. Fresh-checkout setup: `pnpm install && node scripts/build-wordnet.mjs && node scripts/build-words-cefr.mjs` (needs internet for the CEFR script).
 - **Status tokens** (added in the 0.8 close-out): use `bg-success`/`text-success`, `bg-warning`, `bg-danger`/`text-danger` for state colors — never raw palette utilities (hard rule #7). Defined in `app/globals.css` (light + dark).
-- **Proxy hardening** (0.8 close-out): `app/api/llm/*` redact upstream errors (generic client message + `console.error` server-side) and cap request sizes. Residual SSRF/CSRF on the user-set endpoint is **accepted** under the single-user/local/no-auth model (see `app/api/llm/config/route.ts`); revisit on any multi-user/cloud move.
-- **PWA (0.7):** Serwist via **`@serwist/turbopack`** — the SW (`app/sw.ts`) is compiled by **esbuild inside `app/serwist/[path]/route.ts`**, served at `/serwist/sw.js`, registered by `SerwistProvider` in the layout. Turbopack build works with **no `--webpack`** (the §8 risk is resolved). `app/sw.ts` is excluded from `tsc` + ESLint (webworker globals). Manifest: `app/manifest.ts`; offline fallback: `app/~offline`; placeholder icons in `public/icons` (regen: `node scripts/generate-icons.mjs`).
-- **Composition roots (split by environment):** `lib/registry.ts` is **client-safe** (`getContentRepository`); `lib/llm/server.ts` is **server-only** (`getLLMClient`). Client components may import the registry; only `app/api/llm/*` route handlers import `lib/llm/server`. (Dynamic `import()` does **not** keep `server-only` out of the client graph — splitting does.)
+- **Proxy hardening** (0.8 close-out): `app/api/llm/*` redact upstream errors and cap request sizes. Residual SSRF/CSRF accepted under single-user/local/no-auth model; revisit on any multi-user/cloud move.
+- **PWA (0.7):** Serwist via **`@serwist/turbopack`** — the SW (`app/sw.ts`) is compiled by **esbuild inside `app/serwist/[path]/route.ts`**, served at `/serwist/sw.js`, registered by `SerwistProvider`. Manifest: `app/manifest.ts`; offline fallback: `app/~offline`; regen icons: `node scripts/generate-icons.mjs`.
+- **Composition roots (split by environment):** `lib/registry.ts` is **client-safe** (`getContentRepository`); `lib/llm/server.ts` is **server-only** (`getLLMClient`); `lib/lexicon/server.ts` is **server-only** (`getLexiconProvider`). Dynamic `import()` does **not** keep `server-only` out of the client graph — splitting does.
 - **LLM access:** server-only `OllamaLLMClient` (Vercel AI SDK → Ollama) behind `getLLMClient()` (`lib/llm/server.ts`), reached **only** via `app/api/llm/{chat,embeddings,health}`. Mac endpoint/models from server env — copy `.env.example` → `.env.local`. `MockLLMClient` backs offline tests.
-- **Runtime config (0.6):** Settings (`app/settings`) persist Mac endpoint/models to `profile.settings` (IndexedDB) **and** push them to a server-held override via `POST /api/llm/config`, so server-side calls route there. A boot component re-pushes on load. Connectivity indicator polls `/api/llm/health`. State-changing/Mac-calling POSTs are origin-guarded (`lib/server/origin.ts`). "Onboarded" ⇔ `profile.cefrLevel` is set (a profile may exist pre-onboarding just to hold settings).
-- Base UI ships as **`@base-ui/react`** (renamed from the deprecated `@base-ui-components/react`); all usage is wrapped in `ui/`.
-- **Test harness (0.8):** Vitest (node + `fake-indexeddb`) for unit/logic in `tests/**/*.test.ts`; Playwright for e2e in `tests/e2e/**/*.spec.ts` (chromium; auto-starts `pnpm dev`). `pnpm verify` runs typecheck + lint + format + **unit** tests; **e2e is separate** (`pnpm test:e2e`) — too heavy for the per-change gate. Run `pnpm exec playwright install chromium` once on a fresh machine.
-- Husky pre-commit gate stays **optional/deferred** — agents run `pnpm verify` before committing; add Husky + lint-staged later if a non-agent committer needs gating.
+- **Runtime config (0.6):** Settings persist Mac endpoint/models to `profile.settings` (IndexedDB) **and** push to a server-held override via `POST /api/llm/config`. Connectivity indicator polls `/api/llm/health`. State-changing POSTs are origin-guarded (`lib/server/origin.ts`). "Onboarded" ⇔ `profile.cefrLevel` is set.
+- Base UI ships as **`@base-ui/react`**; all usage is wrapped in `ui/`.
+- **Test harness (0.8):** Vitest (node + `fake-indexeddb`) in `tests/**/*.test.ts`; Playwright e2e in `tests/e2e/**/*.spec.ts`. `pnpm verify` = typecheck + lint + format + unit tests. `pnpm test:e2e` is separate. Fresh machines need `pnpm exec playwright install chromium`.
 
 ## Commands
 
@@ -42,6 +49,8 @@ learner data and cached content live in IndexedDB (Dexie). No auth, no backend, 
 | `pnpm test` / `pnpm test:watch`     | Vitest (unit; node env + `fake-indexeddb`)                                        |
 | `pnpm test:e2e`                     | Playwright e2e (chromium; auto-starts the dev server)                             |
 | `pnpm verify`                       | typecheck + lint + format:check + **unit** tests (CI-style gate; e2e is separate) |
+| `node scripts/build-wordnet.mjs`    | Generate `data/wordnet.json` (~40 MB; needs `wordpos` devDep installed)           |
+| `node scripts/build-words-cefr.mjs` | Generate `data/words-cefr.json` (~3 MB; needs internet)                           |
 
 ## Architecture (detail in PLAN.md §2)
 
@@ -49,9 +58,17 @@ learner data and cached content live in IndexedDB (Dexie). No auth, no backend, 
   The browser never calls the Mac directly (mixed-content/CORS + keeps the endpoint server-side).
 - **Seams (PLAN.md §2.3):** `LLMClient`, `LexiconProvider`, `ContentRepository`, `Transcriber`,
   `ContentValidator`. Feature code imports the **interface**; concretes are wired in
-  `lib/registry.ts`. See the `seam-discipline` skill.
-- **Pipeline:** generate → Zod-validate → ContentValidator (CEFR + grammar gate) → corrective
-  retry → cache to IndexedDB → render.
+  `lib/registry.ts` (client-safe) or the seam's own `server.ts` (server-only). See the
+  `seam-discipline` skill.
+- **Pipeline:** `lib/content/pipeline.ts` `generateContent<T>(opts, llmClient, validator, repo)`
+  implements PLAN §2.4: chat(schema) → ContentValidator.validate → corrective retry (with
+  `JSON.stringify(parsed)` in the assistant turn) → `ContentRepository.putContent` → return.
+- **`lib/content/` module:** `grammar-map.ts` (39-entry A1–C2 map, Zod-validated at load) ·
+  `content-validator.ts` (`LocalContentValidator` with pre-compiled markers) ·
+  `embeddings.ts` (`cosineSimilarity`, `findNearest`) · `pipeline.ts`.
+- **`lib/lexicon/` module:** `wordnet-query.ts` / `cefr-lookup.ts` (pure fns, data injected) ·
+  `lexicon-provider.ts` (interface) · `local-lexicon-provider.ts` (impl; `repo: null` on server)
+  · `data-loader.ts` (server-only fs loader) · `server.ts` (server-only singleton).
 
 ## Hard rules
 

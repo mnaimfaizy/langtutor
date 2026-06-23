@@ -10,7 +10,20 @@ import type { WordnetData } from "./wordnet-query";
 
 function readJson<T>(relativePath: string): T {
   const fullPath = join(process.cwd(), relativePath);
-  return JSON.parse(readFileSync(fullPath, "utf8")) as T;
+  try {
+    return JSON.parse(readFileSync(fullPath, "utf8")) as T;
+  } catch (err) {
+    const isNotFound = err instanceof Error && "code" in err && err.code === "ENOENT";
+    if (isNotFound) {
+      throw new Error(
+        `Missing generated data file: ${relativePath}\n` +
+          `Run the build script first:\n` +
+          `  node scripts/build-wordnet.mjs    # for data/wordnet.json\n` +
+          `  node scripts/build-words-cefr.mjs # for data/words-cefr.json`,
+      );
+    }
+    throw err;
+  }
 }
 
 /** Load the generated data/wordnet.json into memory. Synchronous — call once at startup. */

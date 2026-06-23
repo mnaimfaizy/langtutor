@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type { Cefr } from "@/lib/db";
 
 import _rawMap from "@/data/grammar-map.json";
@@ -24,8 +26,22 @@ export interface GrammarConstruction {
 
 export type GrammarMap = readonly GrammarConstruction[];
 
+// Zod schema for runtime validation of grammar-map.json entries.
+// Catches authoring typos (e.g. cefr:"B3") at module load rather than silently
+// returning undefined from CEFR_RANK and suppressing all violations.
+const GrammarConstructionSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  cefr: z.enum(["A1", "A2", "B1", "B2", "C1", "C2"]),
+  description: z.string().min(1),
+  markers: z.array(z.string()),
+  examples: z.array(z.string()),
+});
+
 /** The full authored grammar progression map (A1 → C2), loaded at module import time. */
-export const GRAMMAR_MAP: GrammarMap = _rawMap as unknown as GrammarMap;
+export const GRAMMAR_MAP: GrammarMap = z
+  .array(GrammarConstructionSchema)
+  .parse(_rawMap) as GrammarMap;
 
 // ── query helpers ────────────────────────────────────────────────────────────
 
