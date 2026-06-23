@@ -47,5 +47,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# generated bundled data (large; regenerate with: node scripts/build-wordnet.mjs)
+# generated bundled data — regenerate with:
+#   node scripts/build-wordnet.mjs     (~40 MB, needs pnpm install)
+#   node scripts/build-words-cefr.mjs  (~3 MB, needs internet + pnpm install)
 /data/wordnet.json
+/data/words-cefr.json
