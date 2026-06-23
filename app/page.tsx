@@ -24,13 +24,22 @@ export default function Home() {
           adaptive, gamified, and fully offline-capable.
         </p>
 
-        <Link
-          href="/review"
-          className="bg-accent text-accent-foreground mt-8 inline-flex h-11 items-center rounded-xl px-6 text-base font-medium transition-opacity hover:opacity-90"
-          data-testid="btn-start-review"
-        >
-          Review cards
-        </Link>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            href="/review"
+            className="bg-accent text-accent-foreground inline-flex h-11 items-center rounded-xl px-6 text-base font-medium transition-opacity hover:opacity-90"
+            data-testid="btn-start-review"
+          >
+            Review cards
+          </Link>
+          <Link
+            href="/deck"
+            className="border-border text-foreground hover:bg-foreground/[0.04] inline-flex h-11 items-center rounded-xl border px-6 text-base font-medium transition-colors"
+            data-testid="btn-manage-deck"
+          >
+            Add words
+          </Link>
+        </div>
 
         <ul className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {skills.map((skill) => (
