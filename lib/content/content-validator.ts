@@ -68,6 +68,7 @@ function wordViolations(text: string, targetCefr: Cefr, cefrData: CefrData): Wor
   for (const token of tokens) {
     if (seen.has(token)) continue;
     seen.add(token);
+    if (/^\d+$/.test(token)) continue; // numbers are not vocabulary items
 
     const level = cefrData[token];
     if (!level) continue; // unknown word — no judgement

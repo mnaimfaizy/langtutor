@@ -15,11 +15,9 @@ import type {
   Weakness,
 } from "@/lib/db";
 import type { ContentQuery, ContentRepository, ErrorEventQuery } from "@/lib/db";
-import { LocalContentValidator } from "@/lib/content/content-validator";
-import type { ContentValidator } from "@/lib/content/content-validator";
+import type { ContentValidator, ValidationResult } from "@/lib/content/content-validator";
 import { buildPromptMessages, PromptSchema } from "@/lib/content/prompt";
 import { generateContent } from "@/lib/content/pipeline";
-import { loadCefrData } from "@/lib/lexicon/data-loader";
 import { getLLMClient } from "@/lib/llm/server";
 import { isSameOrigin } from "@/lib/server/origin";
 
@@ -102,14 +100,11 @@ class NullContentRepository implements ContentRepository {
   }
 }
 
-// Module-level singleton — cefrData is loaded once from disk on first generation request.
-let _validator: ContentValidator | undefined;
-
-function getValidator(): ContentValidator {
-  if (!_validator) {
-    _validator = new LocalContentValidator(loadCefrData());
+// Writing prompts are teacher-voice instructions; CEFR word/grammar gating is not applied.
+class NullContentValidator implements ContentValidator {
+  validate(): ValidationResult {
+    return { ok: true, violations: [] };
   }
-  return _validator;
 }
 
 /**
@@ -144,7 +139,7 @@ export async function POST(request: Request) {
 
   try {
     const llmClient = await getLLMClient();
-    const validator = getValidator();
+    const validator = new NullContentValidator();
     const repo = new NullContentRepository();
 
     const result = await generateContent(
