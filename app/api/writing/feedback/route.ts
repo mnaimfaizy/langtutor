@@ -41,9 +41,10 @@ export async function POST(request: Request) {
 
   try {
     const llmClient = await getLLMClient();
-    const feedback = await llmClient.chat(buildFeedbackMessages(draft, level), {
+    const raw = await llmClient.chat(buildFeedbackMessages(draft, level), {
       schema: FeedbackSchema,
     });
+    const feedback = FeedbackSchema.parse(raw);
     return Response.json({ feedback });
   } catch (error) {
     console.error("[api/writing/feedback]", error);

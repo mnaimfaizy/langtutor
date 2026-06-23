@@ -4,16 +4,16 @@ import type { Cefr } from "@/lib/db";
 import type { ChatMessage } from "@/lib/llm/types";
 
 export const CorrectionSchema = z.object({
-  original: z.string().min(1),
-  corrected: z.string().min(1),
-  category: z.string().min(1),
-  explanation: z.string().min(1),
+  original: z.string().min(1).max(500),
+  corrected: z.string().min(1).max(500),
+  category: z.string().min(1).max(80),
+  explanation: z.string().min(1).max(600),
 });
 
 export const FeedbackSchema = z.object({
   overallScore: z.number().int().min(0).max(10),
-  structuralGrade: z.string().min(1),
-  corrections: z.array(CorrectionSchema),
+  structuralGrade: z.enum(["Excellent", "Good", "Developing", "Needs Work"]),
+  corrections: z.array(CorrectionSchema).max(50),
 });
 
 export type FeedbackPayload = z.infer<typeof FeedbackSchema>;

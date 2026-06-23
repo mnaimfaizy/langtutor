@@ -488,30 +488,34 @@ const SEED_PROMPTS: NewContent[] = [
 /**
  * Imports seed passages, prompts, and cards into @repo on first run.
  *
- * Idempotency: passages and prompts are checked separately by (type, source)
- * so that adding a new content type (e.g. prompts) only loads the missing
- * type — existing passages are not duplicated. Cards are bundled with passages
- * on initial install. A partial load (tab closed mid-run) is retried on the
- * next mount because the count check will still fail.
+ * Idempotency: each content type is checked independently so that a partial
+ * load (tab closed mid-run) or a new phase adding a content type only writes
+ * the missing items. Cards use getAllCards() (total count ≥ SEED_CARD_COUNT)
+ * rather than a source-filtered query because Card has no source field.
  *
  * Must be called from a browser context — IndexedDB is not available on the
  * server.
  */
 export async function loadSeedIfEmpty(repo: ContentRepository): Promise<void> {
-  const [seedPassages, seedPrompts] = await Promise.all([
+  const [seedPassages, seedPrompts, allCards] = await Promise.all([
     repo.queryContent({ type: "passage", source: "seed" }),
     repo.queryContent({ type: "prompt", source: "seed" }),
+    repo.getAllCards(),
   ]);
 
   const passagesDone = seedPassages.length >= SEED_PASSAGES.length;
   const promptsDone = seedPrompts.length >= SEED_PROMPTS.length;
+  const cardsDone = allCards.length >= SEED_CARDS.length;
 
-  if (passagesDone && promptsDone) return;
+  if (passagesDone && promptsDone && cardsDone) return;
 
   if (!passagesDone) {
     for (const passage of SEED_PASSAGES) {
       await repo.putContent(passage);
     }
+  }
+
+  if (!cardsDone) {
     for (const card of SEED_CARDS) {
       await repo.addCard(card);
     }

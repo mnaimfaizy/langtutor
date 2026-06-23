@@ -108,12 +108,13 @@ class NullContentValidator implements ContentValidator {
 }
 
 /**
- * `POST /api/writing/generate` — generate a CEFR-valid writing prompt.
+ * `POST /api/writing/generate` — generate a writing prompt.
  * Body: `{ topic: string, level: Cefr }`
  * Response: `{ prompt: { title: string, instruction: string, context?: string } }`
  *
- * The instruction is validated by the pipeline (word + grammar CEFR gate, corrective retries).
- * Caching to IndexedDB happens on the client after it receives the response.
+ * Schema validation only (NullContentValidator) — prompts are teacher-voice instructions
+ * and intentionally bypass CEFR word/grammar gating. Caching to IndexedDB happens on the
+ * client after it receives the response.
  */
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) {
