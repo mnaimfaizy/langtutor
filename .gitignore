@@ -46,3 +46,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated bundled data (large; regenerate with: node scripts/build-wordnet.mjs)
+/data/wordnet.json
