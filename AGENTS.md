@@ -18,8 +18,18 @@ learner data and cached content live in IndexedDB (Dexie). No auth, no backend, 
 
 - **Phase 0 — Foundation & seams — ✅ complete** (all 8 steps + the §3.5 close-out).
 - **Phase 1 — Data backbone & content infrastructure — ✅ complete** (all 8 steps + `/code-review` + `/security-review`).
-- Done (Phase 1): **1.1** WordNet bundle + lexicon queries · **1.2** Words-CEFR mapping + `cefrLevel` · **1.3** `LexiconProvider` seam + `LocalLexiconProvider` · **1.4** CEFR grammar progression map · **1.5** `ContentValidator` (word + grammar gate) · **1.6** Cosine-similarity search helper · **1.7** Generate-and-cache pipeline · **1.8** Tiny starter seed.
-- **Next: Phase 2.1** — Placement quiz (adaptive vocab yes/no): sample CEFR-graded words + pseudowords, known/unknown UI, map vocab-size estimate → CEFR, write to `profile.cefrLevel`. Fully offline.
+- **Phase 2 — Onboarding + Vocabulary SRS — ✅ complete** (all 6 steps + `/code-review` + top-3 review fixes).
+- Done (Phase 2): **2.1** Placement quiz · **2.2** Learner profile & goals · **2.3** FSRS engine wrapper · **2.4** Review session UI · **2.5** Add-to-deck · **2.6** Light gamification.
+- **Next: Phase 3.1** — Topic → passage generation: topic picker; generate level-appropriate passage via pipeline (1.7); cache; library of cached passages. Accept: picking a topic at the profile level yields a CEFR-valid cached passage; re-open works offline. Verify: Playwright (generate online → reload offline → still there) + manual.
+- **Phase 2 close-out notes:**
+  - **SRS (2.3):** `lib/srs/` — `initCard(now)`, `scheduleCard(fsrs, rating, now)`, `getDueCards(cards, now)`, `isDue(fsrs, now)`. `SrsRating = "again" | "hard" | "good" | "easy"`. Wraps `ts-fsrs` v5.4.1; `FsrsState.learningSteps` optional (defaults to 0 for old cards).
+  - **Placement quiz (2.1):** `lib/placement/quiz-engine.ts` — `buildQuizBatch(level)`, `shouldAdvance(answers)`, `scoreQuiz(answers)`. Word list in `lib/placement/word-list.ts`; pseudowords baked in. `CEFR_ORDER` exported for shared level ordering. Word order is deterministic — shuffle in `buildQuizBatch` is a Phase 3+ improvement.
+  - **Review session (2.4):** `app/review/review-session.tsx` — phases `loading | empty | reviewing | summary | error`. `handleRate` protected by `ratingInFlight` ref (double-tap guard) and `try/catch` → `"error"` phase with retry button. `applyReview` called on session completion; result shown in summary (+XP, level-up, achievements).
+  - **Add-to-deck (2.5):** `lib/deck/` — `buildNewCard(data, now)`, `isDuplicate(word, existing)`. Lookup API: `GET /api/lexicon/lookup?word=` (200 found/not-found, 400 missing, 503 data not built).
+  - **Gamification (2.6):** `lib/gamification/` — `earnXp(n)` (10 XP/card), `xpToLevel(xp)` (non-linear thresholds), `updateStreak(last, today, count)`, `applyReview(state, {cardCount, today, now})`. 5 achievements: `first_review`, `xp_50`, `xp_200`, `streak_3`, `streak_7`. `GamificationHud` in layout header; re-fetches on `usePathname` change.
+  - **Streak date note:** `today` in `handleRate` uses `now.toISOString().slice(0,10)` (UTC). Both writer and reader (`dayBefore` in streak.ts) use UTC consistently, so behavior is self-consistent but may misalign with local midnight in UTC− timezones. A future fix: use `Intl.DateTimeFormat` for local-date strings.
+  - **Onboarding flow:** quiz → `/onboarding/goals` → home. "Onboarded" ⇔ `profile.cefrLevel` set. Nav links on home page (Review / Add words) are accessible before onboarding — by design for MVP; add a redirect guard in Phase 3 if needed.
+  - **`answeringRef` guard (2.1):** `handleAnswer` in `placement-quiz.tsx` uses a `useRef` flag to prevent double-tap from firing twice before React re-renders.
 - **Phase 1 close-out notes:**
   - `lib/lexicon/server.ts` — server-only `getLexiconProvider()` (mirrors `lib/llm/server.ts`). Audio caching **omitted** on the server (`repo: null`) — IndexedDB is browser-only. Client-side audio caching wired in Phase 3.2.
   - `lib/lexicon/data-loader.ts` — `readFileSync` with a dev-friendly ENOENT message pointing to build scripts.

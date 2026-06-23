@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import type { Achievement, Card } from "@/lib/db";
@@ -11,7 +11,7 @@ import type { SrsRating } from "@/lib/srs";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
 
-type Phase = "loading" | "empty" | "reviewing" | "summary";
+type Phase = "loading" | "empty" | "reviewing" | "summary" | "error";
 
 interface RatingCounts {
   again: number;
@@ -56,6 +56,7 @@ export function ReviewSession() {
   const [revealed, setRevealed] = useState(false);
   const [counts, setCounts] = useState<RatingCounts>({ again: 0, hard: 0, good: 0, easy: 0 });
   const [result, setResult] = useState<SessionResult | null>(null);
+  const ratingInFlight = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -79,32 +80,44 @@ export function ReviewSession() {
   }, []);
 
   async function handleRate(rating: SrsRating) {
+    if (ratingInFlight.current) return;
+    ratingInFlight.current = true;
+
     const card = cards[currentIndex];
-    if (!card) return;
+    if (!card) {
+      ratingInFlight.current = false;
+      return;
+    }
 
-    const now = new Date();
-    const newFsrs = scheduleCard(card.fsrs, rating, now);
-    const repo = getContentRepository();
-    await repo.updateCard(card.id, { fsrs: newFsrs });
+    try {
+      const now = new Date();
+      const newFsrs = scheduleCard(card.fsrs, rating, now);
+      const repo = getContentRepository();
+      await repo.updateCard(card.id, { fsrs: newFsrs });
 
-    const newCounts = { ...counts, [rating]: counts[rating] + 1 };
-    setCounts(newCounts);
-    setRevealed(false);
+      const newCounts = { ...counts, [rating]: counts[rating] + 1 };
+      setCounts(newCounts);
+      setRevealed(false);
 
-    if (currentIndex + 1 >= cards.length) {
-      const total = newCounts.again + newCounts.hard + newCounts.good + newCounts.easy;
-      const today = now.toISOString().slice(0, 10);
-      const currentGamState = await repo.getGamification();
-      const { newState, xpEarned, newAchievements, leveledUp } = applyReview(currentGamState, {
-        cardCount: total,
-        today,
-        now,
-      });
-      await repo.saveGamification(newState);
-      setResult({ xpEarned, leveledUp, newLevel: newState.level, newAchievements });
-      setPhase("summary");
-    } else {
-      setCurrentIndex((i) => i + 1);
+      if (currentIndex + 1 >= cards.length) {
+        const total = newCounts.again + newCounts.hard + newCounts.good + newCounts.easy;
+        const today = now.toISOString().slice(0, 10);
+        const currentGamState = await repo.getGamification();
+        const { newState, xpEarned, newAchievements, leveledUp } = applyReview(currentGamState, {
+          cardCount: total,
+          today,
+          now,
+        });
+        await repo.saveGamification(newState);
+        setResult({ xpEarned, leveledUp, newLevel: newState.level, newAchievements });
+        setPhase("summary");
+      } else {
+        setCurrentIndex((i) => i + 1);
+      }
+    } catch {
+      setPhase("error");
+    } finally {
+      ratingInFlight.current = false;
     }
   }
 
@@ -195,6 +208,32 @@ export function ReviewSession() {
               Back to home
             </Button>
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "error") {
+    return (
+      <div
+        data-testid="review-session"
+        className="flex flex-1 flex-col items-center justify-center px-6 py-16"
+      >
+        <div data-testid="review-error" className="w-full max-w-sm text-center">
+          <p className="text-danger text-base font-semibold">Something went wrong</p>
+          <p className="text-muted mt-2 text-sm">
+            Could not save your progress. Check available storage and try again.
+          </p>
+          <div className="mt-8 flex justify-center gap-3">
+            <Button variant="secondary" size="lg" onClick={() => setPhase("reviewing")}>
+              Retry
+            </Button>
+            <Link href="/">
+              <Button variant="secondary" size="lg">
+                Home
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );

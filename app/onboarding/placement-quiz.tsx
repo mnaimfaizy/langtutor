@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { Profile } from "@/lib/db";
@@ -29,6 +29,7 @@ export function PlacementQuiz() {
   const [batchIdx, setBatchIdx] = useState(0);
   const [allAnswers, setAllAnswers] = useState<QuizAnswer[]>([]);
   const [result, setResult] = useState<QuizResult | null>(null);
+  const answeringRef = useRef(false);
 
   useEffect(() => {
     void getContentRepository()
@@ -52,7 +53,14 @@ export function PlacementQuiz() {
   }
 
   function handleAnswer(known: boolean) {
+    if (answeringRef.current) return;
+    answeringRef.current = true;
+
     const item = batch[batchIdx];
+    if (!item) {
+      answeringRef.current = false;
+      return;
+    }
     const answer: QuizAnswer = { ...item, known };
     const updatedAnswers = [...allAnswers, answer];
     setAllAnswers(updatedAnswers);
@@ -75,6 +83,8 @@ export function PlacementQuiz() {
       setResult(scoreQuiz(updatedAnswers));
       setPhase("result");
     }
+
+    answeringRef.current = false;
   }
 
   async function handleSave() {
