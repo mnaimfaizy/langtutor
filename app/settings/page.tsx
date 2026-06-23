@@ -3,14 +3,32 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import type { ProfileSettings } from "@/lib/db";
+import type { Cefr, LearnerGoal, Profile, ProfileSettings } from "@/lib/db";
 import { HealthResponseSchema, settingsToOverrides } from "@/lib/llm/settings";
 import { getContentRepository } from "@/lib/registry";
 import { Button, Card, CardContent, CardDescription, CardTitle, Input, cn } from "@/ui";
 
 type Banner = { tone: "ok" | "error"; text: string } | null;
 
+const CEFR_LEVELS: Cefr[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
+const CEFR_LABELS: Record<Cefr, string> = {
+  A1: "A1 — Beginner",
+  A2: "A2 — Elementary",
+  B1: "B1 — Intermediate",
+  B2: "B2 — Upper intermediate",
+  C1: "C1 — Advanced",
+  C2: "C2 — Mastery",
+};
+
+const GOAL_OPTIONS: { value: LearnerGoal; label: string }[] = [
+  { value: "travel", label: "Travel" },
+  { value: "work", label: "Work" },
+  { value: "exam", label: "Exam prep" },
+  { value: "general", label: "General" },
+];
+
 export default function SettingsPage() {
+  // LLM settings state
   const [baseUrl, setBaseUrl] = useState("");
   const [chatModel, setChatModel] = useState("");
   const [embedModel, setEmbedModel] = useState("");
@@ -18,15 +36,24 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState<Banner>(null);
 
+  // Profile state
+  const [profileLevel, setProfileLevel] = useState<Cefr | undefined>(undefined);
+  const [profileGoals, setProfileGoals] = useState<LearnerGoal[]>([]);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileBanner, setProfileBanner] = useState<Banner>(null);
+
   useEffect(() => {
     let active = true;
     void getContentRepository()
-      .getSettings()
-      .then((s) => {
+      .getProfile()
+      .then((profile) => {
         if (!active) return;
+        const s = profile?.settings ?? {};
         setBaseUrl(s.macLlmBaseUrl ?? "");
         setChatModel(s.macLlmModel ?? "");
         setEmbedModel(s.macEmbedModel ?? "");
+        setProfileLevel(profile?.cefrLevel);
+        setProfileGoals(profile?.goals ?? []);
         setLoaded(true);
       });
     return () => {
@@ -88,6 +115,37 @@ export default function SettingsPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleSaveProfile() {
+    if (!profileLevel) return;
+    setProfileBusy(true);
+    setProfileBanner(null);
+    try {
+      const repo = getContentRepository();
+      const existing = await repo.getProfile();
+      const profile: Profile = {
+        cefrLevel: profileLevel,
+        goals: profileGoals,
+        createdAt: existing?.createdAt ?? new Date(),
+        settings: existing?.settings ?? {},
+      };
+      await repo.saveProfile(profile);
+      setProfileBanner({ tone: "ok", text: "Profile updated." });
+    } catch (error) {
+      setProfileBanner({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Save failed",
+      });
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  function toggleProfileGoal(goal: LearnerGoal) {
+    setProfileGoals((prev) =>
+      prev.includes(goal) ? prev.filter((g) => g !== goal) : [...prev, goal],
+    );
   }
 
   return (
@@ -155,6 +213,77 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {profileLevel && (
+        <Card className="mt-6" data-testid="profile-section">
+          <CardTitle>Profile</CardTitle>
+          <CardDescription>Your current level and learning goals.</CardDescription>
+          <CardContent className="space-y-5">
+            <Field label="Level">
+              <select
+                data-testid="profile-level-select"
+                value={profileLevel}
+                onChange={(e) => setProfileLevel(e.target.value as Cefr)}
+                disabled={profileBusy}
+                className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
+              >
+                {CEFR_LEVELS.map((level) => (
+                  <option key={level} value={level}>
+                    {CEFR_LABELS[level]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Goals">
+              <div className="mt-1.5 grid grid-cols-2 gap-2">
+                {GOAL_OPTIONS.map(({ value, label }) => {
+                  const active = profileGoals.includes(value);
+                  return (
+                    <button
+                      key={value}
+                      data-testid={`profile-goal-btn-${value}`}
+                      aria-pressed={active}
+                      disabled={profileBusy}
+                      onClick={() => toggleProfileGoal(value)}
+                      className={cn(
+                        "rounded-lg border px-3 py-2 text-sm transition-colors",
+                        active
+                          ? "border-accent bg-accent/10 text-foreground font-medium"
+                          : "border-border text-muted hover:border-foreground/30",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+
+            <div className="pt-1">
+              <Button
+                data-testid="btn-save-profile"
+                onClick={() => void handleSaveProfile()}
+                disabled={profileBusy}
+              >
+                Save profile
+              </Button>
+            </div>
+
+            {profileBanner && (
+              <p
+                className={cn(
+                  "text-sm",
+                  profileBanner.tone === "ok" ? "text-success" : "text-danger",
+                )}
+                role="status"
+              >
+                {profileBanner.text}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </main>
   );
 }

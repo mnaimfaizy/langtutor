@@ -35,7 +35,7 @@ export function PlacementQuiz() {
       .getProfile()
       .then((profile) => {
         if (profile?.cefrLevel) {
-          router.replace("/");
+          router.replace(profile.goals.length > 0 ? "/" : "/onboarding/goals");
           return;
         }
         setPhase("intro");
@@ -90,7 +90,7 @@ export function PlacementQuiz() {
         settings: existing?.settings ?? {},
       };
       await repo.saveProfile(profile);
-      router.replace("/");
+      router.replace("/onboarding/goals");
     } catch {
       setPhase("result"); // allow retry
     }

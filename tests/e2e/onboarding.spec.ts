@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword
 
-test("placement quiz: completes with all-unknown answers → A1 → saves and redirects", async ({
+test("placement quiz: completes with all-unknown answers → A1 → proceeds to goals → redirects home", async ({
   page,
 }) => {
   await page.goto("/onboarding");
@@ -23,22 +23,29 @@ test("placement quiz: completes with all-unknown answers → A1 → saves and re
   await expect(page.getByTestId("quiz-result")).toBeVisible();
   await expect(page.getByTestId("quiz-result-level")).toHaveText("A1");
 
-  // Save and get redirected to home
+  // Save level → navigates to goals picker
   await page.getByTestId("btn-save-level").click();
+  await expect(page.getByTestId("goals-picker")).toBeVisible();
+
+  // Select a goal and save
+  await page.getByTestId("goal-btn-general").click();
+  await page.getByTestId("btn-save-goals").click();
   await page.waitForURL("/");
 });
 
 test("placement quiz: redirects home if already onboarded", async ({ page }) => {
-  // Complete onboarding first
+  // Complete full onboarding first
   await page.goto("/onboarding");
   await expect(page.getByTestId("quiz-intro")).toBeVisible();
   await page.getByTestId("quiz-start-btn").click();
   await expect(page.getByTestId("quiz-quizzing")).toBeVisible();
-
   for (let i = 0; i < BATCH_SIZE; i++) {
     await page.getByTestId("btn-unknown").click();
   }
   await page.getByTestId("btn-save-level").click();
+  await expect(page.getByTestId("goals-picker")).toBeVisible();
+  await page.getByTestId("goal-btn-general").click();
+  await page.getByTestId("btn-save-goals").click();
   await page.waitForURL("/");
 
   // Revisiting /onboarding should redirect straight to /
