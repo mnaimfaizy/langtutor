@@ -24,6 +24,8 @@ type LookupState =
   | { status: "loading" }
   | { status: "found"; data: DefineFound }
   | { status: "not-found" }
+  | { status: "researching" }
+  | { status: "offline" }
   | { status: "error" };
 
 type AddState = "idle" | "adding" | "added" | "duplicate" | "error";
@@ -34,7 +36,14 @@ export function WordPopover({ word }: { word: string }) {
   const loadingRef = useRef(false);
 
   async function load() {
-    if (loadingRef.current || state.status === "found" || state.status === "not-found") return;
+    if (
+      loadingRef.current ||
+      state.status === "found" ||
+      state.status === "not-found" ||
+      state.status === "researching" ||
+      state.status === "offline"
+    )
+      return;
     loadingRef.current = true;
     setState({ status: "loading" });
 
@@ -84,6 +93,37 @@ export function WordPopover({ word }: { word: string }) {
     }
   }
 
+  async function handleResearch() {
+    setState({ status: "researching" });
+    const w = word.toLowerCase();
+    try {
+      const res = await fetch("/api/agent/research-word", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word: w }),
+      });
+      if (res.status === 502 || res.status === 503) {
+        setState({ status: "offline" });
+        return;
+      }
+      if (!res.ok) {
+        setState({ status: "error" });
+        return;
+      }
+      const json: unknown = await res.json();
+      const parsed = DefineResponseSchema.safeParse(json);
+      if (!parsed.success || !parsed.data.found) {
+        setState({ status: "error" });
+        return;
+      }
+      const repo = getContentRepository();
+      await repo.putLexiconEntry({ word: w, data: json, cachedAt: new Date() });
+      setState({ status: "found", data: parsed.data });
+    } catch {
+      setState({ status: "error" });
+    }
+  }
+
   async function handleAdd(data: DefineFound) {
     if (addState === "adding" || addState === "added" || addState === "duplicate") return;
     setAddState("adding");
@@ -118,7 +158,13 @@ export function WordPopover({ word }: { word: string }) {
         {word}
       </PopoverInlineTrigger>
       <PopoverContent className="w-72">
-        <PopoverBody state={state} word={word} addState={addState} onAdd={handleAdd} />
+        <PopoverBody
+          state={state}
+          word={word}
+          addState={addState}
+          onAdd={handleAdd}
+          onResearch={handleResearch}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -129,23 +175,51 @@ function PopoverBody({
   word,
   addState,
   onAdd,
+  onResearch,
 }: {
   state: LookupState;
   word: string;
   addState: AddState;
   onAdd: (data: DefineFound) => void;
+  onResearch: () => void;
 }) {
   if (state.status === "idle" || state.status === "loading") {
     return <p className="text-muted text-sm">Loading…</p>;
   }
+  if (state.status === "researching") {
+    return <p className="text-muted text-sm">Researching…</p>;
+  }
   if (state.status === "error") {
     return <p className="text-danger text-sm">Could not load definition.</p>;
+  }
+  if (state.status === "offline") {
+    return (
+      <div>
+        <p className="text-foreground text-sm font-semibold">{word}</p>
+        <p className="text-muted mt-1 text-sm" data-testid="offline-msg">
+          Unavailable — connect to Mac.
+        </p>
+        <button
+          onClick={onResearch}
+          className="text-accent hover:text-accent/80 mt-2 text-xs transition-colors"
+        >
+          Try again
+        </button>
+      </div>
+    );
   }
   if (state.status === "not-found") {
     return (
       <div>
         <p className="text-foreground text-sm font-semibold">{word}</p>
-        <p className="text-muted mt-1 text-sm">Not found in dictionary.</p>
+        <p className="text-muted mt-1 text-sm">Not in dictionary.</p>
+        <button
+          data-testid="btn-research"
+          onClick={onResearch}
+          className="text-accent hover:text-accent/80 mt-2 text-xs transition-colors"
+        >
+          Research with AI
+        </button>
       </div>
     );
   }
