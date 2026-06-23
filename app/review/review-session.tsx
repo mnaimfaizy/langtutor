@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import type { Card } from "@/lib/db";
+import type { Achievement, Card } from "@/lib/db";
+import { applyReview } from "@/lib/gamification";
 import { getContentRepository } from "@/lib/registry";
 import { scheduleCard } from "@/lib/srs";
 import type { SrsRating } from "@/lib/srs";
@@ -17,6 +18,13 @@ interface RatingCounts {
   hard: number;
   good: number;
   easy: number;
+}
+
+interface SessionResult {
+  xpEarned: number;
+  leveledUp: boolean;
+  newLevel: number;
+  newAchievements: Achievement[];
 }
 
 const CEFR_COLOR: Record<string, string> = {
@@ -47,6 +55,7 @@ export function ReviewSession() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [counts, setCounts] = useState<RatingCounts>({ again: 0, hard: 0, good: 0, easy: 0 });
+  const [result, setResult] = useState<SessionResult | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -75,12 +84,24 @@ export function ReviewSession() {
 
     const now = new Date();
     const newFsrs = scheduleCard(card.fsrs, rating, now);
-    await getContentRepository().updateCard(card.id, { fsrs: newFsrs });
+    const repo = getContentRepository();
+    await repo.updateCard(card.id, { fsrs: newFsrs });
 
-    setCounts((prev) => ({ ...prev, [rating]: prev[rating] + 1 }));
+    const newCounts = { ...counts, [rating]: counts[rating] + 1 };
+    setCounts(newCounts);
     setRevealed(false);
 
     if (currentIndex + 1 >= cards.length) {
+      const total = newCounts.again + newCounts.hard + newCounts.good + newCounts.easy;
+      const today = now.toISOString().slice(0, 10);
+      const currentGamState = await repo.getGamification();
+      const { newState, xpEarned, newAchievements, leveledUp } = applyReview(currentGamState, {
+        cardCount: total,
+        today,
+        now,
+      });
+      await repo.saveGamification(newState);
+      setResult({ xpEarned, leveledUp, newLevel: newState.level, newAchievements });
       setPhase("summary");
     } else {
       setCurrentIndex((i) => i + 1);
@@ -130,7 +151,33 @@ export function ReviewSession() {
           <h1 className="text-foreground text-center text-3xl font-semibold">Session complete</h1>
           <p className="text-muted mt-2 text-center text-base">{total} cards reviewed</p>
 
-          <div className="mt-8 grid grid-cols-2 gap-3">
+          {result && (
+            <div className="mt-4 text-center">
+              <p data-testid="summary-xp" className="text-accent text-lg font-semibold">
+                +{result.xpEarned} XP
+              </p>
+              {result.leveledUp && (
+                <p className="text-success mt-1 text-sm font-medium">
+                  Level up! Now level {result.newLevel}
+                </p>
+              )}
+              {result.newAchievements.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {result.newAchievements.map((a) => (
+                    <li
+                      key={a.id}
+                      data-testid="summary-new-achievement"
+                      className="text-warning text-sm"
+                    >
+                      Achievement unlocked: {a.id.replace(/_/g, " ")}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
             {(["again", "hard", "good", "easy"] as const).map((r) => (
               <div
                 key={r}

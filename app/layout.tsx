@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SerwistProvider } from "@serwist/turbopack/react";
 import "./globals.css";
 import { ConnectivityIndicator } from "./connectivity-indicator";
+import { GamificationHud } from "./gamification-hud";
 import { SeedBootstrap } from "./seed-bootstrap";
 import { SettingsBootstrap } from "./settings-bootstrap";
 
@@ -44,6 +45,7 @@ export default function RootLayout({
               Lang-Tutor
             </Link>
             <div className="flex items-center gap-4">
+              <GamificationHud />
               <ConnectivityIndicator />
               <Link href="/settings" className="text-muted hover:text-foreground text-sm">
                 Settings
