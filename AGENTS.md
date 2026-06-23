@@ -17,9 +17,9 @@ learner data and cached content live in IndexedDB (Dexie). No auth, no backend, 
 ## Current phase / next step
 
 - **Phase 0 — Foundation & seams — ✅ complete** (all 8 steps + the §3.5 close-out).
-- **Phase 1 — Data backbone & content infrastructure — ✅ complete** (all 8 steps + `/code-review`).
+- **Phase 1 — Data backbone & content infrastructure — in progress** (1.1–1.7 done; 1.8 next).
 - Done (Phase 1): **1.1** WordNet bundle + lexicon queries · **1.2** Words-CEFR mapping + `cefrLevel` · **1.3** `LexiconProvider` seam + `LocalLexiconProvider` · **1.4** CEFR grammar progression map · **1.5** `ContentValidator` (word + grammar gate) · **1.6** Cosine-similarity search helper · **1.7** Generate-and-cache pipeline.
-- **Next: Phase 2.1** — Placement quiz (adaptive vocab yes/no) + onboarding shell.
+- **Next: Phase 1.8** — Tiny starter seed: author passages + vocab deck per CEFR level, bundle in `data/seed`, load on first run, Playwright offline first-run test.
 - **Phase 1 close-out notes:**
   - `lib/lexicon/server.ts` — server-only `getLexiconProvider()` (mirrors `lib/llm/server.ts`). Audio caching is intentionally **omitted** on the server (`repo: null`) because IndexedDB (Dexie) is browser-only. Client-side audio caching is wired in Phase 3.2.
   - `lib/lexicon/data-loader.ts` — synchronous `readFileSync` with a friendly ENOENT message directing devs to run `node scripts/build-wordnet.mjs` / `node scripts/build-words-cefr.mjs`.

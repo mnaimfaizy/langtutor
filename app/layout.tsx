@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SerwistProvider } from "@serwist/turbopack/react";
 import "./globals.css";
 import { ConnectivityIndicator } from "./connectivity-indicator";
+import { SeedBootstrap } from "./seed-bootstrap";
 import { SettingsBootstrap } from "./settings-bootstrap";
 
 const geistSans = Geist({
@@ -37,6 +38,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col">
         <SerwistProvider swUrl="/serwist/sw.js">
           <SettingsBootstrap />
+          <SeedBootstrap />
           <header className="border-border bg-card/50 sticky top-0 z-10 flex items-center justify-between gap-4 border-b px-6 py-3 backdrop-blur">
             <Link href="/" className="text-foreground text-sm font-semibold">
               Lang-Tutor
