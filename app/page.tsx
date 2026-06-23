@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const skills = [
   { name: "Reading", blurb: "Level-appropriate passages with tap-to-define." },
   { name: "Writing", blurb: "Prompts with structured, corrective feedback." },
@@ -11,7 +13,7 @@ export default function Home() {
       <div className="w-full max-w-2xl">
         <span className="border-foreground/10 bg-foreground/[0.03] text-muted inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium">
           <span className="bg-accent size-1.5 rounded-full" />
-          Phase 0 · scaffold
+          Phase 2 · vocab SRS
         </span>
 
         <h1 className="text-foreground mt-6 text-4xl font-semibold tracking-tight sm:text-5xl">
@@ -19,8 +21,16 @@ export default function Home() {
         </h1>
         <p className="text-muted mt-4 max-w-xl text-lg leading-8">
           A private, local-first English tutor. Reading, writing, listening, and speaking —
-          adaptive, gamified, and fully offline-capable. Built behind swappable seams.
+          adaptive, gamified, and fully offline-capable.
         </p>
+
+        <Link
+          href="/review"
+          className="bg-accent text-accent-foreground mt-8 inline-flex h-11 items-center rounded-xl px-6 text-base font-medium transition-opacity hover:opacity-90"
+          data-testid="btn-start-review"
+        >
+          Review cards
+        </Link>
 
         <ul className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {skills.map((skill) => (
@@ -33,10 +43,6 @@ export default function Home() {
             </li>
           ))}
         </ul>
-
-        <p className="text-muted mt-10 text-sm">
-          Foundation in progress — features land from Phase 2 onward.
-        </p>
       </div>
     </main>
   );
