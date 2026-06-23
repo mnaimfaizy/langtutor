@@ -8,6 +8,7 @@ import { PassageSchema } from "@/lib/content/passage";
 import { getContentRepository } from "@/lib/registry";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
+import { TtsButton } from "@/ui/tts-button";
 import { ComprehensionQuiz } from "./comprehension-quiz";
 import { WordPopover } from "./word-popover";
 
@@ -122,6 +123,8 @@ export function PassageView({ id }: { id: number }) {
           >
             {title}
           </h1>
+
+          <TtsButton text={body} className="mt-3 -ml-2" />
 
           <p
             data-testid="passage-body"

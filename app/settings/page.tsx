@@ -8,6 +8,10 @@ import { HealthResponseSchema, settingsToOverrides } from "@/lib/llm/settings";
 import { getContentRepository } from "@/lib/registry";
 import { Button, Card, CardContent, CardDescription, CardTitle, Input, cn } from "@/ui";
 
+const TTS_RATE_MIN = 0.5;
+const TTS_RATE_MAX = 2;
+const TTS_RATE_STEP = 0.1;
+
 type Banner = { tone: "ok" | "error"; text: string } | null;
 
 const CEFR_LEVELS: Cefr[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
@@ -42,6 +46,13 @@ export default function SettingsPage() {
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileBanner, setProfileBanner] = useState<Banner>(null);
 
+  // TTS state
+  const [ttsRate, setTtsRate] = useState(1);
+  const [ttsVoiceUri, setTtsVoiceUri] = useState("");
+  const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [ttsBusy, setTtsBusy] = useState(false);
+  const [ttsBanner, setTtsBanner] = useState<Banner>(null);
+
   useEffect(() => {
     let active = true;
     void getContentRepository()
@@ -54,11 +65,21 @@ export default function SettingsPage() {
         setEmbedModel(s.macEmbedModel ?? "");
         setProfileLevel(profile?.cefrLevel);
         setProfileGoals(profile?.goals ?? []);
+        setTtsRate(s.ttsRate ?? 1);
+        setTtsVoiceUri(s.ttsVoiceUri ?? "");
         setLoaded(true);
       });
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    const sync = () => setBrowserVoices(window.speechSynthesis.getVoices());
+    sync();
+    window.speechSynthesis.addEventListener("voiceschanged", sync);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", sync);
   }, []);
 
   async function handleSave() {
@@ -148,6 +169,28 @@ export default function SettingsPage() {
     );
   }
 
+  async function handleSaveTts() {
+    setTtsBusy(true);
+    setTtsBanner(null);
+    try {
+      const repo = getContentRepository();
+      const current = await repo.getSettings();
+      await repo.saveSettings({
+        ...current,
+        ttsRate,
+        ttsVoiceUri: ttsVoiceUri || undefined,
+      });
+      setTtsBanner({ tone: "ok", text: "TTS settings saved." });
+    } catch (error) {
+      setTtsBanner({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Save failed",
+      });
+    } finally {
+      setTtsBusy(false);
+    }
+  }
+
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-10">
       <h1 className="text-foreground text-2xl font-semibold">Settings</h1>
@@ -209,6 +252,68 @@ export default function SettingsPage() {
               role="status"
             >
               {banner.text}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6" data-testid="tts-section">
+        <CardTitle>Text-to-speech</CardTitle>
+        <CardDescription>
+          Voice and rate used when you tap Listen on a passage or writing prompt. Uses your
+          browser&apos;s built-in voices — works offline.
+        </CardDescription>
+        <CardContent className="space-y-4">
+          <Field label={`Rate — ${ttsRate.toFixed(1)}×`}>
+            <input
+              type="range"
+              min={TTS_RATE_MIN}
+              max={TTS_RATE_MAX}
+              step={TTS_RATE_STEP}
+              value={ttsRate}
+              onChange={(e) => setTtsRate(parseFloat(e.target.value))}
+              disabled={!loaded || ttsBusy}
+              aria-label="Speech rate"
+              className="mt-1.5 w-full accent-[var(--color-accent)]"
+            />
+            <div className="text-muted mt-0.5 flex justify-between text-xs">
+              <span>{TTS_RATE_MIN}×</span>
+              <span>{TTS_RATE_MAX}×</span>
+            </div>
+          </Field>
+
+          <Field label="Voice">
+            <select
+              value={ttsVoiceUri}
+              onChange={(e) => setTtsVoiceUri(e.target.value)}
+              disabled={!loaded || ttsBusy}
+              className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
+            >
+              <option value="">System default</option>
+              {browserVoices.map((v) => (
+                <option key={v.voiceURI} value={v.voiceURI}>
+                  {v.name} ({v.lang})
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <div className="pt-1">
+            <Button
+              data-testid="btn-save-tts"
+              onClick={() => void handleSaveTts()}
+              disabled={!loaded || ttsBusy}
+            >
+              Save TTS settings
+            </Button>
+          </div>
+
+          {ttsBanner && (
+            <p
+              className={cn("text-sm", ttsBanner.tone === "ok" ? "text-success" : "text-danger")}
+              role="status"
+            >
+              {ttsBanner.text}
             </p>
           )}
         </CardContent>

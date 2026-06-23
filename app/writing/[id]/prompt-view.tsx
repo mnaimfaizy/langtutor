@@ -11,6 +11,7 @@ import { PromptSchema } from "@/lib/content/prompt";
 import { getContentRepository } from "@/lib/registry";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
+import { TtsButton } from "@/ui/tts-button";
 
 type Phase = "loading" | "ready" | "notFound" | "error";
 type SubmitPhase = "idle" | "submitting" | "done" | "error";
@@ -250,6 +251,11 @@ export function PromptView({ id }: { id: number }) {
           <p data-testid="prompt-instruction" className="text-foreground mt-5 text-base leading-8">
             {instruction}
           </p>
+
+          <TtsButton
+            text={context ? `${context}. ${instruction}` : instruction}
+            className="mt-3 -ml-2"
+          />
         </article>
 
         {/* Draft area */}
