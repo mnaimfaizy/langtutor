@@ -10,17 +10,19 @@ import type { ContentRepository, NewCard, NewContent } from "@/lib/db";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-/** FSRS state for a brand-new card: unreviewed, due immediately. */
-const NEW_FSRS = {
-  due: new Date(0), // epoch → due right away
-  stability: 0,
-  difficulty: 0,
-  elapsedDays: 0,
-  scheduledDays: 0,
-  reps: 0,
-  lapses: 0,
-  state: 0, // 0 = New
-} as const;
+/** Returns a fresh FSRS state for a brand-new card: unreviewed, due immediately. */
+function newFsrs() {
+  return {
+    due: new Date(0), // epoch → due right away; new instance per card, not shared
+    stability: 0,
+    difficulty: 0,
+    elapsedDays: 0,
+    scheduledDays: 0,
+    reps: 0,
+    lapses: 0,
+    state: 0, // 0 = New
+  };
+}
 
 const SEED_DATE = new Date("2024-01-01");
 
@@ -133,7 +135,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "a building where people live",
     examples: ["I live in a small house.", "Our house has three rooms."],
     cefr: "A1",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -141,7 +143,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "a place where children go to learn",
     examples: ["She goes to school every day.", "My school is near the park."],
     cefr: "A1",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -149,7 +151,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "feeling or showing pleasure and satisfaction",
     examples: ["I am very happy today.", "She looks happy."],
     cefr: "A1",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -157,7 +159,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "large in size",
     examples: ["He has a big dog.", "That is a very big house."],
     cefr: "A1",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -165,7 +167,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "to put food in your mouth and swallow it",
     examples: ["We eat breakfast every morning.", "What do you want to eat?"],
     cefr: "A1",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
 
@@ -175,7 +177,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "to reach a place, especially at the end of a journey",
     examples: ["We arrived at the hotel at noon.", "What time does the train arrive?"],
     cefr: "A2",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -183,7 +185,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "in the way that most often happens; on most occasions",
     examples: ["I usually walk to work.", "She usually wakes up early."],
     cefr: "A2",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -191,7 +193,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "to make a choice about what to do",
     examples: ["She decided to join the class.", "Have you decided yet?"],
     cefr: "A2",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -199,7 +201,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "behaving in a pleasant and kind way towards others",
     examples: ["The staff were very friendly.", "He has a friendly smile."],
     cefr: "A2",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -207,7 +209,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "an act of travelling from one place to another",
     examples: ["The journey took two hours.", "We enjoyed the journey through the mountains."],
     cefr: "A2",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
 
@@ -220,7 +222,7 @@ const SEED_CARDS: NewCard[] = [
       "It is possible to achieve a lot with practice.",
     ],
     cefr: "B1",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -228,7 +230,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "to mention an idea or plan for someone to consider",
     examples: ["He suggested going for a walk.", "Can you suggest a good restaurant?"],
     cefr: "B1",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -239,7 +241,7 @@ const SEED_CARDS: NewCard[] = [
       "Exercise has significant health benefits.",
     ],
     cefr: "B1",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -247,7 +249,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "to make something available for someone to use",
     examples: ["The school provides free meals.", "Can you provide more information?"],
     cefr: "B1",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -255,7 +257,7 @@ const SEED_CARDS: NewCard[] = [
     definition: "to need something, or to make something necessary",
     examples: ["This job requires a university degree.", "The task requires careful planning."],
     cefr: "B1",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
 
@@ -268,7 +270,7 @@ const SEED_CARDS: NewCard[] = [
       "The company grew rapidly and subsequently expanded abroad.",
     ],
     cefr: "B2",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -279,7 +281,7 @@ const SEED_CARDS: NewCard[] = [
       "There are fundamental differences between the two systems.",
     ],
     cefr: "B2",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -290,7 +292,7 @@ const SEED_CARDS: NewCard[] = [
       "She earned a substantial income from her business.",
     ],
     cefr: "B2",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -301,7 +303,7 @@ const SEED_CARDS: NewCard[] = [
       "She demonstrated how to use the software.",
     ],
     cefr: "B2",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
   {
@@ -312,7 +314,7 @@ const SEED_CARDS: NewCard[] = [
       "Prices rose and consequently demand fell.",
     ],
     cefr: "B2",
-    fsrs: { ...NEW_FSRS },
+    fsrs: newFsrs(),
     createdAt: SEED_DATE,
   },
 ];
@@ -321,12 +323,19 @@ const SEED_CARDS: NewCard[] = [
 
 /**
  * Imports seed passages and cards into @repo on first run.
- * Idempotent: if any seed content already exists the function returns immediately.
- * Must be called from a browser context — IndexedDB is not available on the server.
+ *
+ * Idempotency: checks that ALL expected seed passages are present before
+ * skipping. Checking `> 0` would be too loose — a mid-run failure (e.g. tab
+ * closed after the first passage write) would look "done" and leave the DB
+ * permanently without seed cards. Checking the full count means a partial
+ * load is retried on next mount.
+ *
+ * Must be called from a browser context — IndexedDB is not available on the
+ * server.
  */
 export async function loadSeedIfEmpty(repo: ContentRepository): Promise<void> {
   const existing = await repo.queryContent({ source: "seed" });
-  if (existing.length > 0) return;
+  if (existing.length >= SEED_PASSAGES.length) return;
 
   for (const passage of SEED_PASSAGES) {
     await repo.putContent(passage);

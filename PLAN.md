@@ -298,6 +298,7 @@ Phases ship in order; the app is genuinely usable from the end of **Phase 2** on
 - Build: author/generate-then-hand-check a few passages + a starter vocab deck per CEFR level; bundle in `data/seed`; load on first run.
 - Accept: fresh install (Mac off, net off) shows seed passages + a starter deck.
 - Verify: Playwright offline first-run test.
+- _Done (notes): seed data lives in `lib/content/seed.ts` as typed TS constants (not a JSON file in `data/seed/`) — avoids Date serialization and keeps type-safety. `loadSeedIfEmpty` idempotency checks `passages.length >= SEED_PASSAGE_COUNT` (not `> 0`) so a mid-run failure is retried next mount. Cards have no `source` field, so idempotency falls back on passage count. `SeedBootstrap` in layout triggers load on mount and renders `data-testid="seed-ready"` bar. Playwright 4/4 green. Code-review + security-review run; fixed: shared-Date-reference bug (now `newFsrs()` per card), tighter idempotency guard, double-check active flag after Promise.all._
 
 ---
 

@@ -29,6 +29,7 @@ export function SeedBootstrap() {
           repo.queryContent({ source: "seed" }),
           repo.getAllCards(),
         ]);
+        if (!active) return; // re-check after the async DB reads
         setStatus({ passages: passages.length, cards: cards.length });
       })
       .catch(() => {

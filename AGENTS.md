@@ -17,16 +17,17 @@ learner data and cached content live in IndexedDB (Dexie). No auth, no backend, 
 ## Current phase / next step
 
 - **Phase 0 — Foundation & seams — ✅ complete** (all 8 steps + the §3.5 close-out).
-- **Phase 1 — Data backbone & content infrastructure — in progress** (1.1–1.7 done; 1.8 next).
-- Done (Phase 1): **1.1** WordNet bundle + lexicon queries · **1.2** Words-CEFR mapping + `cefrLevel` · **1.3** `LexiconProvider` seam + `LocalLexiconProvider` · **1.4** CEFR grammar progression map · **1.5** `ContentValidator` (word + grammar gate) · **1.6** Cosine-similarity search helper · **1.7** Generate-and-cache pipeline.
-- **Next: Phase 1.8** — Tiny starter seed: author passages + vocab deck per CEFR level, bundle in `data/seed`, load on first run, Playwright offline first-run test.
+- **Phase 1 — Data backbone & content infrastructure — ✅ complete** (all 8 steps + `/code-review` + `/security-review`).
+- Done (Phase 1): **1.1** WordNet bundle + lexicon queries · **1.2** Words-CEFR mapping + `cefrLevel` · **1.3** `LexiconProvider` seam + `LocalLexiconProvider` · **1.4** CEFR grammar progression map · **1.5** `ContentValidator` (word + grammar gate) · **1.6** Cosine-similarity search helper · **1.7** Generate-and-cache pipeline · **1.8** Tiny starter seed.
+- **Next: Phase 2.1** — Placement quiz (adaptive vocab yes/no): sample CEFR-graded words + pseudowords, known/unknown UI, map vocab-size estimate → CEFR, write to `profile.cefrLevel`. Fully offline.
 - **Phase 1 close-out notes:**
-  - `lib/lexicon/server.ts` — server-only `getLexiconProvider()` (mirrors `lib/llm/server.ts`). Audio caching is intentionally **omitted** on the server (`repo: null`) because IndexedDB (Dexie) is browser-only. Client-side audio caching is wired in Phase 3.2.
-  - `lib/lexicon/data-loader.ts` — synchronous `readFileSync` with a friendly ENOENT message directing devs to run `node scripts/build-wordnet.mjs` / `node scripts/build-words-cefr.mjs`.
-  - `data/grammar-map.json` is validated at module-load time via Zod (`z.enum(["A1"…"C2"])`) so authoring typos surface at startup, not silently at runtime.
-  - `LocalContentValidator` pre-compiles regex markers once in the constructor (no per-call `new RegExp`).
-  - Pipeline corrective-retry sends `JSON.stringify(parsed)` as the assistant turn (not just the text field) so multi-field schemas retain full context across retries.
-  - **Generated data files** (`data/wordnet.json`, `data/words-cefr.json`) are **gitignored**. Fresh-checkout setup: `pnpm install && node scripts/build-wordnet.mjs && node scripts/build-words-cefr.mjs` (needs internet for the CEFR script).
+  - `lib/lexicon/server.ts` — server-only `getLexiconProvider()` (mirrors `lib/llm/server.ts`). Audio caching **omitted** on the server (`repo: null`) — IndexedDB is browser-only. Client-side audio caching wired in Phase 3.2.
+  - `lib/lexicon/data-loader.ts` — `readFileSync` with a dev-friendly ENOENT message pointing to build scripts.
+  - `data/grammar-map.json` Zod-validated at module load — authoring typos surface at startup.
+  - `LocalContentValidator` pre-compiles regex markers in the constructor.
+  - Pipeline corrective-retry sends `JSON.stringify(parsed)` (not just the text field).
+  - **Generated data files** (`data/wordnet.json`, `data/words-cefr.json`) are **gitignored**. Fresh-checkout setup: `pnpm install && node scripts/build-wordnet.mjs && node scripts/build-words-cefr.mjs` (CEFR script needs internet).
+  - **Starter seed (1.8):** `lib/content/seed.ts` — 8 passages (A1×2/A2×2/B1×2/B2×2) + 20 cards (5/level A1–B2); `loadSeedIfEmpty(repo)` idempotency guards on `passages.length >= SEED_PASSAGE_COUNT` (not `> 0`) so a partial-load failure is retried. `SeedBootstrap` client component loads seed on mount; `data-testid="seed-ready"` bar visible after load.
 - **Status tokens** (added in the 0.8 close-out): use `bg-success`/`text-success`, `bg-warning`, `bg-danger`/`text-danger` for state colors — never raw palette utilities (hard rule #7). Defined in `app/globals.css` (light + dark).
 - **Proxy hardening** (0.8 close-out): `app/api/llm/*` redact upstream errors and cap request sizes. Residual SSRF/CSRF accepted under single-user/local/no-auth model; revisit on any multi-user/cloud move.
 - **PWA (0.7):** Serwist via **`@serwist/turbopack`** — the SW (`app/sw.ts`) is compiled by **esbuild inside `app/serwist/[path]/route.ts`**, served at `/serwist/sw.js`, registered by `SerwistProvider`. Manifest: `app/manifest.ts`; offline fallback: `app/~offline`; regen icons: `node scripts/generate-icons.mjs`.
