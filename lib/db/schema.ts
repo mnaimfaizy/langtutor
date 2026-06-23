@@ -78,6 +78,8 @@ export interface Card {
   cefr: Cefr;
   fsrs: FsrsState;
   createdAt: Date;
+  /** Semantic embedding vector from the configured embed model (Phase 1.6). */
+  embedding?: number[];
 }
 
 /** Cached generated/seed content (PLAN §4 `content`). */
