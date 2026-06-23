@@ -49,17 +49,26 @@ export function ComprehensionQuiz({ title, body, level }: Props) {
     const now = new Date();
     let correct = 0;
     let wrong = 0;
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i]!;
-      const s = selected[i];
-      if (s === q.answerIndex) {
-        correct++;
-      } else if (s !== null) {
-        wrong++;
-        await repo.addErrorEvent(
-          createReadingErrorEvent({ question: q.question, category: q.category, cefr: level, now }),
-        );
+    try {
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i]!;
+        const s = selected[i];
+        if (s === q.answerIndex) {
+          correct++;
+        } else if (s !== null) {
+          wrong++;
+          await repo.addErrorEvent(
+            createReadingErrorEvent({
+              question: q.question,
+              category: q.category,
+              cefr: level,
+              now,
+            }),
+          );
+        }
       }
+    } catch {
+      // Partial write failure — show results with however many events were logged.
     }
     setScore(correct);
     setWrongCount(wrong);

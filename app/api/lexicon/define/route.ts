@@ -42,6 +42,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const raw = url.searchParams.get("word")?.trim();
   if (!raw) return Response.json({ error: "word is required" }, { status: 400 });
+  if (raw.length > 100) return Response.json({ error: "word too long" }, { status: 400 });
 
   const word = raw.toLowerCase();
 

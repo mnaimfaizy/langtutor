@@ -34,6 +34,7 @@ export function WordPopover({ word }: { word: string }) {
   const [state, setState] = useState<LookupState>({ status: "idle" });
   const [addState, setAddState] = useState<AddState>("idle");
   const loadingRef = useRef(false);
+  const researchingRef = useRef(false);
 
   async function load() {
     if (
@@ -94,6 +95,8 @@ export function WordPopover({ word }: { word: string }) {
   }
 
   async function handleResearch() {
+    if (researchingRef.current) return;
+    researchingRef.current = true;
     setState({ status: "researching" });
     const w = word.toLowerCase();
     try {
@@ -121,6 +124,8 @@ export function WordPopover({ word }: { word: string }) {
       setState({ status: "found", data: parsed.data });
     } catch {
       setState({ status: "error" });
+    } finally {
+      researchingRef.current = false;
     }
   }
 

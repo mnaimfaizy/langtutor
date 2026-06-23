@@ -16,6 +16,7 @@ import type {
 } from "@/lib/db";
 import type { ContentQuery, ContentRepository, ErrorEventQuery } from "@/lib/db";
 import { LocalContentValidator } from "@/lib/content/content-validator";
+import type { ContentValidator } from "@/lib/content/content-validator";
 import { buildPassageMessages, PassageSchema } from "@/lib/content/passage";
 import { generateContent } from "@/lib/content/pipeline";
 import { loadCefrData } from "@/lib/lexicon/data-loader";
@@ -102,9 +103,9 @@ class NullContentRepository implements ContentRepository {
 }
 
 // Module-level singleton — cefrData is loaded once from disk on first generation request.
-let _validator: LocalContentValidator | undefined;
+let _validator: ContentValidator | undefined;
 
-function getValidator(): LocalContentValidator {
+function getValidator(): ContentValidator {
   if (!_validator) {
     _validator = new LocalContentValidator(loadCefrData());
   }

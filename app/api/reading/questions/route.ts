@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const RequestSchema = z.object({
   title: z.string().min(1).max(120),
-  body: z.string().min(10),
+  body: z.string().min(10).max(8000),
   level: z.enum(["A1", "A2", "B1", "B2", "C1", "C2"]),
 });
 

@@ -97,7 +97,20 @@ export async function generateContent<T extends Record<string, unknown>>(
   let messages: ChatMessage[] = [...initial];
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const parsed = await llmClient.chat(messages, { schema });
+    let parsed: T;
+    try {
+      parsed = await llmClient.chat(messages, { schema });
+    } catch (err) {
+      if (attempt === maxRetries) {
+        throw new Error(
+          `Content generation failed after ${maxRetries + 1} attempt(s): parse error — ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+      // Malformed JSON or schema mismatch — retry with the same messages.
+      continue;
+    }
     const text = String(parsed[textField] ?? "");
     const validation = validator.validate(text, level);
 

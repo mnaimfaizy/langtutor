@@ -24,7 +24,8 @@ const AgentWordSchema = z.object({
   // LLMs sometimes return an array of definitions; take the first element.
   definition: z
     .union([z.string(), z.array(z.string())])
-    .transform((v): string => (Array.isArray(v) ? (v[0] ?? "") : v)),
+    .transform((v): string => (Array.isArray(v) ? (v[0] ?? "") : v))
+    .pipe(z.string().min(1)),
   examples: z.array(z.string()).min(1).max(5),
   // LLMs may return full words ("noun") instead of the single-char code.
   pos: z.string().transform((s): "n" | "v" | "a" | "r" => POS_MAP[s.toLowerCase()] ?? "n"),
