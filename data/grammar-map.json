@@ -1,0 +1,416 @@
+[
+  {
+    "id": "simple_present",
+    "label": "Simple present tense",
+    "cefr": "A1",
+    "description": "Base verb form for habitual actions, facts, and permanent states.",
+    "markers": ["\\b(do|does)\\b", "\\b(go|work|live|like|have|want|need)\\b"],
+    "examples": ["I go to school every day.", "She works at a hospital.", "Water boils at 100°C."]
+  },
+  {
+    "id": "present_continuous",
+    "label": "Present continuous",
+    "cefr": "A1",
+    "description": "be + -ing for actions happening now or temporary situations.",
+    "markers": ["\\b(am|is|are)\\s+\\w+ing\\b"],
+    "examples": ["I am reading a book.", "She is working right now."]
+  },
+  {
+    "id": "simple_past_regular",
+    "label": "Simple past (regular verbs)",
+    "cefr": "A1",
+    "description": "Completed past actions using the -ed ending.",
+    "markers": ["\\b\\w+ed\\b"],
+    "examples": ["I walked to school.", "She played tennis yesterday."]
+  },
+  {
+    "id": "simple_past_irregular",
+    "label": "Simple past (irregular verbs)",
+    "cefr": "A1",
+    "description": "Completed past actions using common irregular past forms.",
+    "markers": ["\\b(went|said|did|had|saw|got|came|made|knew|gave|took|told|left|put)\\b"],
+    "examples": ["I went to the store.", "She said goodbye."]
+  },
+  {
+    "id": "articles_basic",
+    "label": "Basic articles (a, an, the)",
+    "cefr": "A1",
+    "description": "Indefinite (a/an) and definite (the) articles before nouns.",
+    "markers": ["\\b(a|an|the)\\s+\\w+"],
+    "examples": ["I have a dog.", "She is the teacher.", "He ate an apple."]
+  },
+  {
+    "id": "subject_pronouns",
+    "label": "Subject pronouns",
+    "cefr": "A1",
+    "description": "I, you, he, she, it, we, they as the subject of a clause.",
+    "markers": ["^(I|You|He|She|It|We|They)\\b"],
+    "examples": ["I am happy.", "They go to school.", "She is a doctor."]
+  },
+  {
+    "id": "imperative",
+    "label": "Imperative form",
+    "cefr": "A1",
+    "description": "Commands and instructions using the bare infinitive.",
+    "markers": ["^(Open|Close|Look|Listen|Come|Go|Stop|Don't|Please)\\b"],
+    "examples": ["Open your book.", "Don't move!", "Please sit down."]
+  },
+  {
+    "id": "past_continuous",
+    "label": "Past continuous",
+    "cefr": "A2",
+    "description": "was/were + -ing for actions in progress at a specific past time.",
+    "markers": ["\\b(was|were)\\s+\\w+ing\\b"],
+    "examples": ["I was reading when she called.", "They were sleeping at midnight."]
+  },
+  {
+    "id": "present_perfect_simple",
+    "label": "Present perfect (simple)",
+    "cefr": "A2",
+    "description": "have/has + past participle for past actions with present relevance.",
+    "markers": ["\\b(have|has)\\s+(been|done|made|gone|seen|said|\\w+ed)\\b"],
+    "examples": ["I have finished my homework.", "She has never seen snow."]
+  },
+  {
+    "id": "going_to_future",
+    "label": "Going to (future plans)",
+    "cefr": "A2",
+    "description": "be going to for intentions, plans, and predictions based on evidence.",
+    "markers": ["\\b(am|is|are)\\s+going\\s+to\\b"],
+    "examples": ["I am going to study tomorrow.", "She is going to have a baby."]
+  },
+  {
+    "id": "will_future",
+    "label": "Will (predictions and decisions)",
+    "cefr": "A2",
+    "description": "will + infinitive for spontaneous decisions, promises, and predictions.",
+    "markers": ["\\bwill\\s+[a-z]+\\b", "\\bwon't\\s+[a-z]+\\b"],
+    "examples": ["I will help you.", "It will rain tomorrow.", "She won't forget."]
+  },
+  {
+    "id": "comparatives",
+    "label": "Comparatives",
+    "cefr": "A2",
+    "description": "Comparing two things: adjective + -er + than, or more + adjective + than.",
+    "markers": ["\\b(\\w+er|more\\s+\\w+)\\s+than\\b"],
+    "examples": ["She is taller than me.", "This is more expensive than that."]
+  },
+  {
+    "id": "superlatives",
+    "label": "Superlatives",
+    "cefr": "A2",
+    "description": "Highest or lowest degree: the + adjective + -est, or the most/least + adjective.",
+    "markers": ["\\bthe\\s+(\\w+est|most\\s+\\w+|least\\s+\\w+)\\b"],
+    "examples": ["She is the tallest in the class.", "This is the most expensive option."]
+  },
+  {
+    "id": "modal_can_must_should",
+    "label": "Modal verbs: can, must, should",
+    "cefr": "A2",
+    "description": "Modal auxiliaries for ability (can), obligation (must), and advice (should).",
+    "markers": ["\\b(can|can't|cannot|must|mustn't|should|shouldn't)\\s+[a-z]+\\b"],
+    "examples": ["I can swim.", "You must do your homework.", "You should rest more."]
+  },
+  {
+    "id": "present_perfect_continuous",
+    "label": "Present perfect continuous",
+    "cefr": "B1",
+    "description": "have/has been + -ing for actions started in the past and still ongoing.",
+    "markers": ["\\b(have|has)\\s+been\\s+\\w+ing\\b"],
+    "examples": ["I have been studying all day.", "She has been working here for five years."]
+  },
+  {
+    "id": "past_perfect_simple",
+    "label": "Past perfect (simple)",
+    "cefr": "B1",
+    "description": "had + past participle for actions completed before another past event.",
+    "markers": ["\\bhad\\s+(been|done|made|gone|seen|said|left|\\w+ed)\\b"],
+    "examples": ["She had left before I arrived.", "By noon he had finished the report."]
+  },
+  {
+    "id": "passive_present_past",
+    "label": "Passive voice (present and past)",
+    "cefr": "B1",
+    "description": "is/are/was/were + past participle to focus on the action rather than the agent.",
+    "markers": ["\\b(is|are|was|were)\\s+\\w+(ed|en|t)\\b"],
+    "examples": ["The letter was written yesterday.", "The results are published online."]
+  },
+  {
+    "id": "relative_clauses_defining",
+    "label": "Defining relative clauses (who/which/that)",
+    "cefr": "B1",
+    "description": "Clauses that identify which person or thing without commas.",
+    "markers": ["\\b(who|which|that)\\s+[a-z]+(s|ed|es)?\\b"],
+    "examples": ["The man who called is my uncle.", "The book that she wrote is famous."]
+  },
+  {
+    "id": "first_conditional",
+    "label": "First conditional (real possibility)",
+    "cefr": "B1",
+    "description": "If + present simple → will + infinitive for likely future conditions.",
+    "markers": ["\\bif\\b.{1,60}\\bwill\\b"],
+    "examples": ["If it rains, I will stay home.", "If you study hard, you will pass."]
+  },
+  {
+    "id": "gerunds_infinitives",
+    "label": "Gerunds and infinitives (verb patterns)",
+    "cefr": "B1",
+    "description": "Verbs followed by -ing gerund or to-infinitive depending on the pattern.",
+    "markers": [
+      "\\b(enjoy|avoid|consider|finish|suggest|keep)\\s+\\w+ing\\b",
+      "\\b(want|need|hope|decide|plan|choose)\\s+to\\s+[a-z]+\\b"
+    ],
+    "examples": ["I enjoy swimming.", "She decided to leave early.", "He considered changing jobs."]
+  },
+  {
+    "id": "reported_speech",
+    "label": "Reported speech",
+    "cefr": "B1",
+    "description": "Reporting what someone said with backshifted tenses after say/tell/ask.",
+    "markers": [
+      "\\b(said|told|asked|explained|mentioned)\\s+(that|whether|if|me|him|her|them|us)\\b"
+    ],
+    "examples": [
+      "She said that she was tired.",
+      "He told me he had finished.",
+      "She asked if I was ready."
+    ]
+  },
+  {
+    "id": "modal_might_may_could",
+    "label": "Modal verbs: might, may, could (possibility)",
+    "cefr": "B1",
+    "description": "Expressing possibility and uncertainty in present or future situations.",
+    "markers": ["\\b(might|may|could)\\s+[a-z]+\\b(?!\\s+have)"],
+    "examples": [
+      "She might come tomorrow.",
+      "It may rain this evening.",
+      "That could be the answer."
+    ]
+  },
+  {
+    "id": "second_conditional",
+    "label": "Second conditional (hypothetical present/future)",
+    "cefr": "B2",
+    "description": "If + past simple → would + infinitive for unlikely or imaginary conditions.",
+    "markers": ["\\bif\\b.{1,60}\\bwould\\b"],
+    "examples": [
+      "If I had more time, I would travel more.",
+      "She would be happier if she changed jobs."
+    ]
+  },
+  {
+    "id": "third_conditional",
+    "label": "Third conditional (unreal past)",
+    "cefr": "B2",
+    "description": "If + past perfect → would have + past participle for unreal past conditions.",
+    "markers": [
+      "\\bwould\\s+have\\s+\\w+(ed|en|t)\\b",
+      "\\bhad\\s+\\w+(ed|en|t)\\b.{1,60}\\bwould\\b"
+    ],
+    "examples": [
+      "If she had studied, she would have passed.",
+      "He would have come if he had known."
+    ]
+  },
+  {
+    "id": "passive_all_tenses",
+    "label": "Passive voice (extended tenses)",
+    "cefr": "B2",
+    "description": "Passive constructions in future, perfect, and modal tenses.",
+    "markers": [
+      "\\bwill\\s+be\\s+\\w+(ed|en|t)\\b",
+      "\\bhave\\s+been\\s+\\w+(ed|en|t)\\b",
+      "\\b(must|should|may|might|could)\\s+be\\s+\\w+(ed|en|t)\\b"
+    ],
+    "examples": [
+      "The project will be completed tomorrow.",
+      "The decision has been made.",
+      "Mistakes should be corrected immediately."
+    ]
+  },
+  {
+    "id": "cleft_sentences",
+    "label": "Cleft sentences for emphasis",
+    "cefr": "B2",
+    "description": "It is/was + focus element + that/who to highlight part of a sentence.",
+    "markers": ["\\bIt\\s+(is|was|were)\\b.{1,40}\\b(that|who)\\b"],
+    "examples": ["It was John who called.", "It is the price that matters most."]
+  },
+  {
+    "id": "modal_perfect",
+    "label": "Modal perfect (must have, should have)",
+    "cefr": "B2",
+    "description": "Modal + have + past participle for deductions and regrets about past situations.",
+    "markers": ["\\b(must|should|could|might|may|can't)\\s+have\\s+\\w+(ed|en|t)\\b"],
+    "examples": [
+      "She must have left already.",
+      "You should have told me.",
+      "He can't have forgotten."
+    ]
+  },
+  {
+    "id": "relative_clauses_non_defining",
+    "label": "Non-defining relative clauses",
+    "cefr": "B2",
+    "description": "Extra information about a noun set off by commas using who/which/whose.",
+    "markers": [",\\s*(which|who|whose|whom)\\s+"],
+    "examples": [
+      "My sister, who lives in London, is a doctor.",
+      "The film, which I saw last week, was excellent."
+    ]
+  },
+  {
+    "id": "concessive_clauses",
+    "label": "Concessive clauses (although, despite)",
+    "cefr": "B2",
+    "description": "Contrasting ideas using although, even though, despite, in spite of.",
+    "markers": ["\\b(although|even though|despite|in spite of)\\b"],
+    "examples": [
+      "Although it was raining, we went out.",
+      "Despite being tired, she finished the project."
+    ]
+  },
+  {
+    "id": "inversion_emphasis",
+    "label": "Inversion for emphasis (fronted negatives)",
+    "cefr": "C1",
+    "description": "Subject-auxiliary inversion after negative/restrictive adverbs for formal emphasis.",
+    "markers": [
+      "^(Never|Rarely|Seldom|Hardly|Scarcely|No sooner|Not only|Little|Only then|Not until)\\b"
+    ],
+    "examples": [
+      "Never have I seen such beauty.",
+      "Rarely does she make mistakes.",
+      "Only then did he understand."
+    ]
+  },
+  {
+    "id": "participle_clauses",
+    "label": "Participle clauses",
+    "cefr": "C1",
+    "description": "Reduced adverbial clauses using present or past participles.",
+    "markers": ["^\\w+ing,\\s+", "^(Having\\s+\\w+|\\w+(ed|en|t)),\\s+"],
+    "examples": [
+      "Having finished the report, she left early.",
+      "Exhausted by the journey, he fell asleep."
+    ]
+  },
+  {
+    "id": "nominal_clauses",
+    "label": "Noun clauses (what-clauses, that-clauses)",
+    "cefr": "C1",
+    "description": "Clauses functioning as noun phrases, often as subjects or objects.",
+    "markers": [
+      "\\bwhat\\s+(I|he|she|we|they|you)\\s+\\w+\\b",
+      "\\bthe fact that\\b",
+      "\\bwhether or not\\b"
+    ],
+    "examples": [
+      "What she said surprised everyone.",
+      "The fact that he lied is unforgivable.",
+      "Whether or not you agree is irrelevant."
+    ]
+  },
+  {
+    "id": "complex_passive_reporting",
+    "label": "Complex reporting passives",
+    "cefr": "C1",
+    "description": "Distancing structures: It is said to be, She is believed to have, etc.",
+    "markers": [
+      "\\b(is|are|was|were)\\s+(said|believed|thought|known|reported|expected|assumed)\\s+to\\b"
+    ],
+    "examples": [
+      "She is said to be the best candidate.",
+      "He was believed to have left the country."
+    ]
+  },
+  {
+    "id": "advanced_conditionals_inversion",
+    "label": "Advanced conditionals with inversion",
+    "cefr": "C1",
+    "description": "Formal conditionals omitting if and using subject-auxiliary inversion.",
+    "markers": [
+      "^Were\\s+(I|you|he|she|it|we|they)\\s+to\\b",
+      "^Had\\s+(I|you|he|she|it|we|they)\\b"
+    ],
+    "examples": [
+      "Were she to leave, we would miss her greatly.",
+      "Had he known, he would have acted differently."
+    ]
+  },
+  {
+    "id": "ellipsis_substitution",
+    "label": "Ellipsis and substitution",
+    "cefr": "C1",
+    "description": "Avoiding repetition by omitting elements (ellipsis) or using do so/one (substitution).",
+    "markers": [
+      "\\b(do so|does so|did so|doing so)\\b",
+      "\\bso (do|did|have|am|is|are|was|were)\\s+(I|he|she|we|they)\\b"
+    ],
+    "examples": [
+      "She enjoys painting, and so do I.",
+      "If you need a pen, I have one.",
+      "He said he would help, and he did so."
+    ]
+  },
+  {
+    "id": "absolute_constructions",
+    "label": "Absolute constructions",
+    "cefr": "C2",
+    "description": "Participial or nominal phrases grammatically independent from the main clause.",
+    "markers": [
+      "\\b(weather|circumstances|all things|that)\\s+(permitting|considered|being equal|aside)\\b",
+      "\\bweather permitting\\b"
+    ],
+    "examples": [
+      "The weather permitting, we will proceed.",
+      "All things considered, it was a great success.",
+      "That aside, the project was well managed."
+    ]
+  },
+  {
+    "id": "subjunctive_formal",
+    "label": "Subjunctive mood (formal)",
+    "cefr": "C2",
+    "description": "Bare infinitive in that-clauses after demand/suggest/recommend in formal registers.",
+    "markers": [
+      "\\b(suggest|recommend|insist|demand|require|propose)\\s+that\\s+\\w+\\s+be\\b",
+      "\\bWere\\s+it\\s+not\\s+for\\b"
+    ],
+    "examples": [
+      "I suggest that he be given more time.",
+      "The committee recommends that funding be increased.",
+      "Were it not for her help, we would have failed."
+    ]
+  },
+  {
+    "id": "binomial_expressions",
+    "label": "Binomial and multinomial expressions",
+    "cefr": "C2",
+    "description": "Fixed pairs and idioms with two or more elements in an established order.",
+    "markers": [
+      "\\b(by and large|all in all|to and fro|now and then|on and off|give and take|pros and cons|by and by)\\b"
+    ],
+    "examples": [
+      "By and large, the project was a success.",
+      "They worked on and off throughout the year.",
+      "All in all, it was a worthwhile experience."
+    ]
+  },
+  {
+    "id": "fronting_emphasis",
+    "label": "Fronting for emphasis",
+    "cefr": "C2",
+    "description": "Moving a non-subject element to initial position for stylistic or emphatic effect.",
+    "markers": [
+      "^(Brilliant|Strange|Sad|Difficult|Important|Surprising)\\s+(though|as)\\s+",
+      "^(This|These|That|Those)\\s+\\w+,"
+    ],
+    "examples": [
+      "Brilliant though she is, she still has much to learn.",
+      "Strange as it may seem, he preferred silence.",
+      "This decision, I believe, will change everything."
+    ]
+  }
+]
