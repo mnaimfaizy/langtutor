@@ -13,6 +13,8 @@ import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
 import { TtsButton } from "@/ui/tts-button";
 
+import { ListeningComprehensionQuiz } from "./listening-quiz";
+
 type Phase = "loading" | "ready" | "notFound" | "error";
 
 const CEFR_COLOR: Record<string, string> = {
@@ -145,21 +147,26 @@ export function DictationView({ id }: { id: number }) {
   async function handleCheck() {
     if (checkInFlight.current || !content) return;
     checkInFlight.current = true;
-    const parsed = PassageSchema.safeParse(content.payload);
-    const body = parsed.success ? parsed.data.body : "";
-    const result = computeWer(body, transcript);
-    setWerResult(result);
+    try {
+      const parsed = PassageSchema.safeParse(content.payload);
+      const body = parsed.success ? parsed.data.body : "";
+      const result = computeWer(body, transcript);
+      setWerResult(result);
 
-    const repo = getContentRepository();
-    const now = new Date();
-    for (const event of createListeningErrorEvents(result.alignment, content.level, now)) {
-      try {
-        await repo.addErrorEvent(event);
-      } catch {
-        // partial write failure — continue logging remaining events
+      if (body && isFinite(result.wer)) {
+        const repo = getContentRepository();
+        const now = new Date();
+        for (const event of createListeningErrorEvents(result.alignment, content.level, now)) {
+          try {
+            await repo.addErrorEvent(event);
+          } catch {
+            // partial write failure — continue logging remaining events
+          }
+        }
       }
+    } finally {
+      checkInFlight.current = false;
     }
-    checkInFlight.current = false;
   }
 
   if (phase === "loading") {
@@ -277,6 +284,14 @@ export function DictationView({ id }: { id: number }) {
         </div>
 
         {werResult && <WerDisplay result={werResult} referenceBody={body} />}
+
+        <div className="border-border mt-10 border-t pt-8">
+          <h2 className="text-foreground text-lg font-semibold">Comprehension</h2>
+          <p className="text-muted mt-1 text-sm">
+            Test how well you understood the passage by answering questions from memory.
+          </p>
+          <ListeningComprehensionQuiz title={title} body={body} level={content.level} />
+        </div>
 
         <div className="mt-10">
           <Link href="/listening">

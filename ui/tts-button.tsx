@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getContentRepository } from "@/lib/registry";
 import { resolveTtsOptions } from "@/lib/tts/speech-synthesis";
@@ -17,6 +17,7 @@ export function TtsButton({ text, className }: { text: string; className?: strin
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [opts, setOpts] = useState<TtsOptions>({});
   const [playing, setPlaying] = useState(false);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -48,12 +49,19 @@ export function TtsButton({ text, className }: { text: string; className?: strin
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
+    utteranceRef.current = u;
     const { rate, voice } = resolveTtsOptions(opts, voices);
     u.rate = rate;
     if (voice) u.voice = voice;
-    u.addEventListener("start", () => setPlaying(true));
-    u.addEventListener("end", () => setPlaying(false));
-    u.addEventListener("error", () => setPlaying(false));
+    u.addEventListener("start", () => {
+      if (utteranceRef.current === u) setPlaying(true);
+    });
+    u.addEventListener("end", () => {
+      if (utteranceRef.current === u) setPlaying(false);
+    });
+    u.addEventListener("error", () => {
+      if (utteranceRef.current === u) setPlaying(false);
+    });
     window.speechSynthesis.speak(u);
     setPlaying(true);
   }
