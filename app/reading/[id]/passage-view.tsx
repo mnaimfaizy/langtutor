@@ -8,6 +8,7 @@ import { PassageSchema } from "@/lib/content/passage";
 import { getContentRepository } from "@/lib/registry";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
+import { WordPopover } from "./word-popover";
 
 type Phase = "loading" | "ready" | "notFound" | "error";
 
@@ -125,7 +126,13 @@ export function PassageView({ id }: { id: number }) {
             data-testid="passage-body"
             className="text-foreground mt-5 text-base leading-8 whitespace-pre-wrap"
           >
-            {body}
+            {tokenize(body).map((token, i) =>
+              token.isWord ? (
+                <WordPopover key={i} word={token.value} />
+              ) : (
+                <span key={i}>{token.value}</span>
+              ),
+            )}
           </p>
         </article>
 
@@ -139,4 +146,11 @@ export function PassageView({ id }: { id: number }) {
       </div>
     </div>
   );
+}
+
+function tokenize(text: string): Array<{ value: string; isWord: boolean }> {
+  return text
+    .split(/([a-zA-Z]+)/)
+    .filter((v) => v !== "")
+    .map((value) => ({ value, isWord: /^[a-zA-Z]+$/.test(value) }));
 }

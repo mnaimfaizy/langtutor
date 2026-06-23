@@ -29,6 +29,24 @@ export function PopoverTrigger({
   );
 }
 
+export type PopoverInlineTriggerProps = Omit<
+  React.ComponentProps<typeof BasePopover.Trigger>,
+  "className"
+> & { className?: string };
+
+/** Inline word-style trigger — no button chrome, highlights on hover. */
+export function PopoverInlineTrigger({ className, ...props }: PopoverInlineTriggerProps) {
+  return (
+    <BasePopover.Trigger
+      className={cn(
+        "hover:text-accent focus-visible:ring-accent cursor-pointer rounded-sm px-0.5 transition-colors focus-visible:ring-1 focus-visible:outline-none",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 export type PopoverContentProps = Omit<
   React.ComponentProps<typeof BasePopover.Popup>,
   "className"
