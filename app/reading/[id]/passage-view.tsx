@@ -8,6 +8,7 @@ import { PassageSchema } from "@/lib/content/passage";
 import { getContentRepository } from "@/lib/registry";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
+import { ComprehensionQuiz } from "./comprehension-quiz";
 import { WordPopover } from "./word-popover";
 
 type Phase = "loading" | "ready" | "notFound" | "error";
@@ -135,6 +136,8 @@ export function PassageView({ id }: { id: number }) {
             )}
           </p>
         </article>
+
+        {parsed.success && <ComprehensionQuiz title={title} body={body} level={content.level} />}
 
         <div className="mt-10">
           <Link href="/reading">
