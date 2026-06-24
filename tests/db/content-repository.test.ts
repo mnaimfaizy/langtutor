@@ -47,9 +47,9 @@ function makeProfile(): Profile {
 }
 
 describe("schema versioning", () => {
-  it("opens at version 1 with all §4 tables", async () => {
+  it("opens at version 2 with all §4 tables", async () => {
     await db.open();
-    expect(db.verno).toBe(1);
+    expect(db.verno).toBe(2);
     expect(db.tables.map((t) => t.name).sort()).toEqual([
       "cards",
       "content",
@@ -125,6 +125,56 @@ describe("content", () => {
     expect(await repo.queryContent({ type: "passage" })).toHaveLength(2);
     expect(await repo.queryContent({ level: "A2", topic: "animals" })).toHaveLength(2);
     expect(await repo.queryContent()).toHaveLength(3);
+  });
+
+  it("uses [type+level] compound index for joint queries", async () => {
+    await repo.putContent(makeContent("passage", "A2", "animals"));
+    await repo.putContent(makeContent("quiz", "A2", "animals"));
+    await repo.putContent(makeContent("passage", "B1", "travel"));
+
+    const a2Passages = await repo.queryContent({ type: "passage", level: "A2" });
+    expect(a2Passages).toHaveLength(1);
+    expect(a2Passages[0]?.topic).toBe("animals");
+
+    const b1Passages = await repo.queryContent({ type: "passage", level: "B1" });
+    expect(b1Passages).toHaveLength(1);
+    expect(b1Passages[0]?.topic).toBe("travel");
+
+    expect(await repo.queryContent({ type: "quiz", level: "B1" })).toHaveLength(0);
+  });
+});
+
+describe("diagnostics + weakness (compound index)", () => {
+  it("uses [skill+cefr] compound index for joint queries", async () => {
+    await repo.addErrorEvent({
+      skill: "reading",
+      category: "past-simple",
+      cefr: "A2",
+      context: "ctx1",
+      createdAt: new Date(0),
+    });
+    await repo.addErrorEvent({
+      skill: "reading",
+      category: "present-perfect",
+      cefr: "B1",
+      context: "ctx2",
+      createdAt: new Date(0),
+    });
+    await repo.addErrorEvent({
+      skill: "writing",
+      category: "articles",
+      cefr: "A2",
+      context: "ctx3",
+      createdAt: new Date(0),
+    });
+
+    const readingA2 = await repo.queryErrorEvents({ skill: "reading", cefr: "A2" });
+    expect(readingA2).toHaveLength(1);
+    expect(readingA2[0]?.category).toBe("past-simple");
+
+    expect(await repo.queryErrorEvents({ skill: "reading" })).toHaveLength(2);
+    expect(await repo.queryErrorEvents({ skill: "writing", cefr: "A2" })).toHaveLength(1);
+    expect(await repo.queryErrorEvents({ skill: "listening" })).toHaveLength(0);
   });
 });
 

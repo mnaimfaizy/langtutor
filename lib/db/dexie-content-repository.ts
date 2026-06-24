@@ -88,17 +88,23 @@ export class DexieContentRepository implements ContentRepository {
     return this.db.content.get(id);
   }
 
-  // Single-user scale → an in-memory filter over the small content set is fine and keeps
-  // multi-field queries simple. The declared indexes (type/level/topic/source) remain
-  // available for later optimization.
   async queryContent(query: ContentQuery = {}): Promise<Content[]> {
-    const all = await this.db.content.toArray();
-    return all.filter(
+    const { type, level, topic, source } = query;
+
+    let results: Content[];
+    if (type !== undefined && level !== undefined) {
+      results = await this.db.content.where("[type+level]").equals([type, level]).toArray();
+    } else if (type !== undefined) {
+      results = await this.db.content.where("type").equals(type).toArray();
+    } else if (level !== undefined) {
+      results = await this.db.content.where("level").equals(level).toArray();
+    } else {
+      results = await this.db.content.toArray();
+    }
+
+    return results.filter(
       (c) =>
-        (query.type === undefined || c.type === query.type) &&
-        (query.level === undefined || c.level === query.level) &&
-        (query.topic === undefined || c.topic === query.topic) &&
-        (query.source === undefined || c.source === query.source),
+        (topic === undefined || c.topic === topic) && (source === undefined || c.source === source),
     );
   }
 
@@ -108,13 +114,18 @@ export class DexieContentRepository implements ContentRepository {
   }
 
   async queryErrorEvents(query: ErrorEventQuery = {}): Promise<ErrorEventRecord[]> {
-    const all = await this.db.errorEvents.toArray();
-    return all.filter(
-      (e) =>
-        (query.skill === undefined || e.skill === query.skill) &&
-        (query.category === undefined || e.category === query.category) &&
-        (query.cefr === undefined || e.cefr === query.cefr),
-    );
+    const { skill, cefr, category } = query;
+
+    let results: ErrorEventRecord[];
+    if (skill !== undefined && cefr !== undefined) {
+      results = await this.db.errorEvents.where("[skill+cefr]").equals([skill, cefr]).toArray();
+    } else if (skill !== undefined) {
+      results = await this.db.errorEvents.where("skill").equals(skill).toArray();
+    } else {
+      results = await this.db.errorEvents.toArray();
+    }
+
+    return results.filter((e) => category === undefined || e.category === category);
   }
 
   // weakness ----------------------------------------------------------------

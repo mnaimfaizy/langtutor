@@ -1,7 +1,9 @@
-import { ReviewSession } from "./review-session";
+import type { Metadata } from "next";
 
-export const metadata = { title: "Review — Lang-Tutor" };
+import { ReviewSessionLazy } from "./review-loader";
+
+export const metadata: Metadata = { title: "Review — Lang-Tutor" };
 
 export default function ReviewPage() {
-  return <ReviewSession />;
+  return <ReviewSessionLazy />;
 }

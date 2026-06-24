@@ -260,3 +260,42 @@ describe("max retries exceeded", () => {
     expect(all).toHaveLength(0);
   });
 });
+
+// ── embed option ─────────────────────────────────────────────────────────────
+
+describe("embed option", () => {
+  it("stores the embedding vector when embed:true", async () => {
+    const llm = makeSequentialLLM([{ body: "She goes to the store every day." }]);
+
+    const result = await generateContent({ ...BASE_OPTS, embed: true }, llm, validator, repo);
+    const cached = await repo.getContent(result.contentId);
+
+    // The mock embed returns [0] per text — verify it was stored.
+    expect(cached?.embedding).toEqual([0]);
+  });
+
+  it("saves content without embedding when embed is false (default)", async () => {
+    const llm = makeSequentialLLM([{ body: "She goes to the store every day." }]);
+    const result = await generateContent(BASE_OPTS, llm, validator, repo);
+    const cached = await repo.getContent(result.contentId);
+
+    expect(cached?.embedding).toBeUndefined();
+  });
+
+  it("saves content even when embed throws", async () => {
+    const base = makeSequentialLLM([{ body: "She goes to the store every day." }]);
+    const llm: LLMClient = {
+      ...base,
+      embed: async () => {
+        throw new Error("embed server down");
+      },
+    };
+
+    const result = await generateContent({ ...BASE_OPTS, embed: true }, llm, validator, repo);
+    const cached = await repo.getContent(result.contentId);
+
+    // Content saved despite embed failure.
+    expect(cached).toBeDefined();
+    expect(cached?.embedding).toBeUndefined();
+  });
+});

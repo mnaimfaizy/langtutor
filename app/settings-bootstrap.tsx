@@ -35,6 +35,10 @@ export function SettingsBootstrap() {
 
         return Promise.all([pushLlm, pushStt]);
       })
+      .then(() => {
+        // Fire warm-up as best-effort background task to pre-load the model into VRAM.
+        void fetch("/api/llm/warmup", { method: "POST" }).catch(() => {});
+      })
       .catch(() => {
         // Best-effort; the indicator will surface unreachability.
       });

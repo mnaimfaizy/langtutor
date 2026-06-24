@@ -52,5 +52,10 @@ export class LangTutorDB extends Dexie {
       gamification: "id",
       lexiconCache: "word",
     });
+    // v2: compound indexes for the two most-queried multi-field filter patterns.
+    this.version(2).stores({
+      content: "++id, type, level, [type+level], topic, source",
+      errorEvents: "++id, skill, category, cefr, [skill+cefr], createdAt",
+    });
   }
 }

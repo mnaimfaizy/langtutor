@@ -35,6 +35,12 @@ export interface GenerateOptions<T extends Record<string, unknown>> {
    * @default 3
    */
   maxRetries?: number;
+  /**
+   * When true, embed the validated text via `llmClient.embed()` and store the
+   * vector on the content row. Best-effort: a failed embed call is swallowed so
+   * the content is still saved. Defaults to false.
+   */
+  embed?: boolean;
 }
 
 export interface GenerateResult<T> {
@@ -92,7 +98,16 @@ export async function generateContent<T extends Record<string, unknown>>(
   validator: ContentValidator,
   repository: ContentRepository,
 ): Promise<GenerateResult<T>> {
-  const { messages: initial, level, schema, textField, type, topic, maxRetries = 3 } = opts;
+  const {
+    messages: initial,
+    level,
+    schema,
+    textField,
+    type,
+    topic,
+    maxRetries = 3,
+    embed = false,
+  } = opts;
 
   let messages: ChatMessage[] = [...initial];
 
@@ -115,6 +130,16 @@ export async function generateContent<T extends Record<string, unknown>>(
     const validation = validator.validate(text, level);
 
     if (validation.ok) {
+      let embedding: number[] | undefined;
+      if (embed) {
+        try {
+          const vecs = await llmClient.embed([text]);
+          embedding = vecs[0];
+        } catch {
+          // Best-effort: save without embedding if the embed server is unavailable.
+        }
+      }
+
       const row: NewContent = {
         type,
         level,
@@ -122,6 +147,7 @@ export async function generateContent<T extends Record<string, unknown>>(
         payload: parsed as Record<string, unknown>,
         source: "generated",
         validatedAt: new Date(),
+        embedding,
       };
       const contentId = await repository.putContent(row);
       return { parsed, contentId };
