@@ -22,6 +22,8 @@ export type {
   Weakness,
 } from "./schema";
 
+export type { BackupData } from "../backup/schema";
+
 export type {
   ContentQuery,
   ContentRepository,

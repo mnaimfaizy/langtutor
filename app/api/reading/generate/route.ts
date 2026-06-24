@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type {
+  BackupData,
   Card,
   Cefr,
   Content,
@@ -99,6 +100,12 @@ class NullContentRepository implements ContentRepository {
   }
   clear(): Promise<void> {
     return Promise.resolve();
+  }
+  exportBackup(): Promise<BackupData> {
+    return Promise.reject(new Error("not supported on server"));
+  }
+  importBackup(_data: BackupData): Promise<void> {
+    return Promise.reject(new Error("not supported on server"));
   }
 }
 

@@ -7,6 +7,7 @@ import type { Cefr, LearnerGoal, Profile, ProfileSettings } from "@/lib/db";
 import { HealthResponseSchema, settingsToOverrides } from "@/lib/llm/settings";
 import { getContentRepository } from "@/lib/registry";
 import { Button, Card, CardContent, CardDescription, CardTitle, Input, cn } from "@/ui";
+import { BackupSection } from "./backup-section";
 
 const TTS_RATE_MIN = 0.5;
 const TTS_RATE_MAX = 2;
@@ -389,6 +390,8 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      <BackupSection />
     </main>
   );
 }

@@ -1,4 +1,5 @@
-import { SINGLETON_KEY, type LangTutorDB } from "./database";
+import type { BackupData } from "../backup/schema";
+import { SINGLETON_KEY, type LangTutorDB, type Singleton } from "./database";
 import type {
   ContentQuery,
   ContentRepository,
@@ -149,5 +150,46 @@ export class DexieContentRepository implements ContentRepository {
   // maintenance -------------------------------------------------------------
   async clear(): Promise<void> {
     await Promise.all(this.db.tables.map((table) => table.clear()));
+  }
+
+  // backup ------------------------------------------------------------------
+  async exportBackup(): Promise<BackupData> {
+    const [profile, cards, content, errorEvents, weakness, gamification, lexiconCache] =
+      await Promise.all([
+        this.db.profile.toArray(),
+        this.db.cards.toArray(),
+        this.db.content.toArray(),
+        this.db.errorEvents.toArray(),
+        this.db.weakness.toArray(),
+        this.db.gamification.toArray(),
+        this.db.lexiconCache.toArray(),
+      ]);
+    return {
+      version: 1 as const,
+      exportedAt: new Date().toISOString(),
+      tables: { profile, cards, content, errorEvents, weakness, gamification, lexiconCache },
+    } as BackupData;
+  }
+
+  async importBackup(data: BackupData): Promise<void> {
+    await this.clear();
+    // All tables use inbound keys (the key lives IN the object: `id` for EntityTables,
+    // compound key fields for weakness, `word` for lexiconCache). Pass full objects so
+    // Dexie finds the existing key and restores original IDs. The `as unknown as X[]`
+    // casts are needed because EntityTable's TypeScript type has TInsertType = Omit<T,"id">,
+    // but at runtime Dexie reads the inbound `id` field when it is present.
+    await Promise.all([
+      this.db.profile.bulkPut(data.tables.profile as unknown as Singleton<Profile>[]),
+      this.db.cards.bulkPut(data.tables.cards as unknown as Omit<Card, "id">[]),
+      this.db.content.bulkPut(data.tables.content as unknown as Omit<Content, "id">[]),
+      this.db.errorEvents.bulkPut(
+        data.tables.errorEvents as unknown as Omit<ErrorEventRecord, "id">[],
+      ),
+      this.db.weakness.bulkPut(data.tables.weakness as unknown as Weakness[]),
+      this.db.gamification.bulkPut(
+        data.tables.gamification as unknown as Singleton<GamificationState>[],
+      ),
+      this.db.lexiconCache.bulkPut(data.tables.lexiconCache as unknown as LexiconCacheEntry[]),
+    ]);
   }
 }

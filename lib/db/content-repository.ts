@@ -1,3 +1,4 @@
+import type { BackupData } from "../backup/schema";
 import type {
   Card,
   Cefr,
@@ -79,4 +80,8 @@ export interface ContentRepository {
 
   /** Wipe every table. Used by import/restore (Phase 8.2) and tests. */
   clear(): Promise<void>;
+
+  // backup (Phase 8.2)
+  exportBackup(): Promise<BackupData>;
+  importBackup(data: BackupData): Promise<void>;
 }
