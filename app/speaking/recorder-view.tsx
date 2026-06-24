@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+
+import { z } from "zod";
 
 import { useRecorder } from "@/lib/audio/use-recorder";
 import { Button } from "@/ui/button";
+
+const TranscribeResponseSchema = z.object({ transcript: z.string() });
 
 const MIC_STATE_LABEL: Record<string, string> = {
   requesting: "Requesting microphone access…",
@@ -19,13 +23,15 @@ export function RecorderView() {
   const { state: micState, blob, start, stop } = useRecorder();
   const [transcribeState, setTranscribeState] = useState<TranscribeState>("idle");
   const [transcript, setTranscript] = useState<string | null>(null);
+  const transcribeInFlight = useRef(false);
 
   const isRecording = micState === "recording";
   const isMicBusy = micState === "requesting" || micState === "processing";
   const micError = micState === "denied" || micState === "error";
 
   async function handleTranscribe() {
-    if (!blob) return;
+    if (transcribeInFlight.current || !blob) return;
+    transcribeInFlight.current = true;
     setTranscribeState("loading");
     setTranscript(null);
 
@@ -42,11 +48,18 @@ export function RecorderView() {
         setTranscribeState("error");
         return;
       }
-      const { transcript: text } = (await res.json()) as { transcript: string };
-      setTranscript(text);
+      const json: unknown = await res.json();
+      const parsed = TranscribeResponseSchema.safeParse(json);
+      if (!parsed.success) {
+        setTranscribeState("error");
+        return;
+      }
+      setTranscript(parsed.data.transcript);
       setTranscribeState("done");
     } catch {
       setTranscribeState("error");
+    } finally {
+      transcribeInFlight.current = false;
     }
   }
 

@@ -1,6 +1,7 @@
 import type { Cefr, NewErrorEvent } from "@/lib/db";
 
 import type { WerAlignment } from "./wer";
+import { createWerErrorEvents } from "./wer-error-events";
 
 /** Maps each non-correct WER alignment token to a speaking diagnostics error event. */
 export function createSpeakingErrorEvents(
@@ -8,14 +9,5 @@ export function createSpeakingErrorEvents(
   cefr: Cefr,
   now?: Date,
 ): NewErrorEvent[] {
-  const ts = now ?? new Date();
-  return alignment
-    .filter((a) => a.type !== "correct")
-    .map((a) => ({
-      skill: "speaking" as const,
-      category: a.type,
-      cefr,
-      context: a.ref ?? a.hyp ?? "",
-      createdAt: ts,
-    }));
+  return createWerErrorEvents(alignment, "speaking", cefr, now);
 }

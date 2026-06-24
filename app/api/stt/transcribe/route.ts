@@ -32,12 +32,20 @@ export async function POST(request: Request) {
     return Response.json({ error: "Audio too large" }, { status: 413 });
   }
 
+  if (!audioEntry.type.startsWith("audio/")) {
+    return Response.json({ error: "Invalid audio type" }, { status: 400 });
+  }
+
   try {
     const transcriber = getTranscriber();
     const transcript = await transcriber.transcribe(audioEntry);
     return Response.json({ transcript });
   } catch (error) {
     console.error("[api/stt/transcribe]", error);
-    return Response.json({ error: "Mac STT server not reachable" }, { status: 502 });
+    const isMacDown = error instanceof Error && error.message === "Mac STT server not reachable";
+    return Response.json(
+      { error: "Mac STT server not reachable" },
+      { status: isMacDown ? 502 : 500 },
+    );
   }
 }

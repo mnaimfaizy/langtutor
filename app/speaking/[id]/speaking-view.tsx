@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { z } from "zod";
 
 import type { Content } from "@/lib/db";
 import { PassageSchema } from "@/lib/content/passage";
 import { createSpeakingErrorEvents } from "@/lib/diagnostics/speaking";
+
+const TranscribeResponseSchema = z.object({ transcript: z.string() });
 import { computeWer } from "@/lib/diagnostics/wer";
 import type { WerAlignment, WerResult } from "@/lib/diagnostics/wer";
 import { useRecorder } from "@/lib/audio/use-recorder";
@@ -107,6 +110,7 @@ export function SpeakingView({ id }: { id: number }) {
     isNaN(id) || id <= 0 ? "notFound" : "loading",
   );
   const [content, setContent] = useState<Content | null>(null);
+  const [passage, setPassage] = useState<{ title: string; body: string } | null>(null);
   const [transcribeState, setTranscribeState] = useState<TranscribeState>("idle");
   const [werResult, setWerResult] = useState<WerResult | null>(null);
   const transcribeInFlight = useRef(false);
@@ -126,7 +130,9 @@ export function SpeakingView({ id }: { id: number }) {
         if (!row || row.type !== "passage") {
           setPhase("notFound");
         } else {
+          const p = PassageSchema.safeParse(row.payload);
           setContent(row);
+          setPassage(p.success ? { title: p.data.title, body: p.data.body } : null);
           setPhase("ready");
         }
       })
@@ -145,6 +151,12 @@ export function SpeakingView({ id }: { id: number }) {
     setWerResult(null);
 
     try {
+      const reference = passage?.body ?? "";
+      if (!reference) {
+        setTranscribeState("error");
+        return;
+      }
+
       const form = new FormData();
       form.append("audio", blob, "audio.wav");
 
@@ -158,15 +170,19 @@ export function SpeakingView({ id }: { id: number }) {
         return;
       }
 
-      const { transcript } = (await res.json()) as { transcript: string };
-      const parsed = PassageSchema.safeParse(content.payload);
-      const reference = parsed.success ? parsed.data.body : "";
+      const json: unknown = await res.json();
+      const transcribeResult = TranscribeResponseSchema.safeParse(json);
+      if (!transcribeResult.success) {
+        setTranscribeState("error");
+        return;
+      }
+      const { transcript } = transcribeResult.data;
 
       const result = computeWer(reference, transcript);
       setWerResult(result);
       setTranscribeState("done");
 
-      if (reference && isFinite(result.wer)) {
+      if (isFinite(result.wer)) {
         const repo = getContentRepository();
         const now = new Date();
         for (const event of createSpeakingErrorEvents(result.alignment, content.level, now)) {
@@ -217,9 +233,8 @@ export function SpeakingView({ id }: { id: number }) {
     );
   }
 
-  const parsed = PassageSchema.safeParse(content.payload);
-  const title = parsed.success ? parsed.data.title : content.topic;
-  const body = parsed.success ? parsed.data.body : "";
+  const title = passage?.title ?? content.topic;
+  const body = passage?.body ?? "";
 
   return (
     <div className="flex flex-1 flex-col px-6 py-10">
@@ -260,7 +275,15 @@ export function SpeakingView({ id }: { id: number }) {
         {/* Recorder controls */}
         <div className="flex flex-wrap gap-3">
           {!isRecording ? (
-            <Button onClick={() => void start()} disabled={isMicBusy} aria-label="Start recording">
+            <Button
+              onClick={() => {
+                setTranscribeState("idle");
+                setWerResult(null);
+                void start();
+              }}
+              disabled={isMicBusy}
+              aria-label="Start recording"
+            >
               {isMicBusy ? "Please wait…" : "Record"}
             </Button>
           ) : (

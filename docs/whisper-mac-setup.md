@@ -43,7 +43,8 @@ expects the JSON response `{ "text": "…" }`.
 ### Prerequisites
 
 - Xcode Command Line Tools: `xcode-select --install`
-- (Apple Silicon) Metal is used automatically — no extra steps.
+- CMake ≥ 3.14: `brew install cmake` (or check `cmake --version`)
+- (Apple Silicon) Metal is detected and enabled automatically by CMake.
 - (Intel) The build falls back to CPU. Expect slower inference.
 
 ### Clone and build
@@ -51,10 +52,11 @@ expects the JSON response `{ "text": "…" }`.
 ```bash
 git clone https://github.com/ggerganov/whisper.cpp
 cd whisper.cpp
-make          # builds the CLI + server; uses Metal on Apple Silicon
+cmake -B build
+cmake --build build -j --config Release
 ```
 
-The server binary lands at `./server` (or `./build/bin/server` if you use CMake).
+The server binary lands at **`./build/bin/whisper-server`**.
 
 ---
 
@@ -84,7 +86,7 @@ bash ./models/download-ggml-model.sh small
 From inside the `whisper.cpp` directory:
 
 ```bash
-./server \
+./build/bin/whisper-server \
   --model  models/ggml-small.en.bin \
   --host   0.0.0.0 \
   --port   8080
@@ -146,7 +148,7 @@ Create `~/Library/LaunchAgents/com.whisper.server.plist`:
   <key>Label</key>             <string>com.whisper.server</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/path/to/whisper.cpp/server</string>
+    <string>/path/to/whisper.cpp/build/bin/whisper-server</string>
     <string>--model</string>  <string>/path/to/whisper.cpp/models/ggml-small.en.bin</string>
     <string>--host</string>   <string>0.0.0.0</string>
     <string>--port</string>   <string>8080</string>
@@ -173,7 +175,7 @@ launchctl load ~/Library/LaunchAgents/com.whisper.server.plist
 
 ### "Mac STT server not reachable" in the app
 
-1. Confirm the server is running: `curl http://localhost:8080/inference -F file=@test.wav -F response_format=json`
+1. Confirm the server is running: `curl http://localhost:8080/inference -F "file=@test.wav" -F response_format=json`
 2. Check `MAC_STT_URL` in `.env.local` — no trailing slash.
 3. Restart `pnpm dev` after editing `.env.local`.
 4. If Next.js runs on a different machine, ensure port 8080 is not firewalled:
@@ -185,9 +187,14 @@ launchctl load ~/Library/LaunchAgents/com.whisper.server.plist
 - Make sure the audio is not clipped — the normalize worker targets 16 kHz mono at ±1.0 float range.
 - Pass `--language en` to skip language detection overhead.
 
+### `whisper-server: command not found` / binary not found
+
+- Run the CMake build first: `cmake -B build && cmake --build build -j --config Release`
+- The binary is at `./build/bin/whisper-server` — **not** `./server`.
+
 ### Server crashes immediately
 
-- Wrong model path — double-check the `--model` flag.
+- Wrong model path — double-check the `--model` flag points to an existing `.bin` file.
 - Insufficient RAM — `medium.en` needs ~2 GB free. Check with `vm_stat`.
 
 ### "Whisper server returned 400"
