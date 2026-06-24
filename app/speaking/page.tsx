@@ -1,5 +1,5 @@
-import { RecorderView } from "./recorder-view";
+import { SpeakingClient } from "./speaking-client";
 
 export default function SpeakingPage() {
-  return <RecorderView />;
+  return <SpeakingClient />;
 }
