@@ -67,6 +67,7 @@ export function PlacementQuiz() {
 
     if (batchIdx + 1 < batch.length) {
       setBatchIdx(batchIdx + 1);
+      answeringRef.current = false;
       return;
     }
 
