@@ -7,12 +7,25 @@ Claude-Code-specific notes; it never duplicates AGENTS.md.
 
 ## Skills (in `.claude/skills/`)
 
-- **`tdd`** — invoke when building a feature or fixing a bug test-first.
-- **`grill-with-docs`** — invoke to sharpen a plan before writing code.
-- **`to-prd`** — invoke to turn a conversation into a PRD on GitHub issues.
-- **`to-issues`** — invoke to break a PRD into vertical-slice GitHub issues.
-- **`seam-discipline`** — invoke when touching the Mac/LLM, lexicon, DB, validation, or STT.
-- **`stack-conventions`** — invoke when writing/reviewing app, UI, or `lib/` code.
+Not sure which to use? Invoke **`/ask-matt`** — it routes to the right skill for the situation.
+
+| Skill                           | When to invoke                                        |
+| ------------------------------- | ----------------------------------------------------- |
+| `ask-matt`                      | Unsure which skill fits                               |
+| `grill-with-docs`               | Sharpening a plan before coding                       |
+| `domain-modeling`               | Pinning down terms or recording an ADR                |
+| `prototype`                     | Answering a design question with throwaway code       |
+| `codebase-design`               | Designing or reviewing a module interface             |
+| `improve-codebase-architecture` | Finding and deepening shallow modules                 |
+| `to-prd`                        | Turning a conversation into a PRD on GitHub           |
+| `to-issues`                     | Breaking a PRD into vertical-slice GitHub issues      |
+| `implement`                     | Picking up a GitHub issue to implement                |
+| `tdd`                           | Building or fixing test-first                         |
+| `triage`                        | Working through incoming GitHub issues                |
+| `diagnosing-bugs`               | Hard bug or performance regression                    |
+| `resolving-merge-conflicts`     | In-progress git merge/rebase conflict                 |
+| `seam-discipline`               | Touching the Mac/LLM, lexicon, DB, validation, or STT |
+| `stack-conventions`             | Writing or reviewing app, UI, or `lib/` code          |
 
 ## Close-out (per feature)
 

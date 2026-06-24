@@ -77,10 +77,32 @@ Full detail in `docs/architecture.md`. Key points:
 
 ## Skills (`.claude/skills/`)
 
-- **`tdd`** — Test-driven development (red-green-refactor, vertical slices).
+Not sure which skill to use? Start with **`/ask-matt`**.
+
+**Planning & design:**
+
+- **`ask-matt`** — Router: which skill or flow fits your situation.
 - **`grill-with-docs`** — Relentless interview to sharpen a plan + produce ADRs/glossary.
+- **`domain-modeling`** — Build/sharpen `CONTEXT.md` and ADRs as designs crystallise.
+- **`prototype`** — Throwaway code to answer a design question (logic TUI or UI variants).
+- **`codebase-design`** — Shared vocabulary for deep modules (seam, adapter, leverage, locality).
+- **`improve-codebase-architecture`** — Scan for deepening opportunities; HTML report + grilling.
+
+**Delivery:**
+
 - **`to-prd`** — Turn a discussion into a PRD published to GitHub issues.
 - **`to-issues`** — Break a PRD into independently-grabbable vertical-slice GitHub issues.
+- **`implement`** — Implement a GitHub issue test-first.
+- **`tdd`** — Test-driven development (red-green-refactor, vertical slices).
+
+**Maintenance:**
+
+- **`triage`** — Move GitHub issues through triage roles; write agent-ready briefs.
+- **`diagnosing-bugs`** — Structured 6-phase debug loop for hard bugs and regressions.
+- **`resolving-merge-conflicts`** — Structured approach to git merge/rebase conflicts.
+
+**Project-specific:**
+
 - **`seam-discipline`** — Enforce interface-only imports, composition root wiring, Zod-parse rule.
 - **`stack-conventions`** — Next.js/React/Tailwind/Base UI/Zod/FSRS conventions.
 
