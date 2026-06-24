@@ -7,21 +7,24 @@ Claude-Code-specific notes; it never duplicates AGENTS.md.
 
 ## Skills (in `.claude/skills/`)
 
-- **`implement-plan-step`** — invoke when picking up a numbered `PLAN.md` step.
+- **`tdd`** — invoke when building a feature or fixing a bug test-first.
+- **`grill-with-docs`** — invoke to sharpen a plan before writing code.
+- **`to-prd`** — invoke to turn a conversation into a PRD on GitHub issues.
+- **`to-issues`** — invoke to break a PRD into vertical-slice GitHub issues.
 - **`seam-discipline`** — invoke when touching the Mac/LLM, lexicon, DB, validation, or STT.
 - **`stack-conventions`** — invoke when writing/reviewing app, UI, or `lib/` code.
 
-## Close-out (per phase — PLAN.md §3.5)
+## Close-out (per feature)
 
-- Run **`/code-review`** on the phase diff; add **`/security-review`** when the change touched the
+- Run **`/code-review`** on the diff; add **`/security-review`** when the change touched the
   server proxy, networking, storage, or audio capture.
-- Update `AGENTS.md` (especially the _Current phase / next step_ pointer); update this file only
-  if Claude-specific guidance changed.
+- Update `AGENTS.md` if commands, seams, or the repo layout changed.
+- Update this file only if Claude-specific guidance changed.
 
 ## Verify
 
-Run `pnpm verify` (typecheck + lint + format:check). It gains `pnpm test` + `pnpm test:e2e` once
-the harness lands in Phase 0.8.
+Run `pnpm verify` (typecheck + lint + format:check + unit tests).
+Run `pnpm test:e2e` separately for Playwright e2e (auto-starts the dev server).
 
 ## Permissions
 
@@ -35,4 +38,4 @@ trailer.
 ## Memory
 
 Durable project facts live in the user's auto-memory (`lang-tutor-project`, `user-naim`).
-Progress / phase state lives in `AGENTS.md`, not in memory.
+Current state lives in `AGENTS.md`.
