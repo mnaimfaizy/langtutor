@@ -98,7 +98,7 @@ export function DiagnosticsClient() {
     const seen = new Set<string>();
     const unique: string[] = [];
     for (const e of evts) {
-      if (!seen.has(e.context)) {
+      if (e.context && !seen.has(e.context)) {
         seen.add(e.context);
         unique.push(e.context);
       }
@@ -242,7 +242,7 @@ export function DiagnosticsClient() {
                   </span>
                   <span className="text-danger flex items-center gap-1.5">
                     <span className="bg-danger/20 inline-block h-3 w-3 rounded" />
-                    Struggling (&gt;60%)
+                    Struggling (&#x2265;60%)
                   </span>
                 </div>
 

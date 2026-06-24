@@ -2,12 +2,9 @@
 
 import { useRef, useState } from "react";
 
-import { z } from "zod";
-
 import { useRecorder } from "@/lib/audio/use-recorder";
+import { TranscribeResponseSchema } from "./transcribe-schema";
 import { Button } from "@/ui/button";
-
-const TranscribeResponseSchema = z.object({ transcript: z.string() });
 
 const MIC_STATE_LABEL: Record<string, string> = {
   requesting: "Requesting microphone access…",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -73,9 +73,18 @@ export function WritingClient() {
   const effectiveLevel = selectedLevel ?? profileLevel;
   const effectiveTopic = useCustom ? customTopic.trim() : topic;
 
-  // Top-3 topics ranked by the learner's current weakness profile.
-  const suggestedTopics = new Set(
-    rankTopicsByWeakness(WRITING_TOPICS, weaknesses, WRITING_TOPIC_AFFINITIES).slice(0, 3),
+  // Top-3 topics ranked by writing-skill weaknesses only (other skills would contaminate).
+  // Memoized so the sort doesn't re-run on every keystroke in the custom topic input.
+  const suggestedTopics = useMemo(
+    () =>
+      new Set(
+        rankTopicsByWeakness(
+          WRITING_TOPICS,
+          weaknesses.filter((w) => w.skill === "writing"),
+          WRITING_TOPIC_AFFINITIES,
+        ).slice(0, 3),
+      ),
+    [weaknesses],
   );
 
   async function handleGenerate() {

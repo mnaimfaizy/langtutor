@@ -56,13 +56,19 @@ export function topicWeaknessScore(
   const keywords = affinities[topic];
   if (!keywords || keywords.length === 0) return 0;
 
-  let total = 0;
+  // Use max score per distinct category to avoid CEFR-level inflation:
+  // a "vocabulary" weakness at A1, B1, and C1 should count once at the highest
+  // score, not three times.
+  const maxByCategory = new Map<string, number>();
   for (const { category, score } of weaknesses) {
     const cat = category.toLowerCase();
     if (keywords.some((kw) => cat.includes(kw.toLowerCase()))) {
-      total += score;
+      const prev = maxByCategory.get(cat) ?? 0;
+      if (score > prev) maxByCategory.set(cat, score);
     }
   }
+  let total = 0;
+  for (const s of maxByCategory.values()) total += s;
   return total;
 }
 

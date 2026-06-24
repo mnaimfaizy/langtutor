@@ -2,17 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { z } from "zod";
 
 import type { Content } from "@/lib/db";
 import { PassageSchema } from "@/lib/content/passage";
 import { createSpeakingErrorEvents } from "@/lib/diagnostics/speaking";
-
-const TranscribeResponseSchema = z.object({ transcript: z.string() });
 import { computeWer } from "@/lib/diagnostics/wer";
 import type { WerAlignment, WerResult } from "@/lib/diagnostics/wer";
 import { useRecorder } from "@/lib/audio/use-recorder";
 import { getContentRepository } from "@/lib/registry";
+import { TranscribeResponseSchema } from "../transcribe-schema";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
 import { TtsButton } from "@/ui/tts-button";
