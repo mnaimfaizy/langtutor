@@ -17,6 +17,7 @@ function clean(value?: string): string | undefined {
 export const LLMOverridesSchema = z.object({
   baseURL: z.url().optional(),
   chatModel: z.string().optional(),
+  utilityModel: z.string().optional(),
   embedModel: z.string().optional(),
 });
 export type LLMOverrides = z.infer<typeof LLMOverridesSchema>;
@@ -27,7 +28,7 @@ export function resolveLLMConfig(base: LLMConfig, overrides?: LLMOverrides): LLM
     baseURL: clean(overrides?.baseURL) ?? base.baseURL,
     apiKey: base.apiKey,
     chatModel: clean(overrides?.chatModel) ?? base.chatModel,
-    utilityModel: base.utilityModel,
+    utilityModel: clean(overrides?.utilityModel) ?? base.utilityModel,
     embedModel: clean(overrides?.embedModel) ?? base.embedModel,
   };
 }
@@ -37,6 +38,7 @@ export function settingsToOverrides(settings: ProfileSettings | undefined): LLMO
   return {
     baseURL: clean(settings?.macLlmBaseUrl),
     chatModel: clean(settings?.macLlmModel),
+    utilityModel: clean(settings?.macUtilityModel),
     embedModel: clean(settings?.macEmbedModel),
   };
 }

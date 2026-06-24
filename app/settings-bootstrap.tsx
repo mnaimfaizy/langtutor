@@ -7,7 +7,7 @@ import { getContentRepository } from "@/lib/registry";
 
 /**
  * On app load, push the user's saved Mac settings (IndexedDB) to the server-held runtime
- * override, so server-side LLM calls honor them after a server restart. Renders nothing.
+ * overrides, so server-side LLM + STT calls honor them after a server restart. Renders nothing.
  */
 export function SettingsBootstrap() {
   useEffect(() => {
@@ -16,13 +16,24 @@ export function SettingsBootstrap() {
       .getSettings()
       .then((settings) => {
         if (!active) return;
-        const overrides = settingsToOverrides(settings);
-        if (!Object.values(overrides).some(Boolean)) return; // nothing configured yet
-        return fetch("/api/llm/config", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(overrides),
-        });
+        const llmOverrides = settingsToOverrides(settings);
+        const pushLlm = Object.values(llmOverrides).some(Boolean)
+          ? fetch("/api/llm/config", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(llmOverrides),
+            })
+          : Promise.resolve();
+
+        const pushStt = settings?.macSttUrl
+          ? fetch("/api/stt/config", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sttUrl: settings.macSttUrl }),
+            })
+          : Promise.resolve();
+
+        return Promise.all([pushLlm, pushStt]);
       })
       .catch(() => {
         // Best-effort; the indicator will surface unreachability.

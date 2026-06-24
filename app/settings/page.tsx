@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { Cefr, LearnerGoal, Profile, ProfileSettings } from "@/lib/db";
 import { HealthResponseSchema, settingsToOverrides } from "@/lib/llm/settings";
@@ -32,11 +32,29 @@ const GOAL_OPTIONS: { value: LearnerGoal; label: string }[] = [
   { value: "general", label: "General" },
 ];
 
+const SttHealthSchema = {
+  safeParse(
+    v: unknown,
+  ): { success: true; data: { ok: boolean; error?: string } } | { success: false } {
+    if (
+      typeof v === "object" &&
+      v !== null &&
+      "ok" in v &&
+      typeof (v as Record<string, unknown>).ok === "boolean"
+    ) {
+      return { success: true, data: v as { ok: boolean; error?: string } };
+    }
+    return { success: false };
+  },
+};
+
 export default function SettingsPage() {
   // LLM settings state
   const [baseUrl, setBaseUrl] = useState("");
   const [chatModel, setChatModel] = useState("");
+  const [utilityModel, setUtilityModel] = useState("");
   const [embedModel, setEmbedModel] = useState("");
+  const [sttUrl, setSttUrl] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState<Banner>(null);
@@ -50,6 +68,7 @@ export default function SettingsPage() {
   // TTS state
   const [ttsRate, setTtsRate] = useState(1);
   const [ttsVoiceUri, setTtsVoiceUri] = useState("");
+  const [ttsLang, setTtsLang] = useState("");
   const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [ttsBusy, setTtsBusy] = useState(false);
   const [ttsBanner, setTtsBanner] = useState<Banner>(null);
@@ -63,11 +82,14 @@ export default function SettingsPage() {
         const s = profile?.settings ?? {};
         setBaseUrl(s.macLlmBaseUrl ?? "");
         setChatModel(s.macLlmModel ?? "");
+        setUtilityModel(s.macUtilityModel ?? "");
         setEmbedModel(s.macEmbedModel ?? "");
+        setSttUrl(s.macSttUrl ?? "");
         setProfileLevel(profile?.cefrLevel);
         setProfileGoals(profile?.goals ?? []);
         setTtsRate(s.ttsRate ?? 1);
         setTtsVoiceUri(s.ttsVoiceUri ?? "");
+        setTtsLang(s.ttsLang ?? "");
         setLoaded(true);
       });
     return () => {
@@ -83,6 +105,26 @@ export default function SettingsPage() {
     return () => window.speechSynthesis.removeEventListener("voiceschanged", sync);
   }, []);
 
+  // Unique language tags from available voices, sorted.
+  const availableLangs = useMemo(() => {
+    const langs = new Set(browserVoices.map((v) => v.lang));
+    return Array.from(langs).sort();
+  }, [browserVoices]);
+
+  // Filter voices by the chosen language.
+  const filteredVoices = useMemo(
+    () => (ttsLang ? browserVoices.filter((v) => v.lang === ttsLang) : browserVoices),
+    [browserVoices, ttsLang],
+  );
+
+  function handleTtsLangChange(lang: string) {
+    setTtsLang(lang);
+    // Clear voice selection when the filter no longer includes it.
+    if (lang && !browserVoices.find((v) => v.lang === lang && v.voiceURI === ttsVoiceUri)) {
+      setTtsVoiceUri("");
+    }
+  }
+
   async function handleSave() {
     setBusy(true);
     setBanner(null);
@@ -93,18 +135,27 @@ export default function SettingsPage() {
         ...current,
         macLlmBaseUrl: baseUrl.trim() || undefined,
         macLlmModel: chatModel.trim() || undefined,
+        macUtilityModel: utilityModel.trim() || undefined,
         macEmbedModel: embedModel.trim() || undefined,
+        macSttUrl: sttUrl.trim() || undefined,
       };
       await repo.saveSettings(merged);
 
-      const res = await fetch("/api/llm/config", {
+      const llmRes = await fetch("/api/llm/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settingsToOverrides(merged)),
       });
-      if (!res.ok) throw new Error(`Server rejected settings (${res.status})`);
+      if (!llmRes.ok) throw new Error(`LLM config rejected (${llmRes.status})`);
 
-      setBanner({ tone: "ok", text: "Saved. New calls route to this endpoint." });
+      const sttRes = await fetch("/api/stt/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sttUrl: merged.macSttUrl }),
+      });
+      if (!sttRes.ok) throw new Error(`STT config rejected (${sttRes.status})`);
+
+      setBanner({ tone: "ok", text: "Saved. New calls route to these endpoints." });
     } catch (error) {
       setBanner({ tone: "error", text: error instanceof Error ? error.message : "Save failed" });
     } finally {
@@ -112,7 +163,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleTest() {
+  async function handleTestLlm() {
     setBusy(true);
     setBanner(null);
     try {
@@ -122,17 +173,41 @@ export default function SettingsPage() {
       if (res.ok && parsed.success && parsed.data.ok) {
         const models = parsed.data.models ?? [];
         const list = models.length ? `: ${models.slice(0, 6).join(", ")}` : "";
-        setBanner({ tone: "ok", text: `Connected — ${models.length} model(s)${list}` });
+        setBanner({ tone: "ok", text: `LLM connected — ${models.length} model(s)${list}` });
       } else {
         const reason = parsed.success
           ? (parsed.data.error ?? "unreachable")
           : "unexpected response";
-        setBanner({ tone: "error", text: `Mac unreachable: ${reason}` });
+        setBanner({ tone: "error", text: `Mac LLM unreachable: ${reason}` });
       }
     } catch (error) {
       setBanner({
         tone: "error",
         text: error instanceof Error ? error.message : "Health check failed",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleTestStt() {
+    setBusy(true);
+    setBanner(null);
+    try {
+      const res = await fetch("/api/stt/health", { cache: "no-store" });
+      const parsed = SttHealthSchema.safeParse(await res.json());
+      if (parsed.success && parsed.data.ok) {
+        setBanner({ tone: "ok", text: "STT server reachable." });
+      } else {
+        const reason = parsed.success
+          ? (parsed.data.error ?? "unreachable")
+          : "unexpected response";
+        setBanner({ tone: "error", text: `Mac STT unreachable: ${reason}` });
+      }
+    } catch (error) {
+      setBanner({
+        tone: "error",
+        text: error instanceof Error ? error.message : "STT health check failed",
       });
     } finally {
       setBusy(false);
@@ -180,6 +255,7 @@ export default function SettingsPage() {
         ...current,
         ttsRate,
         ttsVoiceUri: ttsVoiceUri || undefined,
+        ttsLang: ttsLang || undefined,
       });
       setTtsBanner({ tone: "ok", text: "TTS settings saved." });
     } catch (error) {
@@ -196,8 +272,8 @@ export default function SettingsPage() {
     <main className="mx-auto w-full max-w-2xl px-6 py-10">
       <h1 className="text-foreground text-2xl font-semibold">Settings</h1>
       <p className="text-muted mt-1 text-sm">
-        Configure the home Mac (Ollama) endpoint and models. Stored locally; the browser never calls
-        the Mac directly.
+        Configure the home Mac endpoints and models. Stored locally; the browser never calls the Mac
+        directly.
       </p>
 
       <Card className="mt-6">
@@ -228,6 +304,19 @@ export default function SettingsPage() {
             />
           </Field>
 
+          <Field
+            label="Utility model"
+            hint="Lighter model used for cheap checks (grammar, quiz generation)"
+          >
+            <Input
+              value={utilityModel}
+              onChange={(e) => setUtilityModel(e.target.value)}
+              placeholder="qwen2.5:7b-instruct"
+              disabled={!loaded || busy}
+              autoComplete="off"
+            />
+          </Field>
+
           <Field label="Embedding model">
             <Input
               value={embedModel}
@@ -238,12 +327,29 @@ export default function SettingsPage() {
             />
           </Field>
 
-          <div className="flex items-center gap-3 pt-1">
+          <Field
+            label="STT server URL"
+            hint="whisper.cpp HTTP server — e.g. http://192.168.1.x:8080"
+          >
+            <Input
+              value={sttUrl}
+              onChange={(e) => setSttUrl(e.target.value)}
+              placeholder="http://localhost:8080"
+              disabled={!loaded || busy}
+              inputMode="url"
+              autoComplete="off"
+            />
+          </Field>
+
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             <Button onClick={() => void handleSave()} disabled={!loaded || busy}>
               Save
             </Button>
-            <Button variant="secondary" onClick={() => void handleTest()} disabled={busy}>
-              Test connection
+            <Button variant="secondary" onClick={() => void handleTestLlm()} disabled={busy}>
+              Test LLM
+            </Button>
+            <Button variant="secondary" onClick={() => void handleTestStt()} disabled={busy}>
+              Test STT
             </Button>
           </div>
 
@@ -265,6 +371,24 @@ export default function SettingsPage() {
           browser&apos;s built-in voices — works offline.
         </CardDescription>
         <CardContent className="space-y-4">
+          {availableLangs.length > 0 && (
+            <Field label="Accent / language" hint="Filters the voice list below">
+              <select
+                value={ttsLang}
+                onChange={(e) => handleTtsLangChange(e.target.value)}
+                disabled={!loaded || ttsBusy}
+                className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="">All languages</option>
+                {availableLangs.map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+
           <Field label={`Rate — ${ttsRate.toFixed(1)}×`}>
             <input
               type="range"
@@ -291,7 +415,7 @@ export default function SettingsPage() {
               className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
             >
               <option value="">System default</option>
-              {browserVoices.map((v) => (
+              {filteredVoices.map((v) => (
                 <option key={v.voiceURI} value={v.voiceURI}>
                   {v.name} ({v.lang})
                 </option>

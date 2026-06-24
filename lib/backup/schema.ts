@@ -16,6 +16,7 @@ const ProfileRowSchema = z.object({
     macSttUrl: z.string().optional(),
     ttsRate: z.number().optional(),
     ttsVoiceUri: z.string().optional(),
+    ttsLang: z.string().optional(),
   }),
 });
 

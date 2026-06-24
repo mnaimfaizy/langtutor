@@ -20,14 +20,22 @@ describe("resolveLLMConfig", () => {
     const resolved = resolveLLMConfig(base, { baseURL: "http://mac:11434/v1", chatModel: "qwen" });
     expect(resolved.baseURL).toBe("http://mac:11434/v1");
     expect(resolved.chatModel).toBe("qwen");
+    expect(resolved.utilityModel).toBe("env-utility"); // untouched
     expect(resolved.embedModel).toBe("env-embed"); // untouched
     expect(resolved.apiKey).toBe("ollama"); // never overridable from the client
   });
 
+  it("overrides utility model when provided", () => {
+    const resolved = resolveLLMConfig(base, { utilityModel: "qwen2.5:3b-instruct" });
+    expect(resolved.utilityModel).toBe("qwen2.5:3b-instruct");
+    expect(resolved.chatModel).toBe("env-chat"); // untouched
+  });
+
   it("ignores blank / whitespace-only overrides", () => {
-    const resolved = resolveLLMConfig(base, { baseURL: "   ", chatModel: "" });
+    const resolved = resolveLLMConfig(base, { baseURL: "   ", chatModel: "", utilityModel: "  " });
     expect(resolved.baseURL).toBe("http://env:11434/v1");
     expect(resolved.chatModel).toBe("env-chat");
+    expect(resolved.utilityModel).toBe("env-utility");
   });
 });
 
@@ -37,16 +45,29 @@ describe("settingsToOverrides", () => {
       settingsToOverrides({
         macLlmBaseUrl: "http://mac/v1",
         macLlmModel: "qwen",
+        macUtilityModel: "qwen-small",
         macEmbedModel: "  ",
       }),
-    ).toEqual({ baseURL: "http://mac/v1", chatModel: "qwen", embedModel: undefined });
+    ).toEqual({
+      baseURL: "http://mac/v1",
+      chatModel: "qwen",
+      utilityModel: "qwen-small",
+      embedModel: undefined,
+    });
   });
 
   it("handles undefined settings", () => {
     expect(settingsToOverrides(undefined)).toEqual({
       baseURL: undefined,
       chatModel: undefined,
+      utilityModel: undefined,
       embedModel: undefined,
+    });
+  });
+
+  it("drops blank utility model", () => {
+    expect(settingsToOverrides({ macUtilityModel: "  " })).toMatchObject({
+      utilityModel: undefined,
     });
   });
 });

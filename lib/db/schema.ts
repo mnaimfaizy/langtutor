@@ -34,6 +34,7 @@ export interface ProfileSettings {
   macSttUrl?: string;
   ttsRate?: number;
   ttsVoiceUri?: string;
+  ttsLang?: string;
 }
 
 /**
