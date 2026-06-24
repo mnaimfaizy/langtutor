@@ -16,6 +16,18 @@ gh issue create --repo mnaimfaizy/langtutor --title "..." --body "..."
 
 Check available labels with `gh label list --repo mnaimfaizy/langtutor`.
 
+**Agent sandbox:** A `Dockerfile` + `.dockerignore` at the repo root defines the CI environment.
+Agents working on issues can build and verify inside it:
+
+```
+docker build -t langtutor-sandbox .
+docker run --rm langtutor-sandbox          # pnpm verify (default)
+docker run --rm langtutor-sandbox pnpm test:e2e
+```
+
+Stub `.env.local` is created from `.env.example` inside the image — no real Mac/Ollama needed.
+Unit tests use `MockLLMClient` + `fake-indexeddb`.
+
 ## Process
 
 ### 1. Gather context

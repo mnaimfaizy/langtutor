@@ -16,6 +16,10 @@ gh issue create --repo mnaimfaizy/langtutor --title "..." --body "..."
 
 Check available labels with `gh label list --repo mnaimfaizy/langtutor`.
 
+**Agent sandbox:** A `Dockerfile` + `.dockerignore` at the repo root defines the CI environment
+that agents use to verify their work. Include a note in every PRD's Testing Decisions section:
+agents should run `pnpm verify` inside the sandbox before marking work done.
+
 ## Process
 
 1. Explore the repo to understand the current state of the codebase, if you haven't already. Use the project's domain vocabulary (from `AGENTS.md` and `docs/`) throughout the PRD, and respect the Hard Rules in `AGENTS.md`.
