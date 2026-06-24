@@ -6,13 +6,18 @@ import { isSameOrigin } from "@/lib/server/origin";
 export const dynamic = "force-dynamic";
 
 const SttConfigSchema = z.object({
-  sttUrl: z.url().optional(),
+  sttUrl: z.url().max(2048).optional(),
 });
 
 /**
  * `POST /api/stt/config` — set the server-held STT URL override so transcription calls
  * route to the user's chosen whisper.cpp server. Origin-guarded (same single-user /
  * local risk profile as `POST /api/llm/config`).
+ *
+ * Residual risk (accepted — single-user, local, no-auth): a same-origin script can set
+ * an arbitrary URL, causing subsequent transcription/health calls to reach that host.
+ * Identical to the accepted SSRF posture of `POST /api/llm/config`; revisit on any
+ * multi-user/cloud move.
  */
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) {

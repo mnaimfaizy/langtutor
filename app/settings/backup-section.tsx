@@ -27,7 +27,8 @@ export function BackupSection() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Defer revoke so Firefox/Safari finish reading the blob before it's released.
+      setTimeout(() => URL.revokeObjectURL(url), 100);
       setBanner({ tone: "ok", text: "Backup downloaded." });
     } catch (error) {
       setBanner({

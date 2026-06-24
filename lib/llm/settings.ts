@@ -15,7 +15,7 @@ function clean(value?: string): string | undefined {
  * No API key — secrets stay server-side (hard rule #8).
  */
 export const LLMOverridesSchema = z.object({
-  baseURL: z.url().optional(),
+  baseURL: z.url().max(2048).optional(),
   chatModel: z.string().optional(),
   utilityModel: z.string().optional(),
   embedModel: z.string().optional(),

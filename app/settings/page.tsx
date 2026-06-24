@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { z } from "zod";
 
 import type { Cefr, LearnerGoal, Profile, ProfileSettings } from "@/lib/db";
 import { HealthResponseSchema, settingsToOverrides } from "@/lib/llm/settings";
@@ -32,21 +33,7 @@ const GOAL_OPTIONS: { value: LearnerGoal; label: string }[] = [
   { value: "general", label: "General" },
 ];
 
-const SttHealthSchema = {
-  safeParse(
-    v: unknown,
-  ): { success: true; data: { ok: boolean; error?: string } } | { success: false } {
-    if (
-      typeof v === "object" &&
-      v !== null &&
-      "ok" in v &&
-      typeof (v as Record<string, unknown>).ok === "boolean"
-    ) {
-      return { success: true, data: v as { ok: boolean; error?: string } };
-    }
-    return { success: false };
-  },
-};
+const SttHealthSchema = z.object({ ok: z.boolean(), error: z.string().optional() });
 
 export default function SettingsPage() {
   // LLM settings state
@@ -57,6 +44,7 @@ export default function SettingsPage() {
   const [sttUrl, setSttUrl] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [sttBusy, setSttBusy] = useState(false);
   const [banner, setBanner] = useState<Banner>(null);
 
   // Profile state
@@ -141,18 +129,20 @@ export default function SettingsPage() {
       };
       await repo.saveSettings(merged);
 
-      const llmRes = await fetch("/api/llm/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settingsToOverrides(merged)),
-      });
+      // Push both overrides in parallel — a failure of one must not silently skip the other.
+      const [llmRes, sttRes] = await Promise.all([
+        fetch("/api/llm/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(settingsToOverrides(merged)),
+        }),
+        fetch("/api/stt/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sttUrl: merged.macSttUrl }),
+        }),
+      ]);
       if (!llmRes.ok) throw new Error(`LLM config rejected (${llmRes.status})`);
-
-      const sttRes = await fetch("/api/stt/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sttUrl: merged.macSttUrl }),
-      });
       if (!sttRes.ok) throw new Error(`STT config rejected (${sttRes.status})`);
 
       setBanner({ tone: "ok", text: "Saved. New calls route to these endpoints." });
@@ -191,11 +181,11 @@ export default function SettingsPage() {
   }
 
   async function handleTestStt() {
-    setBusy(true);
+    setSttBusy(true);
     setBanner(null);
     try {
       const res = await fetch("/api/stt/health", { cache: "no-store" });
-      const parsed = SttHealthSchema.safeParse(await res.json());
+      const parsed = SttHealthSchema.safeParse((await res.json()) as unknown);
       if (parsed.success && parsed.data.ok) {
         setBanner({ tone: "ok", text: "STT server reachable." });
       } else {
@@ -210,7 +200,7 @@ export default function SettingsPage() {
         text: error instanceof Error ? error.message : "STT health check failed",
       });
     } finally {
-      setBusy(false);
+      setSttBusy(false);
     }
   }
 
@@ -348,7 +338,7 @@ export default function SettingsPage() {
             <Button variant="secondary" onClick={() => void handleTestLlm()} disabled={busy}>
               Test LLM
             </Button>
-            <Button variant="secondary" onClick={() => void handleTestStt()} disabled={busy}>
+            <Button variant="secondary" onClick={() => void handleTestStt()} disabled={sttBusy}>
               Test STT
             </Button>
           </div>
@@ -399,7 +389,7 @@ export default function SettingsPage() {
               onChange={(e) => setTtsRate(parseFloat(e.target.value))}
               disabled={!loaded || ttsBusy}
               aria-label="Speech rate"
-              className="mt-1.5 w-full accent-[var(--color-accent)]"
+              className="accent-accent mt-1.5 w-full"
             />
             <div className="text-muted mt-0.5 flex justify-between text-xs">
               <span>{TTS_RATE_MIN}×</span>
