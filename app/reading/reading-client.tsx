@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import type { Cefr, Content } from "@/lib/db";
+import type { Cefr, Content, Weakness } from "@/lib/db";
 import { PassageSchema, READING_TOPICS } from "@/lib/content/passage";
 import type { PassagePayload } from "@/lib/content/passage";
+import { rankTopicsByWeakness, READING_TOPIC_AFFINITIES } from "@/lib/content/adaptive-selection";
+import { computeWeaknesses } from "@/lib/diagnostics/weakness";
 import { getContentRepository } from "@/lib/registry";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
@@ -37,22 +39,25 @@ export function ReadingClient() {
 
   const [library, setLibrary] = useState<Content[]>([]);
   const [libraryLoaded, setLibraryLoaded] = useState(false);
+  const [weaknesses, setWeaknesses] = useState<Weakness[]>([]);
 
   const inFlight = useRef(false);
 
-  // Load profile level + passage library from Dexie on mount.
+  // Load profile level, passage library, and weakness profile from Dexie on mount.
   useEffect(() => {
     let active = true;
     const repo = getContentRepository();
 
     async function load() {
-      const [profile, passages] = await Promise.all([
+      const [profile, passages, errorEvents] = await Promise.all([
         repo.getProfile(),
         repo.queryContent({ type: "passage" }),
+        repo.queryErrorEvents(),
       ]);
       if (!active) return;
       if (profile?.cefrLevel) setProfileLevel(profile.cefrLevel);
       setLibrary(passages.slice().reverse()); // newest first
+      setWeaknesses(computeWeaknesses(errorEvents, new Date()));
       setLibraryLoaded(true);
     }
 
@@ -67,6 +72,11 @@ export function ReadingClient() {
 
   const effectiveLevel = selectedLevel ?? profileLevel;
   const effectiveTopic = useCustom ? customTopic.trim() : topic;
+
+  // Top-3 topics ranked by the learner's current weakness profile.
+  const suggestedTopics = new Set(
+    rankTopicsByWeakness(READING_TOPICS, weaknesses, READING_TOPIC_AFFINITIES).slice(0, 3),
+  );
 
   async function handleGenerate() {
     if (inFlight.current) return;
@@ -163,13 +173,21 @@ export function ReadingClient() {
                     setUseCustom(false);
                   }}
                   className={cn(
-                    "border-border rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
+                    "border-border relative rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
                     !useCustom && topic === t
                       ? "bg-accent/10 border-accent text-foreground font-medium"
                       : "text-muted hover:text-foreground hover:border-foreground/30",
                   )}
                 >
                   {t}
+                  {weaknesses.length > 0 && suggestedTopics.has(t) && (
+                    <span
+                      data-testid={`suggested-${t.replace(/\s+/g, "-")}`}
+                      className="bg-accent text-accent-foreground absolute -top-1.5 -right-1.5 rounded-full px-1.5 py-0.5 text-[9px] leading-none font-semibold"
+                    >
+                      ★
+                    </span>
+                  )}
                 </button>
               ))}
               <button
