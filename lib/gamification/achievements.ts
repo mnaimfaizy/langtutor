@@ -2,6 +2,8 @@ import type { Achievement, GamificationState } from "@/lib/db";
 
 export interface AchievementDef {
   id: string;
+  /** Short emoji or symbol shown next to the label. */
+  icon: string;
   label: string;
   description: string;
   check: (state: GamificationState) => boolean;
@@ -10,30 +12,35 @@ export interface AchievementDef {
 export const ACHIEVEMENT_DEFS: AchievementDef[] = [
   {
     id: "first_review",
+    icon: "🌱",
     label: "First steps",
     description: "Complete your first review session.",
     check: (s) => s.xp >= 10,
   },
   {
     id: "xp_50",
+    icon: "⚡",
     label: "On a roll",
     description: "Earn 50 XP.",
     check: (s) => s.xp >= 50,
   },
   {
     id: "xp_200",
+    icon: "🔥",
     label: "Getting serious",
     description: "Earn 200 XP.",
     check: (s) => s.xp >= 200,
   },
   {
     id: "streak_3",
+    icon: "📅",
     label: "3-day streak",
     description: "Review cards 3 days in a row.",
     check: (s) => s.streakCount >= 3,
   },
   {
     id: "streak_7",
+    icon: "🏆",
     label: "Week warrior",
     description: "Review cards 7 days in a row.",
     check: (s) => s.streakCount >= 7,

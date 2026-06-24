@@ -3,6 +3,19 @@ export interface StreakUpdate {
   lastActivityDate: string;
 }
 
+/**
+ * Returns a YYYY-MM-DD string for `date` in the **local** calendar timezone.
+ * Use this instead of `date.toISOString().slice(0,10)` to avoid the streak
+ * recording the wrong day for users in UTC− timezones (e.g. a review at
+ * 11 PM EST is midnight UTC, so UTC gives the next calendar day).
+ */
+export function localDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 /** Returns the ISO date string for the day before `date` (YYYY-MM-DD). */
 function dayBefore(date: string): string {
   const d = new Date(date + "T00:00:00Z");

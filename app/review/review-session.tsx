@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 
 import type { Achievement, Card } from "@/lib/db";
-import { applyReview } from "@/lib/gamification";
+import { ACHIEVEMENT_DEFS, applyReview, localDateString } from "@/lib/gamification";
 import { getContentRepository } from "@/lib/registry";
 import { scheduleCard } from "@/lib/srs";
 import type { SrsRating } from "@/lib/srs";
@@ -28,6 +28,8 @@ interface SessionResult {
   newLevel: number;
   newAchievements: Achievement[];
 }
+
+const ACH_DEF_MAP = new Map(ACHIEVEMENT_DEFS.map((d) => [d.id, d]));
 
 const CEFR_COLOR: Record<string, string> = {
   A1: "text-success",
@@ -116,7 +118,7 @@ export function ReviewSession() {
 
       if (currentIndex + 1 >= cards.length) {
         const total = newCounts.again + newCounts.hard + newCounts.good + newCounts.easy;
-        const today = now.toISOString().slice(0, 10);
+        const today = localDateString(now);
         const currentGamState = await repo.getGamification();
         const { newState, xpEarned, newAchievements, leveledUp } = applyReview(currentGamState, {
           cardCount: total,
@@ -228,7 +230,12 @@ export function ReviewSession() {
                       className="text-warning text-sm"
                       variants={achievementItem}
                     >
-                      Achievement unlocked: {a.id.replace(/_/g, " ")}
+                      {(() => {
+                        const def = ACH_DEF_MAP.get(a.id);
+                        return def
+                          ? `${def.icon} ${def.label} unlocked!`
+                          : `Achievement unlocked: ${a.id.replace(/_/g, " ")}`;
+                      })()}
                     </motion.li>
                   ))}
                 </motion.ul>

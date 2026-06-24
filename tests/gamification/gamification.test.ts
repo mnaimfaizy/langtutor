@@ -6,6 +6,7 @@ import {
   XP_PER_CARD,
   applyReview,
   earnXp,
+  localDateString,
   updateStreak,
   xpToLevel,
 } from "@/lib/gamification";
@@ -159,5 +160,70 @@ describe("ACHIEVEMENT_DEFS", () => {
 
   it("all have non-empty labels", () => {
     ACHIEVEMENT_DEFS.forEach((a) => expect(a.label.length).toBeGreaterThan(0));
+  });
+
+  it("all have non-empty icons", () => {
+    ACHIEVEMENT_DEFS.forEach((a) => expect(a.icon.length).toBeGreaterThan(0));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// localDateString — timezone-safe local date formatting
+// ---------------------------------------------------------------------------
+describe("localDateString", () => {
+  it("formats a local date as YYYY-MM-DD", () => {
+    // Use multi-arg constructor so the Date is interpreted in local time.
+    const d = new Date(2025, 5, 1); // June 1, 2025 local
+    expect(localDateString(d)).toBe("2025-06-01");
+  });
+
+  it("pads single-digit month and day with zeros", () => {
+    const d = new Date(2025, 0, 9); // Jan 9, 2025 local
+    expect(localDateString(d)).toBe("2025-01-09");
+  });
+
+  it("handles year boundary (Dec 31)", () => {
+    const d = new Date(2024, 11, 31); // Dec 31, 2024 local
+    expect(localDateString(d)).toBe("2024-12-31");
+  });
+
+  it("handles Jan 1", () => {
+    const d = new Date(2025, 0, 1); // Jan 1, 2025 local
+    expect(localDateString(d)).toBe("2025-01-01");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateStreak — date-edge cases (month/year/leap-year boundaries)
+// ---------------------------------------------------------------------------
+describe("updateStreak — date-edge cases", () => {
+  it("year boundary: Dec 31 → Jan 1 counts as consecutive day", () => {
+    const r = updateStreak("2024-12-31", "2025-01-01", 5);
+    expect(r.streakCount).toBe(6);
+  });
+
+  it("month boundary: Feb 28 → Mar 1 in a non-leap year counts as consecutive", () => {
+    const r = updateStreak("2025-02-28", "2025-03-01", 3);
+    expect(r.streakCount).toBe(4);
+  });
+
+  it("leap year: Feb 29 → Mar 1 counts as consecutive", () => {
+    const r = updateStreak("2024-02-29", "2024-03-01", 2);
+    expect(r.streakCount).toBe(3);
+  });
+
+  it("gap of exactly 2 days resets streak to 1", () => {
+    const r = updateStreak("2025-01-01", "2025-01-03", 10);
+    expect(r.streakCount).toBe(1);
+  });
+
+  it("gap spanning a month boundary resets streak", () => {
+    const r = updateStreak("2025-01-31", "2025-02-02", 4);
+    expect(r.streakCount).toBe(1);
+  });
+
+  it("gap spanning a year boundary resets streak", () => {
+    const r = updateStreak("2024-12-30", "2025-01-01", 7);
+    expect(r.streakCount).toBe(1);
   });
 });
