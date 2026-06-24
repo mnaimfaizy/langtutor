@@ -7,6 +7,18 @@ is never exposed to the browser and stays server-side.
 This guide covers the **whisper.cpp** server, which is the default target. An alternative using
 **faster-whisper** is described at the end.
 
+> **Can I use LM Studio instead of whisper.cpp?**
+> No — not yet (as of mid-2026). LM Studio's OpenAI-compatible API exposes exactly five endpoints
+> (`/v1/models`, `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/responses`).
+> There is no `/v1/audio/transcriptions` or equivalent. You _can_ download Whisper models through
+> LM Studio's UI, but they cannot be loaded for inference
+> ([bug-tracker#1715](https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1715),
+> [lms#320](https://github.com/lmstudio-ai/lms/issues/320)).
+> The `lmstudio.ai/transcribe` page shows "coming soon" with no API preview or timeline.
+> **whisper.cpp must be run as a separate process.** When LM Studio ships STT support, the
+> only required change will be in `lib/transcriber/whisper-transcriber.ts` (one HTTP call) —
+> the rest of the app is insulated by the `Transcriber` seam.
+
 ---
 
 ## How the app talks to Whisper
