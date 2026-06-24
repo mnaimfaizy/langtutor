@@ -11,3 +11,4 @@ export * from "./popover";
 export * from "./tabs";
 export * from "./progress";
 export * from "./tts-button";
+export * from "./skeleton";

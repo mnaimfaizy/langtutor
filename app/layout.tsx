@@ -5,6 +5,7 @@ import { SerwistProvider } from "@serwist/turbopack/react";
 import "./globals.css";
 import { ConnectivityIndicator } from "./connectivity-indicator";
 import { GamificationHud } from "./gamification-hud";
+import { PageTransition } from "./page-transition";
 import { SeedBootstrap } from "./seed-bootstrap";
 import { SettingsBootstrap } from "./settings-bootstrap";
 
@@ -52,7 +53,7 @@ export default function RootLayout({
               </Link>
             </div>
           </header>
-          <div className="flex-1">{children}</div>
+          <PageTransition>{children}</PageTransition>
         </SerwistProvider>
       </body>
     </html>

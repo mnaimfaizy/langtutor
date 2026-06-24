@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 
 import type { Achievement, Card } from "@/lib/db";
 import { applyReview } from "@/lib/gamification";
@@ -9,6 +10,7 @@ import { getContentRepository } from "@/lib/registry";
 import { scheduleCard } from "@/lib/srs";
 import type { SrsRating } from "@/lib/srs";
 import { Button } from "@/ui/button";
+import { Skeleton } from "@/ui/skeleton";
 import { cn } from "@/ui/cn";
 
 type Phase = "loading" | "empty" | "reviewing" | "summary" | "error";
@@ -48,6 +50,19 @@ function ratingColor(r: SrsRating): string {
       return "text-success";
   }
 }
+
+const achievementVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const achievementItem = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+};
 
 export function ReviewSession() {
   const [phase, setPhase] = useState<Phase>("loading");
@@ -127,7 +142,13 @@ export function ReviewSession() {
         data-testid="review-session"
         className="flex flex-1 flex-col items-center justify-center px-6 py-16"
       >
-        <p className="text-muted text-sm">Loading…</p>
+        <div className="w-full max-w-sm space-y-4">
+          <Skeleton className="h-2 w-full" />
+          <div className="border-border rounded-2xl border p-8">
+            <Skeleton className="mx-auto h-8 w-32" />
+            <Skeleton className="mt-8 h-10 w-full" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -160,32 +181,57 @@ export function ReviewSession() {
         data-testid="review-session"
         className="flex flex-1 flex-col items-center justify-center px-6 py-16"
       >
-        <div data-testid="review-summary" className="w-full max-w-sm">
+        <motion.div
+          data-testid="review-summary"
+          className="w-full max-w-sm"
+          initial={{ opacity: 0, scale: 0.94 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+        >
           <h1 className="text-foreground text-center text-3xl font-semibold">Session complete</h1>
           <p className="text-muted mt-2 text-center text-base">{total} cards reviewed</p>
 
           {result && (
             <div className="mt-4 text-center">
-              <p data-testid="summary-xp" className="text-accent text-lg font-semibold">
+              <motion.p
+                data-testid="summary-xp"
+                className="text-accent text-lg font-semibold"
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 14, delay: 0.15 }}
+              >
                 +{result.xpEarned} XP
-              </p>
+              </motion.p>
+
               {result.leveledUp && (
-                <p className="text-success mt-1 text-sm font-medium">
-                  Level up! Now level {result.newLevel}
-                </p>
+                <motion.p
+                  className="text-success mt-1 text-sm font-semibold"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.3 }}
+                >
+                  ★ Level up! Now level {result.newLevel}
+                </motion.p>
               )}
+
               {result.newAchievements.length > 0 && (
-                <ul className="mt-2 space-y-1">
+                <motion.ul
+                  className="mt-2 space-y-1"
+                  variants={achievementVariants}
+                  initial="hidden"
+                  animate="show"
+                >
                   {result.newAchievements.map((a) => (
-                    <li
+                    <motion.li
                       key={a.id}
                       data-testid="summary-new-achievement"
                       className="text-warning text-sm"
+                      variants={achievementItem}
                     >
                       Achievement unlocked: {a.id.replace(/_/g, " ")}
-                    </li>
+                    </motion.li>
                   ))}
-                </ul>
+                </motion.ul>
               )}
             </div>
           )}
@@ -208,7 +254,7 @@ export function ReviewSession() {
               Back to home
             </Button>
           </Link>
-        </div>
+        </motion.div>
       </div>
     );
   }
@@ -264,89 +310,106 @@ export function ReviewSession() {
         </div>
 
         <div className="bg-foreground/10 mb-6 h-1 w-full rounded-full">
-          <div
-            className="bg-accent h-1 rounded-full transition-all duration-300"
-            style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
+          <motion.div
+            className="bg-accent h-1 rounded-full"
+            animate={{ width: `${((currentIndex + 1) / total) * 100}%` }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
           />
         </div>
 
-        <div data-testid="review-card" className="border-border rounded-2xl border p-8">
-          <p
-            data-testid="card-word"
-            className="text-foreground text-center text-3xl font-semibold tracking-tight"
+        {/* Card slides out left and new card enters from right on each advance */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -40 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            {card.word}
-          </p>
-
-          {!revealed ? (
-            <Button
-              data-testid="btn-reveal"
-              variant="secondary"
-              size="lg"
-              className="mt-8 w-full"
-              onClick={() => setRevealed(true)}
-            >
-              Reveal
-            </Button>
-          ) : (
-            <div className="mt-6">
+            <div data-testid="review-card" className="border-border rounded-2xl border p-8">
               <p
-                data-testid="card-definition"
-                className="text-foreground text-center text-base leading-7"
+                data-testid="card-word"
+                className="text-foreground text-center text-3xl font-semibold tracking-tight"
               >
-                {card.definition}
+                {card.word}
               </p>
 
-              {card.examples.length > 0 && (
-                <ul className="mt-4 space-y-1.5">
-                  {card.examples.map((ex, i) => (
-                    <li key={i} className="text-muted text-center text-sm italic">
-                      &ldquo;{ex}&rdquo;
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {!revealed ? (
+                <Button
+                  data-testid="btn-reveal"
+                  variant="secondary"
+                  size="lg"
+                  className="mt-8 w-full"
+                  onClick={() => setRevealed(true)}
+                >
+                  Reveal
+                </Button>
+              ) : (
+                <motion.div
+                  className="mt-6"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                >
+                  <p
+                    data-testid="card-definition"
+                    className="text-foreground text-center text-base leading-7"
+                  >
+                    {card.definition}
+                  </p>
 
-              <div className="mt-8 grid grid-cols-4 gap-2">
-                <Button
-                  data-testid="btn-rate-again"
-                  variant="secondary"
-                  size="sm"
-                  className="text-danger"
-                  onClick={() => void handleRate("again")}
-                >
-                  Again
-                </Button>
-                <Button
-                  data-testid="btn-rate-hard"
-                  variant="secondary"
-                  size="sm"
-                  className="text-warning"
-                  onClick={() => void handleRate("hard")}
-                >
-                  Hard
-                </Button>
-                <Button
-                  data-testid="btn-rate-good"
-                  variant="primary"
-                  size="sm"
-                  onClick={() => void handleRate("good")}
-                >
-                  Good
-                </Button>
-                <Button
-                  data-testid="btn-rate-easy"
-                  variant="secondary"
-                  size="sm"
-                  className="text-success"
-                  onClick={() => void handleRate("easy")}
-                >
-                  Easy
-                </Button>
-              </div>
+                  {card.examples.length > 0 && (
+                    <ul className="mt-4 space-y-1.5">
+                      {card.examples.map((ex, i) => (
+                        <li key={i} className="text-muted text-center text-sm italic">
+                          &ldquo;{ex}&rdquo;
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div className="mt-8 grid grid-cols-4 gap-2">
+                    <Button
+                      data-testid="btn-rate-again"
+                      variant="secondary"
+                      size="sm"
+                      className="text-danger"
+                      onClick={() => void handleRate("again")}
+                    >
+                      Again
+                    </Button>
+                    <Button
+                      data-testid="btn-rate-hard"
+                      variant="secondary"
+                      size="sm"
+                      className="text-warning"
+                      onClick={() => void handleRate("hard")}
+                    >
+                      Hard
+                    </Button>
+                    <Button
+                      data-testid="btn-rate-good"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => void handleRate("good")}
+                    >
+                      Good
+                    </Button>
+                    <Button
+                      data-testid="btn-rate-easy"
+                      variant="secondary"
+                      size="sm"
+                      className="text-success"
+                      onClick={() => void handleRate("easy")}
+                    >
+                      Easy
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
             </div>
-          )}
-        </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
