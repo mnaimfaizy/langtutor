@@ -16,7 +16,10 @@
     "test:e2e": "playwright test",
     "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "data:build-wordnet": "node scripts/build-wordnet.mjs",
-    "data:build-words-cefr": "node scripts/build-words-cefr.mjs"
+    "data:build-words-cefr": "node scripts/build-words-cefr.mjs",
+    "sandcastle": "npx tsx .sandcastle/main.ts",
+    "sandcastle:build": "npx sandcastle docker build-image",
+    "sandcastle:issue": "npx tsx .sandcastle/main.ts --issue"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.51",
@@ -35,6 +38,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@ai-hero/sandcastle": "^0.10.0",
     "@playwright/test": "^1.61.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
