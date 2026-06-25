@@ -7,7 +7,7 @@ import type { Content } from "@/lib/db";
 import { PassageSchema } from "@/lib/content/passage";
 import { createSpeakingErrorEvents } from "@/lib/diagnostics/speaking";
 import { computeWer } from "@/lib/diagnostics/wer";
-import type { WerAlignment, WerResult } from "@/lib/diagnostics/wer";
+import type { WerResult } from "@/lib/diagnostics/wer";
 import { useRecorder } from "@/lib/audio/use-recorder";
 import { getContentRepository } from "@/lib/registry";
 import { TranscribeResponseSchema } from "../transcribe-schema";
@@ -15,85 +15,10 @@ import { CEFR_COLOR } from "@/lib/cefr";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
 import { TtsButton } from "@/ui/tts-button";
+import { WerDisplay } from "@/ui/wer-display";
 
 type LoadPhase = "loading" | "ready" | "notFound" | "error";
 type TranscribeState = "idle" | "loading" | "done" | "mac-unavailable" | "error";
-
-function werColor(wer: number): string {
-  if (wer <= 0.2) return "text-success";
-  if (wer <= 0.5) return "text-warning";
-  return "text-danger";
-}
-
-function AlignmentToken({ token }: { token: WerAlignment }) {
-  if (token.type === "correct") {
-    return <span className="text-foreground">{token.ref}</span>;
-  }
-  if (token.type === "substitution") {
-    return (
-      <span>
-        <s className="text-danger">{token.ref}</s>{" "}
-        <span className="text-warning font-medium">({token.hyp})</span>
-      </span>
-    );
-  }
-  if (token.type === "deletion") {
-    return <span className="bg-danger/10 text-danger rounded px-0.5 text-sm">[{token.ref}]</span>;
-  }
-  return <span className="bg-warning/10 text-warning rounded px-0.5 text-sm">+{token.hyp}</span>;
-}
-
-function WerDisplay({ result }: { result: WerResult }) {
-  const pct = isFinite(result.wer) ? Math.round(result.wer * 100) : 100;
-  return (
-    <div data-testid="wer-result" className="mt-8 space-y-5">
-      <div className="border-border rounded-xl border p-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-muted text-xs font-medium tracking-wider uppercase">
-              Pronunciation score
-            </p>
-            <p
-              data-testid="wer-score"
-              className={cn("mt-1 text-4xl font-bold", werColor(result.wer))}
-            >
-              {100 - pct}
-              <span className="text-muted text-lg font-normal">%</span>
-            </p>
-            <p className="text-muted mt-1 text-xs">accuracy ({pct}% word error rate)</p>
-          </div>
-          <div className="text-right text-sm">
-            <p className="text-muted text-xs font-medium tracking-wider uppercase">Errors</p>
-            <p className="text-foreground mt-1">
-              {result.substitutions}S · {result.deletions}D · {result.insertions}I
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {result.alignment.length > 0 && (
-        <div className="border-border rounded-xl border p-5">
-          <p className="text-foreground mb-3 text-xs font-medium tracking-wider uppercase">
-            Alignment
-          </p>
-          <p className="text-foreground text-sm leading-8">
-            {result.alignment.map((token, i) => (
-              <span key={i}>
-                {i > 0 && " "}
-                <AlignmentToken token={token} />
-              </span>
-            ))}
-          </p>
-          <p className="text-muted mt-3 text-xs">
-            <span className="text-danger">red strikethrough</span> = wrong word (yours in brackets)
-            · <span className="text-danger">[red]</span> = missed word ·{" "}
-            <span className="text-warning">+orange</span> = extra word
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function SpeakingView({ id }: { id: number }) {
   const [phase, setPhase] = useState<LoadPhase>(() =>
@@ -336,7 +261,7 @@ export function SpeakingView({ id }: { id: number }) {
         )}
 
         {/* WER result */}
-        {werResult && <WerDisplay result={werResult} />}
+        {werResult && <WerDisplay result={werResult} scoreLabel="Pronunciation score" />}
       </div>
     </div>
   );
