@@ -59,3 +59,11 @@ next-env.d.ts
 # temp files for local development
 /tmp/
 /temp/
+
+# pnpm store (created when virtual-store-dir is configured locally)
+/.pnpm-store/
+
+# SQLite database (created at runtime by the server)
+*.db
+*.db-shm
+*.db-wal

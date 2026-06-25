@@ -1,0 +1,139 @@
+import {
+  index,
+  integer,
+  primaryKey,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
+
+export const CEFR_VALUES = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
+export const SKILL_VALUES = ["reading", "writing", "listening", "speaking"] as const;
+export const CONTENT_TYPE_VALUES = ["passage", "quiz", "prompt", "lesson"] as const;
+export const CONTENT_SOURCE_VALUES = ["seed", "generated", "agent"] as const;
+
+/** Bootstrap userId before Phase 1b auth lands. Every per-user row is seeded with this. */
+export const BOOTSTRAP_ADMIN_ID = "00000000-0000-0000-0000-000000000001";
+
+// ─── Shared tables (no userId) ────────────────────────────────────────────────
+
+/** Global AI/infra config — one row, admin-editable, seeded from env on first boot. */
+export const appConfig = sqliteTable("app_config", {
+  id: integer("id").primaryKey(),
+  macLlmBaseUrl: text("mac_llm_base_url").notNull(),
+  macLlmModel: text("mac_llm_model").notNull(),
+  macUtilityModel: text("mac_utility_model").notNull(),
+  macEmbedModel: text("mac_embed_model").notNull(),
+  macSttUrl: text("mac_stt_url").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+/** Cached generated/seed content — shared across all learners by type/level/topic. */
+export const content = sqliteTable(
+  "content",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    type: text("type", { enum: CONTENT_TYPE_VALUES }).notNull(),
+    level: text("level", { enum: CEFR_VALUES }).notNull(),
+    topic: text("topic").notNull(),
+    payload: text("payload").notNull(),
+    source: text("source", { enum: CONTENT_SOURCE_VALUES }).notNull(),
+    validatedAt: integer("validated_at", { mode: "timestamp" }).notNull(),
+    embedding: text("embedding"),
+  },
+  (t) => [index("idx_content_type_level").on(t.type, t.level)],
+);
+
+/** Cached dictionary/audio lookups — keyed by lowercased word. */
+export const lexiconCache = sqliteTable("lexicon_cache", {
+  word: text("word").primaryKey(),
+  data: text("data").notNull(),
+  cachedAt: integer("cached_at", { mode: "timestamp" }).notNull(),
+});
+
+// ─── Per-user tables (have userId) ────────────────────────────────────────────
+
+/**
+ * Per-user learner profile. `cefrLevel`/`goals` are set during onboarding.
+ * `settings` holds TTS prefs only — AI/infra config moved to `appConfig`.
+ */
+export const profiles = sqliteTable(
+  "profile",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id").notNull(),
+    cefrLevel: text("cefr_level", { enum: CEFR_VALUES }),
+    goals: text("goals").notNull().default("[]"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    settings: text("settings").notNull().default("{}"),
+  },
+  (t) => [uniqueIndex("idx_profile_user_id").on(t.userId)],
+);
+
+/**
+ * Vocabulary SRS cards. `dueAt` is a denormalized copy of `fsrs.due` so the
+ * "cards due" query can use a B-tree index instead of scanning JSON.
+ */
+export const cards = sqliteTable(
+  "cards",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id").notNull(),
+    word: text("word").notNull(),
+    sense: text("sense"),
+    definition: text("definition").notNull(),
+    examples: text("examples").notNull().default("[]"),
+    cefr: text("cefr", { enum: CEFR_VALUES }).notNull(),
+    fsrs: text("fsrs").notNull(),
+    dueAt: integer("due_at", { mode: "timestamp" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    embedding: text("embedding"),
+  },
+  (t) => [index("idx_cards_user_due").on(t.userId, t.dueAt)],
+);
+
+/** Diagnostics error events — one row per tagged mistake. */
+export const errorEvents = sqliteTable(
+  "error_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id").notNull(),
+    skill: text("skill", { enum: SKILL_VALUES }).notNull(),
+    category: text("category").notNull(),
+    cefr: text("cefr", { enum: CEFR_VALUES }).notNull(),
+    context: text("context").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [index("idx_error_events_skill_cefr").on(t.userId, t.skill, t.cefr)],
+);
+
+/** Derived weakness rollups — compound PK mirrors the Dexie [skill+category+cefr] key. */
+export const weakness = sqliteTable(
+  "weakness",
+  {
+    userId: text("user_id").notNull(),
+    skill: text("skill", { enum: SKILL_VALUES }).notNull(),
+    category: text("category").notNull(),
+    cefr: text("cefr", { enum: CEFR_VALUES }).notNull(),
+    score: real("score").notNull(),
+    confidence: real("confidence").notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.skill, t.category, t.cefr] })],
+);
+
+/** Single-row gamification state per user (XP, streak, achievements). */
+export const gamification = sqliteTable(
+  "gamification",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id").notNull(),
+    xp: integer("xp").notNull().default(0),
+    level: integer("level").notNull().default(1),
+    streakCount: integer("streak_count").notNull().default(0),
+    lastActivityDate: text("last_activity_date"),
+    achievements: text("achievements").notNull().default("[]"),
+  },
+  (t) => [uniqueIndex("idx_gamification_user_id").on(t.userId)],
+);

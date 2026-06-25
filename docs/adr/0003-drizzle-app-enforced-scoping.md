@@ -5,7 +5,7 @@
 ## Context
 
 Local persistence is SQLite; cloud is Supabase (Postgres). We want the cloud move to be
-config-not-code. Supabase offers Row-Level Security (RLS), but making RLS the *primary* mechanism
+config-not-code. Supabase offers Row-Level Security (RLS), but making RLS the _primary_ mechanism
 would diverge the cloud security model from local.
 
 ## Decision

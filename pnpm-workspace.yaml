@@ -5,6 +5,7 @@
 # @swc/core     → native transform used by the Serwist Turbopack integration
 allowBuilds:
   "@swc/core": true
+  better-sqlite3: true
   esbuild: true
   sharp: true
   unrs-resolver: true

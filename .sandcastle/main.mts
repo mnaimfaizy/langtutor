@@ -60,7 +60,10 @@ const HOOKS = {
 /** Run one issue in its own sandbox. In loop mode we merge-to-head so the next
  *  issue's worktree (branched from HEAD) sees the prior issue's committed work —
  *  this is what makes the dependency ordering actually compose. */
-async function runIssue(n: string, branchStrategy: { type: "branch"; branch: string } | { type: "merge-to-head" }) {
+async function runIssue(
+  n: string,
+  branchStrategy: { type: "branch"; branch: string } | { type: "merge-to-head" },
+) {
   return run({
     name: `issue-${n}`,
     sandbox: SANDBOX,
@@ -151,7 +154,9 @@ if (issueArg) {
       .filter((n) => [...deps.get(n)!].every((d) => !remaining.has(d)))
       .sort((a, b) => a - b);
     if (ready.length === 0) {
-      throw new Error(`Dependency cycle (or missing blocker) among issues: ${[...remaining].join(", ")}`);
+      throw new Error(
+        `Dependency cycle (or missing blocker) among issues: ${[...remaining].join(", ")}`,
+      );
     }
     ordered.push(...ready);
     for (const n of ready) remaining.delete(n);
@@ -162,7 +167,9 @@ if (issueArg) {
     const n = ordered[i];
     const blockers = [...deps.get(n)!];
     const title = issues.find((x) => x.number === n)?.title ?? "";
-    console.log(`  ${i + 1}. #${n} ${blockers.length ? `(after ${blockers.map((b) => `#${b}`).join(", ")})` : "(no blockers)"} — ${title}`);
+    console.log(
+      `  ${i + 1}. #${n} ${blockers.length ? `(after ${blockers.map((b) => `#${b}`).join(", ")})` : "(no blockers)"} — ${title}`,
+    );
   }
 
   let failed = 0;
@@ -174,7 +181,9 @@ if (issueArg) {
       console.log(`✓  #${n} — ${commits.length} commit(s) merged via ${branch}`);
     } catch (err) {
       console.error(`✗  #${n} — ${(err as Error).message}`);
-      console.error("Stopping: downstream issues depend on this one. Fix and re-run `pnpm sandcastle`.");
+      console.error(
+        "Stopping: downstream issues depend on this one. Fix and re-run `pnpm sandcastle`.",
+      );
       failed++;
       break;
     }
