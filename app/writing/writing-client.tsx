@@ -10,19 +10,11 @@ import type { PromptPayload } from "@/lib/content/prompt";
 import { rankTopicsByWeakness, WRITING_TOPIC_AFFINITIES } from "@/lib/content/adaptive-selection";
 import { computeWeaknesses } from "@/lib/diagnostics/weakness";
 import { getContentRepository } from "@/lib/registry";
+import { CEFR_COLOR } from "@/lib/cefr";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
 
 const CEFR_LEVELS: Cefr[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
-
-const CEFR_COLOR: Record<Cefr, string> = {
-  A1: "text-success",
-  A2: "text-success",
-  B1: "text-warning",
-  B2: "text-warning",
-  C1: "text-danger",
-  C2: "text-danger",
-};
 
 type GenPhase = "idle" | "generating" | "error";
 

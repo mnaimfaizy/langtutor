@@ -11,21 +11,13 @@ import type { WerAlignment, WerResult } from "@/lib/diagnostics/wer";
 import { useRecorder } from "@/lib/audio/use-recorder";
 import { getContentRepository } from "@/lib/registry";
 import { TranscribeResponseSchema } from "../transcribe-schema";
+import { CEFR_COLOR } from "@/lib/cefr";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
 import { TtsButton } from "@/ui/tts-button";
 
 type LoadPhase = "loading" | "ready" | "notFound" | "error";
 type TranscribeState = "idle" | "loading" | "done" | "mac-unavailable" | "error";
-
-const CEFR_COLOR: Record<string, string> = {
-  A1: "text-success",
-  A2: "text-success",
-  B1: "text-warning",
-  B2: "text-warning",
-  C1: "text-danger",
-  C2: "text-danger",
-};
 
 function werColor(wer: number): string {
   if (wer <= 0.2) return "text-success";

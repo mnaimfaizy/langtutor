@@ -8,16 +8,9 @@ import type { DefineFound } from "@/lib/lexicon/define-response";
 import { getContentRepository } from "@/lib/registry";
 import { Popover, PopoverContent, PopoverInlineTrigger } from "@/ui/popover";
 
-const POS_LABEL: Record<string, string> = { n: "noun", v: "verb", a: "adj", r: "adv" };
+import { CEFR_COLOR } from "@/lib/cefr";
 
-const CEFR_COLOR: Record<string, string> = {
-  A1: "text-success",
-  A2: "text-success",
-  B1: "text-warning",
-  B2: "text-warning",
-  C1: "text-danger",
-  C2: "text-danger",
-};
+const POS_LABEL: Record<string, string> = { n: "noun", v: "verb", a: "adj", r: "adv" };
 
 type LookupState =
   | { status: "idle" }

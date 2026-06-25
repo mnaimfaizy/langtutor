@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Content } from "@/lib/db";
 import { PassageSchema } from "@/lib/content/passage";
 import { getContentRepository } from "@/lib/registry";
+import { CEFR_COLOR } from "@/lib/cefr";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
 import { TtsButton } from "@/ui/tts-button";
@@ -13,15 +14,6 @@ import { ComprehensionQuiz } from "./comprehension-quiz";
 import { WordPopover } from "./word-popover";
 
 type Phase = "loading" | "ready" | "notFound" | "error";
-
-const CEFR_COLOR: Record<string, string> = {
-  A1: "text-success",
-  A2: "text-success",
-  B1: "text-warning",
-  B2: "text-warning",
-  C1: "text-danger",
-  C2: "text-danger",
-};
 
 export function PassageView({ id }: { id: number }) {
   const [phase, setPhase] = useState<Phase>(() => (isNaN(id) || id <= 0 ? "notFound" : "loading"));

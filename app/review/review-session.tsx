@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { Achievement, Card } from "@/lib/db";
 import { ACHIEVEMENT_DEFS, applyReview, localDateString } from "@/lib/gamification";
 import { getContentRepository } from "@/lib/registry";
+import { CEFR_COLOR } from "@/lib/cefr";
 import { scheduleCard } from "@/lib/srs";
 import type { SrsRating } from "@/lib/srs";
 import { Button } from "@/ui/button";
@@ -30,15 +31,6 @@ interface SessionResult {
 }
 
 const ACH_DEF_MAP = new Map(ACHIEVEMENT_DEFS.map((d) => [d.id, d]));
-
-const CEFR_COLOR: Record<string, string> = {
-  A1: "text-success",
-  A2: "text-success",
-  B1: "text-warning",
-  B2: "text-warning",
-  C1: "text-danger",
-  C2: "text-danger",
-};
 
 function ratingColor(r: SrsRating): string {
   switch (r) {

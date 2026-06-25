@@ -3,19 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import type { Cefr, Content } from "@/lib/db";
+import type { Content } from "@/lib/db";
 import { PassageSchema } from "@/lib/content/passage";
 import { getContentRepository } from "@/lib/registry";
+import { CEFR_COLOR } from "@/lib/cefr";
 import { cn } from "@/ui/cn";
-
-const CEFR_COLOR: Record<Cefr, string> = {
-  A1: "text-success",
-  A2: "text-success",
-  B1: "text-warning",
-  B2: "text-warning",
-  C1: "text-danger",
-  C2: "text-danger",
-};
 
 export function SpeakingClient() {
   const [library, setLibrary] = useState<Content[]>([]);

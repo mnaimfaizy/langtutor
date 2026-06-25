@@ -9,6 +9,7 @@ import { createListeningErrorEvents } from "@/lib/diagnostics";
 import { computeWer } from "@/lib/diagnostics/wer";
 import type { WerAlignment, WerResult } from "@/lib/diagnostics/wer";
 import { getContentRepository } from "@/lib/registry";
+import { CEFR_COLOR } from "@/lib/cefr";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
 import { TtsButton } from "@/ui/tts-button";
@@ -16,15 +17,6 @@ import { TtsButton } from "@/ui/tts-button";
 import { ListeningComprehensionQuiz } from "./listening-quiz";
 
 type Phase = "loading" | "ready" | "notFound" | "error";
-
-const CEFR_COLOR: Record<string, string> = {
-  A1: "text-success",
-  A2: "text-success",
-  B1: "text-warning",
-  B2: "text-warning",
-  C1: "text-danger",
-  C2: "text-danger",
-};
 
 function werColor(wer: number): string {
   if (wer <= 0.2) return "text-success";

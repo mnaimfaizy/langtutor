@@ -9,21 +9,13 @@ import type { Correction, FeedbackPayload } from "@/lib/content/feedback";
 import { createWritingErrorEvents } from "@/lib/diagnostics";
 import { PromptSchema } from "@/lib/content/prompt";
 import { getContentRepository } from "@/lib/registry";
+import { CEFR_COLOR } from "@/lib/cefr";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
 import { TtsButton } from "@/ui/tts-button";
 
 type Phase = "loading" | "ready" | "notFound" | "error";
 type SubmitPhase = "idle" | "submitting" | "done" | "error";
-
-const CEFR_COLOR: Record<string, string> = {
-  A1: "text-success",
-  A2: "text-success",
-  B1: "text-warning",
-  B2: "text-warning",
-  C1: "text-danger",
-  C2: "text-danger",
-};
 
 const SCORE_COLOR = (score: number) => {
   if (score >= 8) return "text-success";
