@@ -55,3 +55,7 @@ next-env.d.ts
 
 # graphify — optional local code-graph aid; regenerate on-demand with `graphify .`
 /graphify-out/
+
+# temp files for local development
+/tmp/
+/temp/

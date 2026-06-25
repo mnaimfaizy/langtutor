@@ -2,6 +2,12 @@
 
 > Risks, mitigations, legal notes, explicitly dropped features, and open roadmap items.
 
+> **⚠️ 2026-06 — locked decision #1 is being reversed.** The app is moving to **multi-user, with
+> auth, in both a local (SQLite) and a cloud (Supabase) mode**. This invalidates the single-user
+> threat model below: the **"Accepted security risks"** are no longer accepted and must be fixed
+> (tracked in Phase 1b / Phase 2), and the Supabase/multi-user item under "Explicitly dropped" is
+> back **in scope**. See `tmp/auth-multiuser-plan.md` and `docs/adr/0001`–`0007`.
+
 ## Risks & mitigations
 
 | Risk                                                       | Mitigation                                                                                                     |
