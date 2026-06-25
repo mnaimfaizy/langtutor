@@ -15,7 +15,7 @@ import { cn } from "@/ui/cn";
 import { TtsButton } from "@/ui/tts-button";
 import { WerDisplay } from "@/ui/wer-display";
 
-import { ListeningComprehensionQuiz } from "./listening-quiz";
+import { ComprehensionQuiz } from "@/app/comprehension-quiz";
 
 type Phase = "loading" | "ready" | "notFound" | "error";
 
@@ -196,7 +196,7 @@ export function DictationView({ id }: { id: number }) {
           <p className="text-muted mt-1 text-sm">
             Test how well you understood the passage by answering questions from memory.
           </p>
-          <ListeningComprehensionQuiz title={title} body={body} level={content.level} />
+          <ComprehensionQuiz skill="listening" title={title} body={body} level={content.level} />
         </div>
 
         <div className="mt-10">

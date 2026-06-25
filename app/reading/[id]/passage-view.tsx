@@ -10,7 +10,7 @@ import { CEFR_COLOR } from "@/lib/cefr";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
 import { TtsButton } from "@/ui/tts-button";
-import { ComprehensionQuiz } from "./comprehension-quiz";
+import { ComprehensionQuiz } from "@/app/comprehension-quiz";
 import { WordPopover } from "./word-popover";
 
 type Phase = "loading" | "ready" | "notFound" | "error";
@@ -132,7 +132,9 @@ export function PassageView({ id }: { id: number }) {
           </p>
         </article>
 
-        {parsed.success && <ComprehensionQuiz title={title} body={body} level={content.level} />}
+        {parsed.success && (
+          <ComprehensionQuiz skill="reading" title={title} body={body} level={content.level} />
+        )}
 
         <div className="mt-10">
           <Link href="/reading">

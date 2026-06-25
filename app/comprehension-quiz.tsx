@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ComprehensionQsSchema } from "@/lib/content/comprehension";
 import type { ComprehensionQuestion } from "@/lib/content/comprehension";
 import type { Cefr } from "@/lib/db";
-import { createReadingErrorEvent } from "@/lib/diagnostics";
+import { createListeningComprehensionErrorEvent, createReadingErrorEvent } from "@/lib/diagnostics";
 import { getContentRepository } from "@/lib/registry";
 import { Button } from "@/ui/button";
 
@@ -15,14 +15,18 @@ interface Props {
   title: string;
   body: string;
   level: Cefr;
+  skill: "reading" | "listening";
 }
 
-export function ComprehensionQuiz({ title, body, level }: Props) {
+export function ComprehensionQuiz({ title, body, level, skill }: Props) {
   const [phase, setPhase] = useState<QuizPhase>("idle");
   const [questions, setQuestions] = useState<ComprehensionQuestion[]>([]);
   const [selected, setSelected] = useState<(number | null)[]>([]);
   const [score, setScore] = useState(0);
   const [wrongCount, setWrongCount] = useState(0);
+
+  const p = skill === "listening" ? "listening-" : "";
+  const qp = skill === "listening" ? "lq-" : "";
 
   async function loadQuestions() {
     setPhase("loading");
@@ -57,18 +61,25 @@ export function ComprehensionQuiz({ title, body, level }: Props) {
           correct++;
         } else if (s !== null) {
           wrong++;
-          await repo.addErrorEvent(
-            createReadingErrorEvent({
-              question: q.question,
-              category: q.category,
-              cefr: level,
-              now,
-            }),
-          );
+          const errorEvent =
+            skill === "listening"
+              ? createListeningComprehensionErrorEvent({
+                  question: q.question,
+                  category: q.category,
+                  cefr: level,
+                  now,
+                })
+              : createReadingErrorEvent({
+                  question: q.question,
+                  category: q.category,
+                  cefr: level,
+                  now,
+                });
+          await repo.addErrorEvent(errorEvent);
         }
       }
     } catch {
-      // Partial write failure — show results with however many events were logged.
+      // Partial write failure — show result with however many events were logged.
     }
     setScore(correct);
     setWrongCount(wrong);
@@ -85,7 +96,7 @@ export function ComprehensionQuiz({ title, body, level }: Props) {
 
   if (phase === "idle") {
     return (
-      <div className="mt-8" data-testid="quiz-idle">
+      <div className="mt-8" data-testid={`${p}quiz-idle`}>
         <Button variant="secondary" size="md" onClick={() => void loadQuestions()}>
           Take comprehension quiz
         </Button>
@@ -114,12 +125,12 @@ export function ComprehensionQuiz({ title, body, level }: Props) {
 
   if (phase === "result") {
     return (
-      <div className="mt-8 space-y-4" data-testid="quiz-result">
-        <p className="text-foreground font-semibold" data-testid="quiz-score">
+      <div className="mt-8 space-y-4" data-testid={`${p}quiz-result`}>
+        <p className="text-foreground font-semibold" data-testid={`${p}quiz-score`}>
           {score}/{questions.length} correct
         </p>
         {wrongCount > 0 && (
-          <p className="text-muted text-sm" data-testid="quiz-mistakes">
+          <p className="text-muted text-sm" data-testid={`${p}quiz-mistakes`}>
             {wrongCount} mistake{wrongCount > 1 ? "s" : ""} logged for review.
           </p>
         )}
@@ -151,17 +162,20 @@ export function ComprehensionQuiz({ title, body, level }: Props) {
   // answering phase
   const allAnswered = selected.every((s) => s !== null);
   return (
-    <div className="mt-8 space-y-6" data-testid="quiz-answering">
+    <div className="mt-8 space-y-6" data-testid={`${p}quiz-answering`}>
       {questions.map((q, i) => (
         <div key={i} className="border-border rounded-xl border p-4">
-          <p className="text-foreground mb-3 text-sm font-medium" data-testid={`question-${i}`}>
+          <p
+            className="text-foreground mb-3 text-sm font-medium"
+            data-testid={`${qp}question-${i}`}
+          >
             {q.question}
           </p>
           <ul className="space-y-2">
             {q.options.map((opt, j) => (
               <li key={j}>
                 <button
-                  data-testid={`option-${i}-${j}`}
+                  data-testid={`${qp}option-${i}-${j}`}
                   onClick={() => select(i, j)}
                   className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
                     selected[i] === j
@@ -180,7 +194,7 @@ export function ComprehensionQuiz({ title, body, level }: Props) {
         size="md"
         disabled={!allAnswered}
         onClick={() => void handleSubmit()}
-        data-testid="btn-submit-quiz"
+        data-testid={`btn-submit-${p}quiz`}
       >
         Submit answers
       </Button>
