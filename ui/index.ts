@@ -12,3 +12,4 @@ export * from "./tabs";
 export * from "./progress";
 export * from "./tts-button";
 export * from "./skeleton";
+export * from "./passage-library-client";
