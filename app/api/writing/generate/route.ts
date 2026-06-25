@@ -1,22 +1,7 @@
 import { z } from "zod";
 
-import type {
-  BackupData,
-  Card,
-  Cefr,
-  Content,
-  ErrorEventRecord,
-  GamificationState,
-  LexiconCacheEntry,
-  NewCard,
-  NewContent,
-  NewErrorEvent,
-  Profile,
-  ProfileSettings,
-  Weakness,
-} from "@/lib/db";
-import type { ContentQuery, ContentRepository, ErrorEventQuery } from "@/lib/db";
-import type { ContentValidator, ValidationResult } from "@/lib/content/content-validator";
+import type { Cefr } from "@/lib/db";
+import { NullContentRepository, NullContentValidator } from "@/lib/content/null-adapters";
 import { buildPromptMessages, PromptSchema } from "@/lib/content/prompt";
 import { generateContent } from "@/lib/content/pipeline";
 import { getLLMClient } from "@/lib/llm/server";
@@ -28,91 +13,6 @@ const RequestSchema = z.object({
   topic: z.string().min(1).max(200),
   level: z.enum(["A1", "A2", "B1", "B2", "C1", "C2"] as const satisfies readonly Cefr[]),
 });
-
-// The pipeline requires a ContentRepository to cache the result. On the server there is
-// no Dexie (browser-only); the validated prompt is returned to the client, which caches
-// it in IndexedDB. Only putContent() is ever called by the pipeline.
-class NullContentRepository implements ContentRepository {
-  putContent(_c: NewContent): Promise<number> {
-    return Promise.resolve(0);
-  }
-  getContent(_id: number): Promise<Content | undefined> {
-    return Promise.resolve(undefined);
-  }
-  queryContent(_q?: ContentQuery): Promise<Content[]> {
-    return Promise.resolve([]);
-  }
-  getProfile(): Promise<Profile | undefined> {
-    return Promise.resolve(undefined);
-  }
-  saveProfile(_p: Profile): Promise<void> {
-    return Promise.resolve();
-  }
-  getSettings(): Promise<ProfileSettings> {
-    return Promise.resolve({});
-  }
-  saveSettings(_s: ProfileSettings): Promise<void> {
-    return Promise.resolve();
-  }
-  addCard(_c: NewCard): Promise<number> {
-    return Promise.resolve(0);
-  }
-  getCard(_id: number): Promise<Card | undefined> {
-    return Promise.resolve(undefined);
-  }
-  getAllCards(): Promise<Card[]> {
-    return Promise.resolve([]);
-  }
-  getDueCards(_now: Date): Promise<Card[]> {
-    return Promise.resolve([]);
-  }
-  updateCard(_id: number, _changes: Partial<NewCard>): Promise<void> {
-    return Promise.resolve();
-  }
-  deleteCard(_id: number): Promise<void> {
-    return Promise.resolve();
-  }
-  addErrorEvent(_e: NewErrorEvent): Promise<number> {
-    return Promise.resolve(0);
-  }
-  queryErrorEvents(_q?: ErrorEventQuery): Promise<ErrorEventRecord[]> {
-    return Promise.resolve([]);
-  }
-  getWeaknesses(): Promise<Weakness[]> {
-    return Promise.resolve([]);
-  }
-  putWeakness(_w: Weakness): Promise<void> {
-    return Promise.resolve();
-  }
-  getGamification(): Promise<GamificationState | undefined> {
-    return Promise.resolve(undefined);
-  }
-  saveGamification(_s: GamificationState): Promise<void> {
-    return Promise.resolve();
-  }
-  getLexiconEntry(_word: string): Promise<LexiconCacheEntry | undefined> {
-    return Promise.resolve(undefined);
-  }
-  putLexiconEntry(_e: LexiconCacheEntry): Promise<void> {
-    return Promise.resolve();
-  }
-  clear(): Promise<void> {
-    return Promise.resolve();
-  }
-  exportBackup(): Promise<BackupData> {
-    return Promise.reject(new Error("not supported on server"));
-  }
-  importBackup(_data: BackupData): Promise<void> {
-    return Promise.reject(new Error("not supported on server"));
-  }
-}
-
-// Writing prompts are teacher-voice instructions; CEFR word/grammar gating is not applied.
-class NullContentValidator implements ContentValidator {
-  validate(): ValidationResult {
-    return { ok: true, violations: [] };
-  }
-}
 
 /**
  * `POST /api/writing/generate` — generate a writing prompt.
