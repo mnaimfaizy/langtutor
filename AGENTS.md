@@ -43,6 +43,16 @@ phase history and `docs/decisions.md` for open roadmap items.
 | `node scripts/build-wordnet.mjs`    | Generate `data/wordnet.json` (~40 MB; needs `wordpos` devDep installed)           |
 | `node scripts/build-words-cefr.mjs` | Generate `data/words-cefr.json` (~3 MB; needs internet)                           |
 
+## Optional tooling
+
+- **Graphify** (`graphify .`, `/graphify query|path|explain`) — optional, **per-developer, globally
+  installed** code-graph aid for navigation/comprehension. **Not part of the repo toolchain**: no
+  Python in `package.json`/CI, no git hooks (do **not** run `graphify hook install`). Output dir
+  `graphify-out/` is gitignored and regenerated **on-demand**. It is a **pull-only navigation lead,
+  not a seam and not a source of truth** — never wire `graph.json` into `app/`/`lib/`, and always
+  confirm any graph claim against the actual source (trust AST-`EXTRACTED` edges over LLM-`INFERRED`
+  ones). Run code-only / no cloud API key to keep it $0 and private.
+
 ## Architecture
 
 Full detail in `docs/architecture.md`. Key points:

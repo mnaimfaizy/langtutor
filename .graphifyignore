@@ -1,0 +1,90 @@
+# .graphifyignore — controls what Graphify ingests into the code graph.
+#
+# ┌─ MODE: DOCS-INCLUDED (active) ───────────────────────────────────────────────┐
+# │ Code + project prose (README, docs/, AGENTS.md, CLAUDE.md) are ingested for  │
+# │ rich doc↔code links. Prose semantic extraction runs on your LOCAL Ollama     │
+# │ (OpenAI-compatible) → still $0 and private. Run it like:                     │
+# │   $env:OPENAI_BASE_URL="http://<mac-host>:11434/v1"                          │
+# │   $env:OPENAI_API_KEY="ollama"   # dummy; keeps a misroute failing closed     │
+# │   $env:OPENAI_MODEL="qwen2.5:7b-instruct"                                    │
+# │   graphify . --backend openai                                                │
+# └──────────────────────────────────────────────────────────────────────────────┘
+#
+# To switch to CODE-ONLY (zero LLM calls, no key needed): uncomment the CODE-ONLY
+# block below. (If the doc count won't change after editing, graphify is reusing a
+# cache — rerun with `graphify . --force` or delete graphify-out/ first.)
+#
+# Syntax = .gitignore. Your repo .gitignore is auto-merged, so node_modules, .next,
+# /data/wordnet.json, /graphify-out/, etc. are already excluded — not repeated here.
+#
+# ⚠ NEVER add a `!negation` line — graphify bug #1274: a single `!` disables ALL
+#   directory pruning. Keep this an exclude-only blocklist.
+
+# ===== CODE-ONLY MODE — uncomment this whole block to disable every LLM call =====
+# *.md
+# *.mdx
+# *.txt
+# *.rst
+# docs/
+# =================================================================================
+
+# ----- Excluded in BOTH modes -----
+
+# Images — need a vision model; your Ollama roster has none, so these would fail or
+# fall back to a cloud key. Keep out.
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.svg
+*.ico
+public/
+
+# PDFs / office / spreadsheets — none in this repo; avoid surprise extraction.
+*.pdf
+*.docx
+*.xlsx
+*.pptx
+*.csv
+
+# Audio / video — Whisper transcription; heavy and not architecture.
+*.mp3
+*.wav
+*.m4a
+*.mp4
+*.mov
+*.webm
+
+# Bundled datasets & lockfiles — graph noise, not architecture.
+data/
+*.lock
+pnpm-lock.yaml
+
+# Tooling / harness meta — skill docs & reports describe the toolchain, not the app.
+# (Drop this line if you WANT the .claude/skills/*.md in the graph.)
+.claude/
+coverage/
+test-results/
+playwright-report/
+blob-report/
+
+# Infra / config dotfiles with no code grammar — zero architectural value, and the
+# likely source of the stray "1 doc". Keep excluded in both modes.
+Dockerfile
+Dockerfile.*
+.dockerignore
+.gitattributes
+.prettierignore
+.editorconfig
+.npmrc
+.nvmrc
+.env.example
+*.example
+.graphifyignore
+
+# ----- Optional: drop tests to keep the graph app-focused (tests are local-parsed
+#       code, so this is about NOISE, not LLM cost). Uncomment if cluttered:
+# tests/
+# **/*.test.ts
+# **/*.spec.ts

@@ -52,3 +52,6 @@ next-env.d.ts
 #   node scripts/build-words-cefr.mjs  (~3 MB, needs internet + pnpm install)
 /data/wordnet.json
 /data/words-cefr.json
+
+# graphify — optional local code-graph aid; regenerate on-demand with `graphify .`
+/graphify-out/
