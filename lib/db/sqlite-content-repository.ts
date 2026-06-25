@@ -739,6 +739,7 @@ export class SqliteContentRepository implements ContentRepository {
       this.db
         .insert(errorEventsTable)
         .values({
+          id: ev.id,
           userId: this.userId,
           skill: ev.skill,
           category: ev.category,
