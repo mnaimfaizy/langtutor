@@ -105,6 +105,21 @@ export class LocalAuthProvider implements AuthProvider {
   }
 
   async deleteUser(userId: string): Promise<void> {
+    const target = this.db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, userId))
+      .get();
+    if (target?.role === "admin") {
+      const admins = this.db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, "admin"))
+        .all();
+      if (admins.length <= 1) {
+        throw new Error("Cannot delete the last admin");
+      }
+    }
     this.db.delete(users).where(eq(users.id, userId)).run();
   }
 

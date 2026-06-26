@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
@@ -242,6 +243,18 @@ export default function SettingsPage() {
     <main className="mx-auto w-full max-w-2xl px-6 py-10">
       <h1 className="text-foreground text-2xl font-semibold">Settings</h1>
       <p className="text-muted mt-1 text-sm">Manage your language learning preferences.</p>
+
+      {isAdmin && (
+        <Card className="mt-6">
+          <CardTitle>User management</CardTitle>
+          <CardDescription>Create, list, and delete user accounts.</CardDescription>
+          <CardContent>
+            <Link href="/admin/users" className="text-accent text-sm hover:underline">
+              Manage users →
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {isAdmin && (
         <Card className="mt-6">

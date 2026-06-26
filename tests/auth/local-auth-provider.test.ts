@@ -136,4 +136,38 @@ describe("listUsers / deleteUser", () => {
     const resolved = await provider.getCurrentUser(sessionId);
     expect(resolved).toBeNull();
   });
+
+  it("deleteUser allows deleting a standard user", async () => {
+    await provider.createUser("admin@example.com", "adminPass99", "admin");
+    const standard = await provider.createUser("user@example.com", "userPass99");
+
+    await provider.deleteUser(standard.id);
+
+    const list = await provider.listUsers();
+    expect(list.find((u) => u.id === standard.id)).toBeUndefined();
+  });
+});
+
+describe("last-admin protection", () => {
+  it("prevents deleting the last admin", async () => {
+    const admin = await provider.createUser("admin@example.com", "adminPass99", "admin");
+    await expect(provider.deleteUser(admin.id)).rejects.toThrow("Cannot delete the last admin");
+  });
+
+  it("allows deleting an admin when another admin exists", async () => {
+    const admin1 = await provider.createUser("admin1@example.com", "adminPass99", "admin");
+    const admin2 = await provider.createUser("admin2@example.com", "adminPass99", "admin");
+
+    await provider.deleteUser(admin1.id);
+
+    const list = await provider.listUsers();
+    expect(list.find((u) => u.id === admin1.id)).toBeUndefined();
+    expect(list.find((u) => u.id === admin2.id)).toBeDefined();
+  });
+
+  it("does not block deleting a non-existent user id", async () => {
+    await expect(
+      provider.deleteUser("00000000-0000-0000-0000-000000000099"),
+    ).resolves.toBeUndefined();
+  });
 });
