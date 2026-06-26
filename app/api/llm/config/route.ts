@@ -2,14 +2,10 @@ import { resolveCurrentUser } from "@/lib/auth/resolve-current-user";
 import { setRuntimeOverride } from "@/lib/llm/runtime-config";
 import { LLMOverridesSchema } from "@/lib/llm/settings";
 import { isSameOrigin } from "@/lib/server/origin";
+import { isAllowedProxyTarget } from "@/lib/server/ssrf";
 
 export const dynamic = "force-dynamic";
 
-/**
- * `POST /api/llm/config` — set the server-held LLM override (Mac endpoint + model names)
- * so server-side calls route to the user's chosen Ollama. Requires an admin session.
- * Also origin-guarded to block cross-origin callers.
- */
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
@@ -33,6 +29,10 @@ export async function POST(request: Request) {
       { error: "Invalid request", issues: parsed.error.issues },
       { status: 400 },
     );
+  }
+
+  if (parsed.data.baseURL !== undefined && !isAllowedProxyTarget(parsed.data.baseURL)) {
+    return Response.json({ error: "baseURL must target a local network host" }, { status: 400 });
   }
 
   setRuntimeOverride(parsed.data);

@@ -24,12 +24,13 @@
 
 ## Accepted security risks
 
-These risks are accepted under the **single-user/local/no-auth** threat model. Revisit if the app ever goes multi-user or moves to the cloud.
-
-- **SSRF via user-supplied `baseURL`** (`POST /api/llm/config`, `POST /api/stt/config`): the same-origin guard blocks cross-origin callers; full mitigation (auth + allowlist) deferred to any multi-user/cloud move. URL length capped at 2048 chars.
-- **SSRF via `sttUrl`** in settings: same pattern + accepted-risk comment in route handler.
-- **`GET /api/stt/health` leaks Node fetch error message**: full error surfaces to the single local user; acceptable for debugging.
 - **Server-held runtime config persists until restart**: config override set via `POST /api/llm/config` or `POST /api/stt/config` is in-process memory; a crash clears it. The app re-pushes on next load via `settings-bootstrap.tsx`.
+
+Previously accepted risks — fixed in Phase 1b.6:
+
+- **SSRF via `baseURL`/`sttUrl`**: closed by loopback/LAN allowlist (`lib/server/ssrf.ts`) + admin gate on config routes.
+- **`GET /api/stt/health` error leakage**: error now logged server-side; only a generic status is returned to the caller.
+- **Insecure `LANGTUTOR_SESSION_SECRET` default**: secret is required at boot; insecure placeholder is rejected by Zod.
 
 ## Legal / content note
 

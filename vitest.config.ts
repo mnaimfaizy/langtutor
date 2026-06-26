@@ -16,5 +16,8 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
     include: ["tests/**/*.test.ts"],
+    env: {
+      LANGTUTOR_SESSION_SECRET: "vitest-test-secret-value",
+    },
   },
 });

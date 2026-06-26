@@ -4,8 +4,9 @@ const localConfigSchema = z.object({
   LANGTUTOR_MODE: z.literal("local"),
   /** Path to the SQLite database file. Default: ./langtutor.db */
   LANGTUTOR_DB_PATH: z.string().default("./langtutor.db"),
-  /** Session signing secret — placeholder until auth lands in Phase 1b. */
-  LANGTUTOR_SESSION_SECRET: z.string().default("change-me-in-production"),
+  LANGTUTOR_SESSION_SECRET: z.string().refine((s) => s !== "change-me-in-production", {
+    message: "Insecure placeholder — set LANGTUTOR_SESSION_SECRET to a real secret in .env.local",
+  }),
   MAC_LLM_BASE_URL: z.string().url().default("http://localhost:11434/v1"),
   MAC_LLM_API_KEY: z.string().default("ollama"),
   MAC_LLM_MODEL: z.string().default("qwen2.5:14b-instruct"),

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { resolveCurrentUser } from "@/lib/auth/resolve-current-user";
 import { setRuntimeSttUrl } from "@/lib/transcriber/runtime-config";
 import { isSameOrigin } from "@/lib/server/origin";
+import { isAllowedProxyTarget } from "@/lib/server/ssrf";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +11,6 @@ const SttConfigSchema = z.object({
   sttUrl: z.url().max(2048).optional(),
 });
 
-/**
- * `POST /api/stt/config` — set the server-held STT URL override so transcription calls
- * route to the user's chosen whisper.cpp server. Requires an admin session.
- * Also origin-guarded to block cross-origin callers.
- */
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
@@ -38,6 +34,10 @@ export async function POST(request: Request) {
       { error: "Invalid request", issues: parsed.error.issues },
       { status: 400 },
     );
+  }
+
+  if (parsed.data.sttUrl !== undefined && !isAllowedProxyTarget(parsed.data.sttUrl)) {
+    return Response.json({ error: "sttUrl must target a local network host" }, { status: 400 });
   }
 
   setRuntimeSttUrl(parsed.data.sttUrl);

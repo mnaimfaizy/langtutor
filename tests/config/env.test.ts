@@ -35,7 +35,7 @@ describe("parseEnv — local mode", () => {
   });
 
   it("applies default MAC values when absent", () => {
-    const cfg = parseEnv({});
+    const cfg = parseEnv({ LANGTUTOR_SESSION_SECRET: "a-real-secret-value-here" });
     expect(cfg.MAC_LLM_BASE_URL).toBe("http://localhost:11434/v1");
     expect(cfg.MAC_LLM_MODEL).toBe("qwen2.5:14b-instruct");
     expect(cfg.MAC_UTILITY_MODEL).toBe("qwen2.5:7b-instruct");
@@ -43,9 +43,17 @@ describe("parseEnv — local mode", () => {
     expect(cfg.MAC_STT_URL).toBe("http://localhost:8080");
   });
 
-  it("applies default session secret when absent", () => {
-    const cfg = parseEnv({});
-    expect(cfg.LANGTUTOR_SESSION_SECRET).toBe("change-me-in-production");
+  it("throws when LANGTUTOR_SESSION_SECRET is absent", () => {
+    const { LANGTUTOR_SESSION_SECRET: _, ...withoutSecret } = VALID_LOCAL;
+    expect(() => parseEnv(withoutSecret)).toThrowError(
+      "[LangTutor] Invalid environment configuration:",
+    );
+  });
+
+  it("throws when LANGTUTOR_SESSION_SECRET is the insecure placeholder", () => {
+    expect(() =>
+      parseEnv({ ...VALID_LOCAL, LANGTUTOR_SESSION_SECRET: "change-me-in-production" }),
+    ).toThrowError("[LangTutor] Invalid environment configuration:");
   });
 });
 
