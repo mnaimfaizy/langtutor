@@ -42,7 +42,9 @@ const mockRepo = vi.hoisted(() => ({
   importBackup: vi.fn().mockResolvedValue(undefined),
 }));
 
-const mockResolveCurrentUser = vi.hoisted(() => vi.fn().mockReturnValue("bootstrap-admin"));
+const mockResolveCurrentUser = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ id: "bootstrap-admin", email: "admin@example.com", role: "admin" }),
+);
 
 vi.mock("@/lib/db/drizzle/client", () => ({
   getDrizzleClient: vi.fn().mockReturnValue({}),

@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import path from "node:path";
-import { afterEach, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { SqliteContentRepository } from "@/lib/db/sqlite-content-repository";
 import * as schema from "@/lib/db/drizzle/schema";
@@ -27,4 +27,55 @@ afterEach(() => {
 runContentRepositoryContract((): ContentRepository => {
   const db = drizzle(sqlite, { schema });
   return new SqliteContentRepository(db);
+});
+
+describe("per-user isolation", () => {
+  it("two users see disjoint per-user data but share content and lexiconCache", async () => {
+    const db = drizzle(sqlite, { schema });
+    const repo1 = new SqliteContentRepository(db, "user-aaa");
+    const repo2 = new SqliteContentRepository(db, "user-bbb");
+
+    // Per-user: user1 saves a profile, user2 has none
+    await repo1.saveProfile({ cefrLevel: "A1", goals: [], createdAt: new Date(), settings: {} });
+    expect(await repo1.getProfile()).toBeDefined();
+    expect(await repo2.getProfile()).toBeUndefined();
+
+    // Per-user: user1 adds a card, user2 sees none
+    await repo1.addCard({
+      word: "apple",
+      definition: "a fruit",
+      examples: ["An apple a day."],
+      cefr: "A1",
+      fsrs: {
+        due: new Date(0),
+        stability: 0,
+        difficulty: 0,
+        elapsedDays: 0,
+        scheduledDays: 0,
+        reps: 0,
+        lapses: 0,
+        state: 0,
+      },
+      createdAt: new Date(),
+    });
+    expect(await repo1.getAllCards()).toHaveLength(1);
+    expect(await repo2.getAllCards()).toHaveLength(0);
+
+    // Shared: content written by user1 is readable by user2
+    const contentId = await repo1.putContent({
+      type: "passage",
+      level: "A1",
+      topic: "food",
+      payload: "An apple a day.",
+      source: "seed",
+      validatedAt: new Date(),
+    });
+    expect(await repo1.getContent(contentId)).toBeDefined();
+    expect(await repo2.getContent(contentId)).toBeDefined();
+
+    // Shared: lexicon entry written by user1 is readable by user2
+    await repo1.putLexiconEntry({ word: "apple", data: {}, cachedAt: new Date() });
+    expect(await repo1.getLexiconEntry("apple")).toBeDefined();
+    expect(await repo2.getLexiconEntry("apple")).toBeDefined();
+  });
 });

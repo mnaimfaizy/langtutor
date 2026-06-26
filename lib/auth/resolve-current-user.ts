@@ -1,9 +1,20 @@
-import { BOOTSTRAP_ADMIN_ID } from "@/lib/db/drizzle/schema";
+import "server-only";
+
+import { cookies } from "next/headers";
+
+import type { AuthUser } from "./auth-provider";
+import { getAuthProvider } from "./server";
+
+export const SESSION_COOKIE = "session";
 
 /**
- * Resolves the current user id from the request. Phase 1a stub — always returns the
- * bootstrap admin. Phase 1b will replace this with a real session lookup.
+ * Resolves the current user from the session cookie.
+ * Returns the authenticated {@link AuthUser} for a valid, non-expired session,
+ * or `null` if the cookie is absent or the session is expired/unknown.
  */
-export function resolveCurrentUser(_request?: Request): string {
-  return BOOTSTRAP_ADMIN_ID;
+export async function resolveCurrentUser(): Promise<AuthUser | null> {
+  const jar = await cookies();
+  const sessionId = jar.get(SESSION_COOKIE)?.value;
+  if (!sessionId) return null;
+  return getAuthProvider().getCurrentUser(sessionId);
 }
