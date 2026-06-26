@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { resolveCurrentUser } from "@/lib/auth/resolve-current-user";
 import { setRuntimeSttUrl } from "@/lib/transcriber/runtime-config";
 import { isSameOrigin } from "@/lib/server/origin";
 
@@ -11,16 +12,16 @@ const SttConfigSchema = z.object({
 
 /**
  * `POST /api/stt/config` — set the server-held STT URL override so transcription calls
- * route to the user's chosen whisper.cpp server. Origin-guarded (same single-user /
- * local risk profile as `POST /api/llm/config`).
- *
- * Residual risk (accepted — single-user, local, no-auth): a same-origin script can set
- * an arbitrary URL, causing subsequent transcription/health calls to reach that host.
- * Identical to the accepted SSRF posture of `POST /api/llm/config`; revisit on any
- * multi-user/cloud move.
+ * route to the user's chosen whisper.cpp server. Requires an admin session.
+ * Also origin-guarded to block cross-origin callers.
  */
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const user = await resolveCurrentUser();
+  if (!user || user.role !== "admin") {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
