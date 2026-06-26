@@ -685,7 +685,13 @@ export class SqliteContentRepository implements ContentRepository {
   }
 
   async importBackup(data: BackupData): Promise<void> {
-    await this.clear();
+    // Clear only this user's per-user data. Shared tables (content, lexiconCache) are
+    // merged via upsert below so other users' data is not disturbed.
+    this.db.delete(profilesTable).where(eq(profilesTable.userId, this.userId)).run();
+    this.db.delete(cardsTable).where(eq(cardsTable.userId, this.userId)).run();
+    this.db.delete(errorEventsTable).where(eq(errorEventsTable.userId, this.userId)).run();
+    this.db.delete(weaknessTable).where(eq(weaknessTable.userId, this.userId)).run();
+    this.db.delete(gamificationTable).where(eq(gamificationTable.userId, this.userId)).run();
 
     for (const row of data.tables.profile) {
       this.db
@@ -701,10 +707,10 @@ export class SqliteContentRepository implements ContentRepository {
     }
 
     for (const card of data.tables.cards) {
+      // Omit id — let SQLite auto-assign to avoid PK conflicts with other users' cards.
       this.db
         .insert(cardsTable)
         .values({
-          id: card.id,
           userId: this.userId,
           word: card.word,
           sense: card.sense ?? null,
@@ -732,14 +738,26 @@ export class SqliteContentRepository implements ContentRepository {
           validatedAt: c.validatedAt,
           embedding: c.embedding ? JSON.stringify(c.embedding) : null,
         })
+        .onConflictDoUpdate({
+          target: contentTable.id,
+          set: {
+            type: c.type,
+            level: c.level,
+            topic: c.topic,
+            payload: JSON.stringify(c.payload),
+            source: c.source,
+            validatedAt: c.validatedAt,
+            embedding: c.embedding ? JSON.stringify(c.embedding) : null,
+          },
+        })
         .run();
     }
 
     for (const ev of data.tables.errorEvents) {
+      // Omit id — let SQLite auto-assign to avoid PK conflicts with other users' rows.
       this.db
         .insert(errorEventsTable)
         .values({
-          id: ev.id,
           userId: this.userId,
           skill: ev.skill,
           category: ev.category,
@@ -786,6 +804,13 @@ export class SqliteContentRepository implements ContentRepository {
           word: lex.word,
           data: JSON.stringify(lex.data),
           cachedAt: lex.cachedAt,
+        })
+        .onConflictDoUpdate({
+          target: lexiconCacheTable.word,
+          set: {
+            data: JSON.stringify(lex.data),
+            cachedAt: lex.cachedAt,
+          },
         })
         .run();
     }

@@ -329,7 +329,7 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
       it("round-trips data through export and import", async () => {
         const profile = makeProfile();
         await repo.saveProfile(profile);
-        const cardId = await repo.addCard(makeCard("export-test", "B1"));
+        await repo.addCard(makeCard("export-test", "B1"));
 
         const backup = await repo.exportBackup();
         await repo.clear();
@@ -339,7 +339,9 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
         await repo.importBackup(backup);
 
         expect(await repo.getProfile()).toEqual(profile);
-        expect((await repo.getCard(cardId))?.word).toBe("export-test");
+        const cards = await repo.getAllCards();
+        expect(cards).toHaveLength(1);
+        expect(cards[0].word).toBe("export-test");
       });
     });
   });
