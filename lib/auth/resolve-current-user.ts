@@ -3,9 +3,10 @@ import "server-only";
 import { cookies } from "next/headers";
 
 import type { AuthUser } from "./auth-provider";
+import { SESSION_COOKIE } from "./constants";
 import { getAuthProvider } from "./server";
 
-export const SESSION_COOKIE = "session";
+export { SESSION_COOKIE };
 
 /**
  * Resolves the current user from the session cookie.

@@ -25,4 +25,9 @@ export interface AuthProvider {
   listUsers(): Promise<AuthUser[]>;
   /** Deletes a user and all their sessions. Admin-only by convention. */
   deleteUser(userId: string): Promise<void>;
+  /**
+   * Creates the initial admin with {@link BOOTSTRAP_ADMIN_ID} so pre-existing Phase 1a data
+   * is immediately theirs. Throws if any users already exist.
+   */
+  createBootstrapAdmin(email: string, password: string): Promise<AuthUser>;
 }

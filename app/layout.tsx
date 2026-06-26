@@ -5,6 +5,7 @@ import { SerwistProvider } from "@serwist/turbopack/react";
 import "./globals.css";
 import { ConnectivityIndicator } from "./connectivity-indicator";
 import { GamificationHud } from "./gamification-hud";
+import { HeaderAuth } from "./header-auth";
 import { PageTransition } from "./page-transition";
 import { SeedBootstrap } from "./seed-bootstrap";
 import { SettingsBootstrap } from "./settings-bootstrap";
@@ -51,6 +52,7 @@ export default function RootLayout({
               <Link href="/settings" className="text-muted hover:text-foreground text-sm">
                 Settings
               </Link>
+              <HeaderAuth />
             </div>
           </header>
           <PageTransition>{children}</PageTransition>

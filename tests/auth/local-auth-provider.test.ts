@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import * as schema from "@/lib/db/drizzle/schema";
+import { BOOTSTRAP_ADMIN_ID } from "@/lib/db/drizzle/schema";
 import { LocalAuthProvider } from "@/lib/auth/local-auth-provider";
 
 const MIGRATIONS_FOLDER = path.join(process.cwd(), "drizzle/migrations");
@@ -89,6 +90,26 @@ describe("session lifecycle", () => {
 
     const resolved = await provider.getCurrentUser(sessionId);
     expect(resolved).toBeNull();
+  });
+});
+
+describe("createBootstrapAdmin", () => {
+  it("creates admin with BOOTSTRAP_ADMIN_ID and allows sign-in", async () => {
+    const user = await provider.createBootstrapAdmin("admin@example.com", "adminPass99");
+    expect(user.id).toBe(BOOTSTRAP_ADMIN_ID);
+    expect(user.role).toBe("admin");
+    expect(user.email).toBe("admin@example.com");
+
+    const { sessionId } = await provider.signIn("admin@example.com", "adminPass99");
+    const resolved = await provider.getCurrentUser(sessionId);
+    expect(resolved?.id).toBe(BOOTSTRAP_ADMIN_ID);
+  });
+
+  it("throws if any users already exist", async () => {
+    await provider.createUser("other@example.com", "passWord123");
+    await expect(provider.createBootstrapAdmin("admin@example.com", "adminPass99")).rejects.toThrow(
+      "Bootstrap admin already exists",
+    );
   });
 });
 

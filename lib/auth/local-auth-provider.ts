@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import type { DrizzleClient } from "@/lib/db/drizzle/client";
-import { sessions, users } from "@/lib/db/drizzle/schema";
+import { BOOTSTRAP_ADMIN_ID, sessions, users } from "@/lib/db/drizzle/schema";
 
 import type { AuthProvider, AuthUser, UserRole } from "./auth-provider";
 
@@ -106,5 +106,27 @@ export class LocalAuthProvider implements AuthProvider {
 
   async deleteUser(userId: string): Promise<void> {
     this.db.delete(users).where(eq(users.id, userId)).run();
+  }
+
+  async createBootstrapAdmin(email: string, password: string): Promise<AuthUser> {
+    const existing = this.db.select({ id: users.id }).from(users).limit(1).get();
+    if (existing) throw new Error("Bootstrap admin already exists — users table is not empty");
+
+    const input = createUserSchema.parse({ email, password, role: "admin" });
+    const passwordHash = await hash(input.password);
+    const now = new Date();
+
+    this.db
+      .insert(users)
+      .values({
+        id: BOOTSTRAP_ADMIN_ID,
+        email: input.email,
+        passwordHash,
+        role: "admin",
+        createdAt: now,
+      })
+      .run();
+
+    return { id: BOOTSTRAP_ADMIN_ID, email: input.email, role: "admin" };
   }
 }
