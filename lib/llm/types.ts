@@ -15,6 +15,11 @@ export interface ChatOptions {
   model?: string;
   temperature?: number;
   abortSignal?: AbortSignal;
+  /**
+   * Maximum tokens the model may generate. Defaults to 2048 for structured
+   * output calls to prevent truncated JSON from Ollama's low num_predict default.
+   */
+  maxOutputTokens?: number;
 }
 
 /**

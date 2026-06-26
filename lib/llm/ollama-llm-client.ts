@@ -98,11 +98,13 @@ export class OllamaLLMClient implements LLMClient {
       // Use generateText + manual JSON extraction to avoid response_format:json_object,
       // which local servers (LM Studio, some Ollama builds) do not support.
       // The prompts already instruct the model to output JSON, so text mode is sufficient.
+      // Default maxTokens to 2048 so Ollama's low num_predict default doesn't truncate JSON.
       const { text } = await generateText({
         model,
         system,
         messages: rest,
         temperature: opts.temperature,
+        maxOutputTokens: opts.maxOutputTokens ?? 2048,
         abortSignal: opts.abortSignal,
       });
       return opts.schema.parse(extractJson(text)) as T;
@@ -113,6 +115,7 @@ export class OllamaLLMClient implements LLMClient {
       system,
       messages: rest,
       temperature: opts?.temperature,
+      maxOutputTokens: opts?.maxOutputTokens,
       abortSignal: opts?.abortSignal,
     });
     return text;
