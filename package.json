@@ -17,9 +17,9 @@
     "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "data:build-wordnet": "node scripts/build-wordnet.mjs",
     "data:build-words-cefr": "node scripts/build-words-cefr.mjs",
-    "sandcastle": "npx tsx .sandcastle/main.mts",
+    "sandcastle": "pnpm exec tsx .sandcastle/main.mts",
     "sandcastle:build": "npx sandcastle docker build-image",
-    "sandcastle:issue": "npx tsx .sandcastle/main.mts --issue"
+    "sandcastle:issue": "pnpm exec tsx .sandcastle/main.mts --issue"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.51",
@@ -58,6 +58,7 @@
     "serwist": "^9.5.11",
     "sharp": "^0.35.2",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5",
     "vitest": "^4.1.9",
     "wordpos": "^2.1.0"
