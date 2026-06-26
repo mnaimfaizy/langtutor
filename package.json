@@ -24,6 +24,7 @@
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.51",
     "@base-ui/react": "^1.6.0",
+    "@node-rs/argon2": "^2.0.2",
     "@serwist/turbopack": "^9.5.11",
     "ai": "^6.0.208",
     "better-sqlite3": "^12.11.1",

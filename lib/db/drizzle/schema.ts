@@ -12,9 +12,31 @@ export const CEFR_VALUES = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 export const SKILL_VALUES = ["reading", "writing", "listening", "speaking"] as const;
 export const CONTENT_TYPE_VALUES = ["passage", "quiz", "prompt", "lesson"] as const;
 export const CONTENT_SOURCE_VALUES = ["seed", "generated", "agent"] as const;
+export const USER_ROLE_VALUES = ["admin", "standard"] as const;
 
 /** Bootstrap userId before Phase 1b auth lands. Every per-user row is seeded with this. */
 export const BOOTSTRAP_ADMIN_ID = "00000000-0000-0000-0000-000000000001";
+
+// ─── Auth tables ──────────────────────────────────────────────────────────────
+
+/** Registered users. `role` controls admin-only operations. */
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role", { enum: USER_ROLE_VALUES }).notNull().default("standard"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+/** Server-side sessions — one row per active login. */
+export const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
 
 // ─── Shared tables (no userId) ────────────────────────────────────────────────
 

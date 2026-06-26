@@ -3,7 +3,10 @@
 # unrs-resolver → native module resolver used by eslint-config-next
 # esbuild       → compiles the Serwist service worker (@serwist/turbopack)
 # @swc/core     → native transform used by the Serwist Turbopack integration
+# @node-rs/argon2 → ships pre-built binaries (no source compilation); allowBuilds lets pnpm
+#                   run its post-install copy step that selects the right platform binary.
 allowBuilds:
+  "@node-rs/argon2": true
   "@swc/core": true
   better-sqlite3: true
   esbuild: true
