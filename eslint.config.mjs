@@ -25,6 +25,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Sandcastle runtime dirs (pnpm store, logs, worktrees).
+    ".sandcastle/.pnpm-store/**",
+    ".sandcastle/logs/**",
+    ".sandcastle/worktrees/**",
     // Service worker source (compiled by esbuild, webworker globals) + tooling scripts.
     "app/sw.ts",
     "scripts/**",
