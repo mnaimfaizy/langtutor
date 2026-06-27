@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { ADMIN_EMAIL, ADMIN_PASSWORD } from "./auth.setup";
+import { ADMIN_EMAIL, ADMIN_PASSWORD } from "./auth-constants";
 
 // Run these tests without the global auth storage state so we can test the gate itself.
 test.use({ storageState: { cookies: [], origins: [] } });

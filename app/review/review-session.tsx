@@ -295,7 +295,7 @@ export function ReviewSession() {
     >
       <div className="w-full max-w-sm">
         <div className="text-muted mb-3 flex items-center justify-between text-sm">
-          <span>
+          <span data-testid="review-progress">
             {currentIndex + 1} / {total}
           </span>
           <span

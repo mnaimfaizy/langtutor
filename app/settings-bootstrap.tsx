@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 import { settingsToOverrides } from "@/lib/llm/settings";
 import { getContentRepository } from "@/lib/registry";
@@ -10,7 +11,9 @@ import { getContentRepository } from "@/lib/registry";
  * overrides, so server-side LLM + STT calls honor them after a server restart. Renders nothing.
  */
 export function SettingsBootstrap() {
+  const pathname = usePathname();
   useEffect(() => {
+    if (pathname.startsWith("/login")) return;
     let active = true;
     void getContentRepository()
       .getSettings()
@@ -45,7 +48,7 @@ export function SettingsBootstrap() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [pathname]);
 
   return null;
 }

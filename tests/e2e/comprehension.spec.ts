@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+// Learner data now lives in shared server-side SQLite (not per-context IndexedDB),
+// so state leaks between tests. Reset before each to restore isolation.
+test.beforeEach(async ({ request }) => {
+  await request.post("/api/test/reset");
+});
+
 const MOCK_PASSAGE = {
   title: "A Morning Walk",
   body: "Every morning, Maria goes to the park near her house. She likes walking there.",
@@ -68,26 +74,18 @@ test("wrong answers create errorEvents; correct answers do not", async ({ page }
   await expect(page.getByTestId("quiz-score")).toHaveText("2/3 correct");
   await expect(page.getByTestId("quiz-mistakes")).toHaveText("1 mistake logged for review.");
 
-  // Verify exactly 1 errorEvent stored in IndexedDB
-  const errorCount = await page.evaluate(
-    () =>
-      new Promise<number>((resolve, reject) => {
-        const req = indexedDB.open("lang-tutor");
-        req.onsuccess = () => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains("errorEvents")) {
-            resolve(0);
-            return;
-          }
-          const tx = db.transaction("errorEvents", "readonly");
-          const countReq = tx.objectStore("errorEvents").count();
-          countReq.onsuccess = () => resolve(countReq.result);
-          countReq.onerror = () => reject(new Error("count failed"));
-        };
-        req.onerror = () => reject(new Error("open failed"));
-      }),
-  );
-  expect(errorCount).toBe(1);
+  // Verify exactly 1 errorEvent persisted to SQLite. The mistake is written via
+  // an async server action, so poll until the count settles.
+  await expect
+    .poll(
+      async () => {
+        const res = await page.request.get("/api/test/error-events/count");
+        const body = (await res.json()) as { count: number };
+        return body.count;
+      },
+      { timeout: 5000 },
+    )
+    .toBe(1);
 });
 
 test("all correct answers: score 3/3, no mistakes logged", async ({ page }) => {

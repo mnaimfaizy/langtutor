@@ -3,6 +3,12 @@ import { expect, test } from "@playwright/test";
 
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword
 
+// Each goals test starts from /onboarding (clean profile) and saves a profile.
+// Resetting before each test prevents bleed from other tests or prior runs.
+test.beforeEach(async ({ request }) => {
+  await request.post("/api/test/reset");
+});
+
 async function completeOnboarding(page: Page) {
   await page.goto("/onboarding");
   await page.getByTestId("quiz-start-btn").click();

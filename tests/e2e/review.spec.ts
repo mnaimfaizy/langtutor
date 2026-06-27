@@ -1,6 +1,12 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
+// setupWithSeed() navigates to /onboarding which requires an empty profile.
+// Reset before each test so prior tests' saved profiles don't cause redirects.
+test.beforeEach(async ({ request }) => {
+  await request.post("/api/test/reset");
+});
+
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword
 
 /** Complete onboarding and wait for the seed to be ready. */
@@ -16,8 +22,57 @@ async function setupWithSeed(page: Page) {
   await page.getByTestId("goal-btn-general").click();
   await page.getByTestId("btn-save-goals").click();
   await page.waitForURL("/");
-  // Wait for the seed to be loaded into IndexedDB before navigating to /review
+  // Wait for the seed to be loaded before navigating to /review.
   await expect(page.getByTestId("seed-ready")).toBeVisible({ timeout: 15_000 });
+}
+
+/**
+ * Rates every due card as "good" until the summary appears, returning the count.
+ *
+ * The session uses `AnimatePresence mode="wait"`, so each rating swaps the whole
+ * card subtree, and rating the *last* card has an async gap (gamification write)
+ * during which the card momentarily shows its Reveal button again before the
+ * summary mounts. To stay robust we (a) re-check for the summary after every
+ * step and (b) gate each click on `<control> OR summary` so the final card can
+ * fall through to the summary instead of waiting forever on rate buttons that
+ * will never appear.
+ */
+async function rateAllDueCardsGood(page: Page): Promise<number> {
+  const summary = page.getByTestId("review-summary");
+  const reveal = page.getByTestId("btn-reveal");
+  const rateGood = page.getByTestId("btn-rate-good");
+  const progress = page.getByTestId("review-progress");
+
+  let rated = 0;
+  for (let i = 0; i < 40; i++) {
+    if (await summary.isVisible()) break;
+    await expect(reveal.or(summary)).toBeVisible({ timeout: 10_000 });
+    if (await summary.isVisible()) break;
+
+    // Read the "N / total" position so we can deterministically tell, after
+    // rating, whether the card advanced (position++) or the session ended.
+    const text = (await progress.textContent()) ?? "";
+    const [posStr, totalStr] = text.split("/").map((s) => s.trim());
+    const pos = Number(posStr);
+    const total = Number(totalStr);
+    const isLast = pos >= total;
+
+    await reveal.click();
+    await expect(rateGood).toBeVisible({ timeout: 10_000 });
+    await rateGood.click();
+    rated++;
+
+    if (isLast) {
+      // The last card advances to the summary (after an async gamification
+      // write) rather than to another card — never reveal again here.
+      await expect(summary).toBeVisible({ timeout: 10_000 });
+      break;
+    }
+    // Non-last card: wait for the advance to the next card to settle before
+    // touching the next Reveal button (avoids racing the mode="wait" swap).
+    await expect(progress).toHaveText(`${pos + 1} / ${total}`, { timeout: 10_000 });
+  }
+  return rated;
 }
 
 test("review: smoke test — can reveal a card and rate it", async ({ page }) => {
@@ -56,22 +111,7 @@ test("review: full session updates all card states and reaches summary", async (
 
   await expect(page.getByTestId("review-session")).toBeVisible();
 
-  // Rate every due card as "good". After each rating the component either
-  // shows the next card's front (btn-reveal) or the summary — wait for one
-  // of the two so we don't race against the async IndexedDB write.
-  let rated = 0;
-  while (true) {
-    await page.waitForSelector('[data-testid="btn-reveal"], [data-testid="review-summary"]', {
-      timeout: 10_000,
-    });
-    if ((await page.getByTestId("review-summary").count()) > 0) break;
-
-    await page.getByTestId("btn-reveal").click();
-    await expect(page.getByTestId("card-definition")).toBeVisible();
-    await page.getByTestId("btn-rate-good").click();
-    rated++;
-    if (rated > 30) break; // safety valve
-  }
+  const rated = await rateAllDueCardsGood(page);
 
   expect(rated).toBeGreaterThan(0);
   await expect(page.getByTestId("review-summary")).toBeVisible();
@@ -85,19 +125,8 @@ test("review: empty state when no cards are due", async ({ page }) => {
   await setupWithSeed(page);
   await page.goto("/review");
 
-  // Rate every card to clear the queue
-  let rated = 0;
-  while (true) {
-    await page.waitForSelector('[data-testid="btn-reveal"], [data-testid="review-summary"]', {
-      timeout: 10_000,
-    });
-    if ((await page.getByTestId("review-summary").count()) > 0) break;
-
-    await page.getByTestId("btn-reveal").click();
-    await page.getByTestId("btn-rate-good").click();
-    rated++;
-    if (rated > 30) break;
-  }
+  // Rate every card to clear the queue.
+  await rateAllDueCardsGood(page);
 
   // Return home then come back — all cards are now scheduled for the future
   await page.getByRole("link", { name: "Back to home" }).click();

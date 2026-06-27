@@ -11,6 +11,10 @@ import type { AuthProvider, AuthUser, UserRole } from "./auth-provider";
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
+// Permissive format-only check — accepts BOOTSTRAP_ADMIN_ID (version digit 0) and crypto.randomUUID() output.
+const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidSchema = z.string().regex(UUID_FORMAT, "Invalid ID format");
+
 const signInSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
@@ -26,6 +30,7 @@ export class LocalAuthProvider implements AuthProvider {
   constructor(private readonly db: DrizzleClient) {}
 
   async getCurrentUser(sessionId: string): Promise<AuthUser | null> {
+    if (!uuidSchema.safeParse(sessionId).success) return null;
     const row = this.db
       .select({
         id: users.id,
@@ -74,6 +79,7 @@ export class LocalAuthProvider implements AuthProvider {
   }
 
   async signOut(sessionId: string): Promise<void> {
+    uuidSchema.parse(sessionId);
     this.db.delete(sessions).where(eq(sessions.id, sessionId)).run();
   }
 
@@ -105,6 +111,7 @@ export class LocalAuthProvider implements AuthProvider {
   }
 
   async deleteUser(userId: string): Promise<void> {
+    uuidSchema.parse(userId);
     const target = this.db
       .select({ role: users.role })
       .from(users)

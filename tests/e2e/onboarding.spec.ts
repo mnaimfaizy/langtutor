@@ -2,6 +2,13 @@ import { expect, test } from "@playwright/test";
 
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword
 
+// Each onboarding test requires a profile-free DB so PlacementQuiz shows the
+// quiz rather than redirecting. Reset before each test rather than relying on
+// the global setup's state, because other parallel/prior tests may save a profile.
+test.beforeEach(async ({ request }) => {
+  await request.post("/api/test/reset");
+});
+
 test("placement quiz: completes with all-unknown answers → A1 → proceeds to goals → redirects home", async ({
   page,
 }) => {

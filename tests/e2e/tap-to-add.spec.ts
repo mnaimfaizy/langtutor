@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
 
+// Cards are now shared server-side SQLite (not per-context IndexedDB), so a word
+// added by one test stays in the deck for the next and shows as a duplicate.
+// Reset so each test starts with "park" absent from the deck.
+test.beforeEach(async ({ request }) => {
+  await request.post("/api/test/reset");
+});
+
 const MOCK_PASSAGE = {
   title: "A Morning Walk",
   body: "Every morning, Maria goes to the park near her house. She likes walking there.",

@@ -27,8 +27,11 @@ export async function createUser(
   return getAuthProvider().createUser(input.email, input.password, input.role);
 }
 
+// Looser than z.string().uuid() so it accepts BOOTSTRAP_ADMIN_ID (version digit 0).
+const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function deleteUser(userId: string): Promise<void> {
   await requireAdmin();
-  z.string().uuid("Invalid user ID").parse(userId);
+  z.string().regex(UUID_FORMAT, "Invalid user ID").parse(userId);
   await getAuthProvider().deleteUser(userId);
 }

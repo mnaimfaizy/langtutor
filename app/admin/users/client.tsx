@@ -3,7 +3,20 @@
 import { useState } from "react";
 
 import type { AuthUser, UserRole } from "@/lib/auth/auth-provider";
-import { Button, Card, CardContent, CardDescription, CardTitle, Input, cn } from "@/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardTitle,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  Input,
+  cn,
+} from "@/ui";
 
 import { createUser, deleteUser } from "./actions";
 
@@ -18,6 +31,7 @@ export function UsersClient({ initialUsers }: { initialUsers: AuthUser[] }) {
   const [createBanner, setCreateBanner] = useState<Banner>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteBanner, setDeleteBanner] = useState<Banner>(null);
+  const [confirmTarget, setConfirmTarget] = useState<AuthUser | null>(null);
 
   async function handleCreate() {
     setCreating(true);
@@ -42,14 +56,15 @@ export function UsersClient({ initialUsers }: { initialUsers: AuthUser[] }) {
   async function handleDelete(userId: string) {
     setDeletingId(userId);
     setDeleteBanner(null);
+    setConfirmTarget(null);
     try {
       await deleteUser(userId);
       setUsers((prev) => prev.filter((u) => u.id !== userId));
     } catch (err) {
-      setDeleteBanner({
-        tone: "error",
-        text: err instanceof Error ? err.message : "Delete failed",
-      });
+      const raw = err instanceof Error ? err.message : "";
+      // Guard against ZodError JSON or other non-human strings leaking into the UI.
+      const safe = raw && raw.length < 200 && !raw.startsWith("[") ? raw : "Delete failed.";
+      setDeleteBanner({ tone: "error", text: safe });
     } finally {
       setDeletingId(null);
     }
@@ -97,7 +112,7 @@ export function UsersClient({ initialUsers }: { initialUsers: AuthUser[] }) {
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => void handleDelete(u.id)}
+                    onClick={() => setConfirmTarget(u)}
                     disabled={deletingId === u.id}
                     aria-label={`Delete ${u.email}`}
                   >
@@ -109,6 +124,32 @@ export function UsersClient({ initialUsers }: { initialUsers: AuthUser[] }) {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={confirmTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogTitle>Delete user?</DialogTitle>
+          <DialogDescription>
+            <strong className="text-foreground">{confirmTarget?.email}</strong> will be permanently
+            removed and will no longer be able to sign in. This cannot be undone.
+          </DialogDescription>
+          <div className="mt-5 flex justify-end gap-3">
+            <DialogClose>Cancel</DialogClose>
+            <Button
+              variant="secondary"
+              onClick={() => confirmTarget && void handleDelete(confirmTarget.id)}
+              disabled={deletingId !== null}
+              className="bg-danger/10 text-danger hover:bg-danger/20 border-danger/30"
+            >
+              {deletingId ? "Deleting…" : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Card className="mt-6">
         <CardTitle>Create user</CardTitle>

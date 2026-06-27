@@ -48,15 +48,20 @@ export async function GET(request: Request) {
 
   try {
     const lexicon = getLexiconProvider();
-    const [senses, cefr, { phonetic, audioUrl }] = await Promise.all([
-      lexicon.define(word),
-      lexicon.cefrLevel(word),
-      fetchPhoneticAndAudio(word),
-    ]);
 
+    // Check WordNet first — skip the external phonetic/audio API for words that
+    // aren't in the lexicon (the "found: false" path). This prevents the route
+    // from hanging when dictionaryapi.dev is slow or unreachable, which would
+    // cause the research-word test's 5 s assertion to time out.
+    const senses = await lexicon.define(word);
     if (senses.length === 0) {
       return Response.json({ found: false, word });
     }
+
+    const [cefr, { phonetic, audioUrl }] = await Promise.all([
+      lexicon.cefrLevel(word),
+      fetchPhoneticAndAudio(word),
+    ]);
 
     const first = senses[0]!;
     return Response.json({

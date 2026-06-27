@@ -6,6 +6,7 @@ import "./globals.css";
 import { ConnectivityIndicator } from "./connectivity-indicator";
 import { GamificationHud } from "./gamification-hud";
 import { HeaderAuth } from "./header-auth";
+import { MotionProvider } from "./motion-provider";
 import { PageTransition } from "./page-transition";
 import { SeedBootstrap } from "./seed-bootstrap";
 import { SettingsBootstrap } from "./settings-bootstrap";
@@ -40,22 +41,24 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <SerwistProvider swUrl="/serwist/sw.js">
-          <SettingsBootstrap />
-          <SeedBootstrap />
-          <header className="border-border bg-card/50 sticky top-0 z-10 flex items-center justify-between gap-4 border-b px-6 py-3 backdrop-blur">
-            <Link href="/" className="text-foreground text-sm font-semibold">
-              Lang-Tutor
-            </Link>
-            <div className="flex items-center gap-4">
-              <GamificationHud />
-              <ConnectivityIndicator />
-              <Link href="/settings" className="text-muted hover:text-foreground text-sm">
-                Settings
+          <MotionProvider>
+            <SettingsBootstrap />
+            <SeedBootstrap />
+            <header className="border-border bg-card/50 sticky top-0 z-10 flex items-center justify-between gap-4 border-b px-6 py-3 backdrop-blur">
+              <Link href="/" className="text-foreground text-sm font-semibold">
+                Lang-Tutor
               </Link>
-              <HeaderAuth />
-            </div>
-          </header>
-          <PageTransition>{children}</PageTransition>
+              <div className="flex items-center gap-4">
+                <GamificationHud />
+                <ConnectivityIndicator />
+                <Link href="/settings" className="text-muted hover:text-foreground text-sm">
+                  Settings
+                </Link>
+                <HeaderAuth />
+              </div>
+            </header>
+            <PageTransition>{children}</PageTransition>
+          </MotionProvider>
         </SerwistProvider>
       </body>
     </html>

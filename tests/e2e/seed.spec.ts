@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
 
+// Reset before each test so accumulated cards from prior spec files (which call
+// reset+seed in their own beforeEach hooks) don't bleed into the count check.
+// The reset removes all cards; SeedBootstrap re-seeds exactly 20 on goto("/").
+test.beforeEach(async ({ request }) => {
+  await request.post("/api/test/reset");
+});
+
 /**
  * Phase 1.8 + 4.1 acceptance test — offline first-run seed.
  *

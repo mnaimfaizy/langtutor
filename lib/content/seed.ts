@@ -485,6 +485,12 @@ const SEED_PROMPTS: NewContent[] = [
 
 // ── loader ────────────────────────────────────────────────────────────────────
 
+// Module-level promise used as a mutex. If multiple concurrent callers (e.g.
+// SeedBootstrap firing on rapid route changes during test warmup) all see an
+// empty DB at the same time, only the first actually seeds; the rest await the
+// same promise and return once seeding is done.
+let _seedingPromise: Promise<void> | null = null;
+
 /**
  * Imports seed passages, prompts, and cards into @repo on first run.
  *
@@ -497,6 +503,17 @@ const SEED_PROMPTS: NewContent[] = [
  * server.
  */
 export async function loadSeedIfEmpty(repo: ContentRepository): Promise<void> {
+  if (_seedingPromise) {
+    await _seedingPromise;
+    return;
+  }
+  _seedingPromise = _doSeed(repo).finally(() => {
+    _seedingPromise = null;
+  });
+  await _seedingPromise;
+}
+
+async function _doSeed(repo: ContentRepository): Promise<void> {
   const [seedPassages, seedPrompts, allCards] = await Promise.all([
     repo.queryContent({ type: "passage", source: "seed" }),
     repo.queryContent({ type: "prompt", source: "seed" }),

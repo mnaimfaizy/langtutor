@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 import { getContentRepository } from "@/lib/registry";
 import { loadSeedIfEmpty } from "@/lib/content/seed";
@@ -17,9 +18,11 @@ interface SeedStatus {
  * indicator. The `data-testid="seed-ready"` attribute is used by the e2e suite.
  */
 export function SeedBootstrap() {
+  const pathname = usePathname();
   const [status, setStatus] = useState<SeedStatus | null>(null);
 
   useEffect(() => {
+    if (pathname.startsWith("/login")) return;
     let active = true;
     const repo = getContentRepository();
 
@@ -41,7 +44,7 @@ export function SeedBootstrap() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [pathname]);
 
   if (!status) return null;
 

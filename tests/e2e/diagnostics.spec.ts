@@ -1,9 +1,15 @@
 import { expect, test } from "@playwright/test";
 
+// errorEvents are now shared server-side SQLite (not per-context IndexedDB), so
+// mistakes logged by earlier specs persist. Reset so the empty state is real.
+test.beforeEach(async ({ request }) => {
+  await request.post("/api/test/reset");
+});
+
 test("diagnostics: page renders heading and empty state on fresh install", async ({ page }) => {
   await page.goto("/diagnostics");
   await expect(page.getByRole("heading", { name: "Diagnostics", level: 1 })).toBeVisible();
-  // Fresh browser context has no error events, so empty state is shown.
+  // No error events after reset, so the empty state is shown.
   await expect(page.getByTestId("diagnostics-empty")).toBeVisible({ timeout: 10_000 });
 });
 

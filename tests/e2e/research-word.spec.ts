@@ -10,6 +10,13 @@
 
 import { expect, test } from "@playwright/test";
 
+// The lexicon cache is now global server-side SQLite (not per-context IndexedDB):
+// a word researched by one test stays cached for the next, hiding the Research
+// button. Reset clears lexicon_cache so each test starts with zorblax unknown.
+test.beforeEach(async ({ request }) => {
+  await request.post("/api/test/reset");
+});
+
 // "zorblax" is a nonsense word absent from all dictionaries — guaranteed not-found.
 const RESEARCH_WORD = "zorblax";
 
@@ -62,11 +69,11 @@ test("not-found word: Research button → agent → definition shown → cached"
 
   // Open nonsense word popover — real API returns not-found, so Research button appears.
   await page.getByTestId("word-btn").filter({ hasText: RESEARCH_WORD }).first().click();
-  await expect(page.getByTestId("btn-research")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByTestId("btn-research")).toBeVisible({ timeout: 10_000 });
 
   // Click Research — mocked agent returns a definition.
   await page.getByTestId("btn-research").click();
-  await expect(page.getByText(MOCK_DEFINITION.definition)).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText(MOCK_DEFINITION.definition)).toBeVisible({ timeout: 10_000 });
   expect(agentCalls).toBe(1);
 
   // Navigate away, swap agent mock to 502, come back — cache hit should serve definition.
@@ -105,7 +112,7 @@ test("Mac offline → graceful unavailable message", async ({ page }) => {
 
   // Nonsense word → real API returns not-found → Research button appears.
   await page.getByTestId("word-btn").filter({ hasText: RESEARCH_WORD }).first().click();
-  await expect(page.getByTestId("btn-research")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByTestId("btn-research")).toBeVisible({ timeout: 10_000 });
 
   // Click Research — agent returns 502 (Mac offline).
   await page.getByTestId("btn-research").click();
