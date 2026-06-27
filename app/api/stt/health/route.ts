@@ -12,9 +12,9 @@ export async function GET() {
       return Response.json({ ok: true });
     }
     console.error(`[stt/health] probe returned HTTP ${res.status}`);
-    return Response.json({ ok: false, error: "Service unavailable" });
+    return Response.json({ ok: false, error: "Service unavailable" }, { status: 503 });
   } catch (error) {
     console.error("[stt/health] probe failed:", error);
-    return Response.json({ ok: false, error: "Service unavailable" });
+    return Response.json({ ok: false, error: "Service unavailable" }, { status: 503 });
   }
 }
