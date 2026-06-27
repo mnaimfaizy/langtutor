@@ -7,6 +7,7 @@ import { ConnectivityIndicator } from "./connectivity-indicator";
 import { GamificationHud } from "./gamification-hud";
 import { HeaderAuth } from "./header-auth";
 import { MotionProvider } from "./motion-provider";
+import { PWAInstallButton } from "./pwa-install-button";
 import { PageTransition } from "./page-transition";
 import { SeedBootstrap } from "./seed-bootstrap";
 import { SettingsBootstrap } from "./settings-bootstrap";
@@ -51,6 +52,7 @@ export default function RootLayout({
               <div className="flex items-center gap-4">
                 <GamificationHud />
                 <ConnectivityIndicator />
+                <PWAInstallButton />
                 <Link href="/settings" className="text-muted hover:text-foreground text-sm">
                   Settings
                 </Link>
