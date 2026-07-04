@@ -1,4 +1,5 @@
 import { loadSeedIfEmpty } from "@/lib/content/seed";
+import { env } from "@/lib/config/env";
 import { getDrizzleClient } from "@/lib/db/drizzle/client";
 import {
   cards,
@@ -9,6 +10,16 @@ import {
   profiles,
   weakness,
 } from "@/lib/db/drizzle/schema";
+import {
+  cards as postgresCards,
+  content as postgresContent,
+  errorEvents as postgresErrorEvents,
+  gamification as postgresGamification,
+  lexiconCache as postgresLexiconCache,
+  profiles as postgresProfiles,
+  weakness as postgresWeakness,
+} from "@/lib/db/drizzle/schema.postgres";
+import { getPostgresDrizzleClient } from "@/lib/db/drizzle/postgres-client";
 import { getServerContentRepository } from "@/lib/db/server";
 
 /**
@@ -41,15 +52,28 @@ export async function POST() {
   // requireUser() (inside getServerContentRepository) authenticates the caller
   // and scopes re-seeded cards to that user.
   const repo = await getServerContentRepository();
-  const db = getDrizzleClient();
 
-  db.delete(profiles).run();
-  db.delete(cards).run();
-  db.delete(errorEvents).run();
-  db.delete(gamification).run();
-  db.delete(weakness).run();
-  db.delete(lexiconCache).run();
-  db.delete(content).run();
+  if (env.LANGTUTOR_MODE === "cloud") {
+    const db = await getPostgresDrizzleClient();
+
+    await db.delete(postgresProfiles);
+    await db.delete(postgresCards);
+    await db.delete(postgresErrorEvents);
+    await db.delete(postgresGamification);
+    await db.delete(postgresWeakness);
+    await db.delete(postgresLexiconCache);
+    await db.delete(postgresContent);
+  } else {
+    const db = getDrizzleClient();
+
+    db.delete(profiles).run();
+    db.delete(cards).run();
+    db.delete(errorEvents).run();
+    db.delete(gamification).run();
+    db.delete(weakness).run();
+    db.delete(lexiconCache).run();
+    db.delete(content).run();
+  }
 
   // Restore the canonical seed (passages, prompts, cards). Synchronous under
   // better-sqlite3, so the next page load's SeedBootstrap finds a full deck.
