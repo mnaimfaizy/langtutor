@@ -45,3 +45,4 @@ Off the main flow entirely.
 
 - **`/diagnosing-bugs`** — structured 6-phase debug loop for hard bugs and performance regressions.
 - **`/resolving-merge-conflicts`** — structured approach to in-progress git merge/rebase conflicts.
+- **`/handoff`** — compact the current conversation into a handoff document so a fresh agent can continue.

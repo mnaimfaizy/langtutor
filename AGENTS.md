@@ -110,6 +110,7 @@ Not sure which skill to use? Start with **`/ask-matt`**.
 - **`triage`** — Move GitHub issues through triage roles; write agent-ready briefs.
 - **`diagnosing-bugs`** — Structured 6-phase debug loop for hard bugs and regressions.
 - **`resolving-merge-conflicts`** — Structured approach to git merge/rebase conflicts.
+- **`handoff`** — Compact the current conversation into a handoff document for the next session/agent.
 
 **Project-specific:**
 

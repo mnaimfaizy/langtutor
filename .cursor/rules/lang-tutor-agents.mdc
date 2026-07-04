@@ -1,0 +1,17 @@
+---
+description: "Lang-Tutor assistant baseline: follow AGENTS.md/CLAUDE.md and use .claude skills."
+alwaysApply: true
+---
+
+Read `AGENTS.md` first for canonical architecture, hard rules, and delivery workflow.
+
+Read `CLAUDE.md` second for skill routing and close-out steps.
+
+Use repository skills from `.claude/skills/` for task-specific workflows. If unsure, start with `ask-matt`.
+
+Use `handoff` to produce a compact handoff document when context needs to be transferred to a new session/agent.
+
+Do not bypass hard rules in `AGENTS.md`, especially:
+- no browser/client direct calls to the Mac
+- seam interface discipline and composition-root wiring
+- Zod-parse external/LLM outputs before use

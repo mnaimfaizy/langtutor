@@ -24,6 +24,7 @@ Not sure which to use? Invoke **`/ask-matt`** — it routes to the right skill f
 | `triage`                        | Working through incoming GitHub issues                |
 | `diagnosing-bugs`               | Hard bug or performance regression                    |
 | `resolving-merge-conflicts`     | In-progress git merge/rebase conflict                 |
+| `handoff`                       | Handing context to the next session/agent             |
 | `seam-discipline`               | Touching the Mac/LLM, lexicon, DB, validation, or STT |
 | `stack-conventions`             | Writing or reviewing app, UI, or `lib/` code          |
 
