@@ -50,6 +50,19 @@ function getAgent() {
 
 const AGENT = getAgent();
 
+function ensureWindowsGitLongPaths() {
+  if (process.platform !== "win32") return;
+  try {
+    // `git worktree remove` can fail on Windows when long paths are disabled.
+    execSync("git config core.longpaths true", { stdio: "ignore" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Warning: failed to set git core.longpaths=true (${message})`);
+  }
+}
+
+ensureWindowsGitLongPaths();
+
 const HOOKS = {
   host: {
     // Stub .env.local so tsc/build don't require real Mac services in the sandbox.
