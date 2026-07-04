@@ -1,10 +1,11 @@
-import { run, claudeCode } from "@ai-hero/sandcastle";
+import { run, claudeCode, cursor, copilot } from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { mkdirSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 // Usage:
-//   pnpm sandcastle              — loop through ALL open "sandcastle"-labelled issues
+//   pnpm sandcastle [--agent claude|cursor|copilot]
+//                                  loop through ALL open "sandcastle"-labelled issues
 //                                  in DEPENDENCY ORDER (topological sort of each issue's
 //                                  "## Blocked by" section), one at a time, merge-to-head.
 //   pnpm sandcastle:issue 2      — target a single issue
@@ -26,7 +27,23 @@ const SANDBOX = docker({
     },
   ],
 });
-const AGENT = claudeCode("claude-sonnet-4-6");
+
+function getAgent() {
+  const agentFlag = process.argv.indexOf("--agent");
+  const agentStr = agentFlag !== -1 ? process.argv[agentFlag + 1] : "claude";
+
+  switch (agentStr) {
+    case "cursor":
+      return cursor("composer-2");
+    case "copilot":
+      return copilot("claude-sonnet-4.5");
+    case "claude":
+    default:
+      return claudeCode("claude-sonnet-4-6");
+  }
+}
+
+const AGENT = getAgent();
 
 const HOOKS = {
   host: {
