@@ -21,6 +21,10 @@ let _client: DrizzleClient | null = null;
 export function getDrizzleClient(): DrizzleClient {
   if (_client) return _client;
 
+  if (env.LANGTUTOR_MODE !== "local") {
+    throw new Error("getDrizzleClient() is only available when LANGTUTOR_MODE=local");
+  }
+
   const sqlite = new Database(env.LANGTUTOR_DB_PATH);
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");

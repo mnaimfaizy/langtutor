@@ -1,24 +1,46 @@
 import { z } from "zod";
 
-const localConfigSchema = z.object({
-  LANGTUTOR_MODE: z.literal("local"),
-  /** Path to the SQLite database file. Default: ./langtutor.db */
-  LANGTUTOR_DB_PATH: z.string().default("./langtutor.db"),
-  LANGTUTOR_SESSION_SECRET: z.string().refine((s) => s !== "change-me-in-production", {
-    message: "Insecure placeholder — set LANGTUTOR_SESSION_SECRET to a real secret in .env.local",
-  }),
+const sessionSecretSchema = z.string().refine((s) => s !== "change-me-in-production", {
+  message: "Insecure placeholder — set LANGTUTOR_SESSION_SECRET to a real secret in .env.local",
+});
+
+const macConfigFields = {
   MAC_LLM_BASE_URL: z.string().url().default("http://localhost:11434/v1"),
   MAC_LLM_API_KEY: z.string().default("ollama"),
   MAC_LLM_MODEL: z.string().default("qwen2.5:14b-instruct"),
   MAC_UTILITY_MODEL: z.string().default("qwen2.5:7b-instruct"),
   MAC_EMBED_MODEL: z.string().default("nomic-embed-text"),
   MAC_STT_URL: z.string().url().default("http://localhost:8080"),
+};
+
+const localConfigSchema = z.object({
+  LANGTUTOR_MODE: z.literal("local"),
+  /** Path to the SQLite database file. Default: ./langtutor.db */
+  LANGTUTOR_DB_PATH: z.string().default("./langtutor.db"),
+  LANGTUTOR_SESSION_SECRET: sessionSecretSchema,
+  ...macConfigFields,
+});
+
+const cloudConfigSchema = z.object({
+  LANGTUTOR_MODE: z.literal("cloud"),
+  DATABASE_URL: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  LANGTUTOR_ADMIN_EMAIL: z.string().email(),
+  LANGTUTOR_ADMIN_PASSWORD: z.string().min(8),
+  LANGTUTOR_SESSION_SECRET: sessionSecretSchema,
+  ...macConfigFields,
 });
 
 export type LocalConfig = z.infer<typeof localConfigSchema>;
-export type AppEnv = LocalConfig;
+export type CloudConfig = z.infer<typeof cloudConfigSchema>;
+export type AppEnv = LocalConfig | CloudConfig;
 
-export const appEnvSchema = z.discriminatedUnion("LANGTUTOR_MODE", [localConfigSchema]);
+export const appEnvSchema = z.discriminatedUnion("LANGTUTOR_MODE", [
+  localConfigSchema,
+  cloudConfigSchema,
+]);
 
 /**
  * Parse and validate the environment. Accepts an explicit env map (for tests); defaults

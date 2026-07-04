@@ -1,22 +1,27 @@
 import {
+  doublePrecision,
   index,
   integer,
+  pgTable,
   primaryKey,
-  real,
-  sqliteTable,
+  serial,
   text,
+  timestamp,
   uniqueIndex,
-} from "drizzle-orm/sqlite-core";
+  uuid,
+} from "drizzle-orm/pg-core";
 
-export {
-  BOOTSTRAP_ADMIN_ID,
+import {
   CEFR_VALUES,
   CONTENT_SOURCE_VALUES,
   CONTENT_TYPE_VALUES,
   SKILL_VALUES,
   USER_ROLE_VALUES,
 } from "./schema.shared";
-import {
+
+// Re-export shared constants so cloud code can import from one place.
+export {
+  BOOTSTRAP_ADMIN_ID,
   CEFR_VALUES,
   CONTENT_SOURCE_VALUES,
   CONTENT_TYPE_VALUES,
@@ -26,138 +31,116 @@ import {
 
 // ─── Auth tables ──────────────────────────────────────────────────────────────
 
-/** Registered users. `role` controls admin-only operations. */
-export const users = sqliteTable("users", {
-  id: text("id").primaryKey(),
+/**
+ * App user metadata. Passwords live in Supabase Auth (`auth.users`); this table
+ * stores the Lang-Tutor role and mirrors the auth user id.
+ */
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey(),
   email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
   role: text("role", { enum: USER_ROLE_VALUES }).notNull().default("standard"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-});
-
-/** Server-side sessions — one row per active login. */
-export const sessions = sqliteTable("sessions", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ─── Shared tables (no userId) ────────────────────────────────────────────────
 
-/** Global AI/infra config — one row, admin-editable, seeded from env on first boot. */
-export const appConfig = sqliteTable("app_config", {
+export const appConfig = pgTable("app_config", {
   id: integer("id").primaryKey(),
   macLlmBaseUrl: text("mac_llm_base_url").notNull(),
   macLlmModel: text("mac_llm_model").notNull(),
   macUtilityModel: text("mac_utility_model").notNull(),
   macEmbedModel: text("mac_embed_model").notNull(),
   macSttUrl: text("mac_stt_url").notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
-/** Cached generated/seed content — shared across all learners by type/level/topic. */
-export const content = sqliteTable(
+export const content = pgTable(
   "content",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    id: serial("id").primaryKey(),
     type: text("type", { enum: CONTENT_TYPE_VALUES }).notNull(),
     level: text("level", { enum: CEFR_VALUES }).notNull(),
     topic: text("topic").notNull(),
     payload: text("payload").notNull(),
     source: text("source", { enum: CONTENT_SOURCE_VALUES }).notNull(),
-    validatedAt: integer("validated_at", { mode: "timestamp" }).notNull(),
+    validatedAt: timestamp("validated_at", { withTimezone: true }).notNull(),
     embedding: text("embedding"),
   },
   (t) => [index("idx_content_type_level").on(t.type, t.level)],
 );
 
-/** Cached dictionary/audio lookups — keyed by lowercased word. */
-export const lexiconCache = sqliteTable("lexicon_cache", {
+export const lexiconCache = pgTable("lexicon_cache", {
   word: text("word").primaryKey(),
   data: text("data").notNull(),
-  cachedAt: integer("cached_at", { mode: "timestamp" }).notNull(),
+  cachedAt: timestamp("cached_at", { withTimezone: true }).notNull(),
 });
 
 // ─── Per-user tables (have userId) ────────────────────────────────────────────
 
-/**
- * Per-user learner profile. `cefrLevel`/`goals` are set during onboarding.
- * `settings` holds TTS prefs only — AI/infra config moved to `appConfig`.
- */
-export const profiles = sqliteTable(
+export const profiles = pgTable(
   "profile",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id").notNull(),
+    id: serial("id").primaryKey(),
+    userId: uuid("user_id").notNull(),
     cefrLevel: text("cefr_level", { enum: CEFR_VALUES }),
     goals: text("goals").notNull().default("[]"),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
     settings: text("settings").notNull().default("{}"),
   },
   (t) => [uniqueIndex("idx_profile_user_id").on(t.userId)],
 );
 
-/**
- * Vocabulary SRS cards. `dueAt` is a denormalized copy of `fsrs.due` so the
- * "cards due" query can use a B-tree index instead of scanning JSON.
- */
-export const cards = sqliteTable(
+export const cards = pgTable(
   "cards",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id").notNull(),
+    id: serial("id").primaryKey(),
+    userId: uuid("user_id").notNull(),
     word: text("word").notNull(),
     sense: text("sense"),
     definition: text("definition").notNull(),
     examples: text("examples").notNull().default("[]"),
     cefr: text("cefr", { enum: CEFR_VALUES }).notNull(),
     fsrs: text("fsrs").notNull(),
-    dueAt: integer("due_at", { mode: "timestamp" }).notNull(),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
     embedding: text("embedding"),
   },
   (t) => [index("idx_cards_user_due").on(t.userId, t.dueAt)],
 );
 
-/** Diagnostics error events — one row per tagged mistake. */
-export const errorEvents = sqliteTable(
+export const errorEvents = pgTable(
   "error_events",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id").notNull(),
+    id: serial("id").primaryKey(),
+    userId: uuid("user_id").notNull(),
     skill: text("skill", { enum: SKILL_VALUES }).notNull(),
     category: text("category").notNull(),
     cefr: text("cefr", { enum: CEFR_VALUES }).notNull(),
     context: text("context").notNull(),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   },
   (t) => [index("idx_error_events_skill_cefr").on(t.userId, t.skill, t.cefr)],
 );
 
-/** Derived weakness rollups — compound PK mirrors the Dexie [skill+category+cefr] key. */
-export const weakness = sqliteTable(
+export const weakness = pgTable(
   "weakness",
   {
-    userId: text("user_id").notNull(),
+    userId: uuid("user_id").notNull(),
     skill: text("skill", { enum: SKILL_VALUES }).notNull(),
     category: text("category").notNull(),
     cefr: text("cefr", { enum: CEFR_VALUES }).notNull(),
-    score: real("score").notNull(),
-    confidence: real("confidence").notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+    score: doublePrecision("score").notNull(),
+    confidence: doublePrecision("confidence").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.skill, t.category, t.cefr] })],
 );
 
-/** Single-row gamification state per user (XP, streak, achievements). */
-export const gamification = sqliteTable(
+export const gamification = pgTable(
   "gamification",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id").notNull(),
+    id: serial("id").primaryKey(),
+    userId: uuid("user_id").notNull(),
     xp: integer("xp").notNull().default(0),
     level: integer("level").notNull().default(1),
     streakCount: integer("streak_count").notNull().default(0),

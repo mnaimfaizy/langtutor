@@ -14,10 +14,28 @@ const VALID_LOCAL: Record<string, string> = {
   MAC_STT_URL: "http://192.168.1.10:8080",
 };
 
+const VALID_CLOUD: Record<string, string> = {
+  LANGTUTOR_MODE: "cloud",
+  LANGTUTOR_SESSION_SECRET: "super-secret-value",
+  DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+  NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key",
+  SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
+  LANGTUTOR_ADMIN_EMAIL: "admin@example.com",
+  LANGTUTOR_ADMIN_PASSWORD: "adminPass99",
+  MAC_LLM_BASE_URL: "http://192.168.1.10:11434/v1",
+  MAC_LLM_API_KEY: "ollama",
+  MAC_LLM_MODEL: "qwen2.5:14b-instruct",
+  MAC_UTILITY_MODEL: "qwen2.5:7b-instruct",
+  MAC_EMBED_MODEL: "nomic-embed-text",
+  MAC_STT_URL: "http://192.168.1.10:8080",
+};
+
 describe("parseEnv — local mode", () => {
   it("accepts a fully valid local config", () => {
     const cfg = parseEnv(VALID_LOCAL);
     expect(cfg.LANGTUTOR_MODE).toBe("local");
+    if (cfg.LANGTUTOR_MODE !== "local") return;
     expect(cfg.LANGTUTOR_DB_PATH).toBe("./test.db");
     expect(cfg.MAC_LLM_MODEL).toBe("qwen2.5:14b-instruct");
   });
@@ -31,6 +49,8 @@ describe("parseEnv — local mode", () => {
   it("applies default DB path when LANGTUTOR_DB_PATH is absent", () => {
     const { LANGTUTOR_DB_PATH: _, ...withoutPath } = VALID_LOCAL;
     const cfg = parseEnv(withoutPath);
+    expect(cfg.LANGTUTOR_MODE).toBe("local");
+    if (cfg.LANGTUTOR_MODE !== "local") return;
     expect(cfg.LANGTUTOR_DB_PATH).toBe("./langtutor.db");
   });
 
@@ -57,6 +77,22 @@ describe("parseEnv — local mode", () => {
   });
 });
 
+describe("parseEnv — cloud mode", () => {
+  it("accepts a fully valid cloud config", () => {
+    const cfg = parseEnv(VALID_CLOUD);
+    expect(cfg.LANGTUTOR_MODE).toBe("cloud");
+    if (cfg.LANGTUTOR_MODE !== "cloud") return;
+    expect(cfg.LANGTUTOR_ADMIN_EMAIL).toBe("admin@example.com");
+    expect(cfg.DATABASE_URL).toContain("postgresql://");
+  });
+
+  it("throws when LANGTUTOR_ADMIN_PASSWORD is too short", () => {
+    expect(() => parseEnv({ ...VALID_CLOUD, LANGTUTOR_ADMIN_PASSWORD: "short" })).toThrowError(
+      "[LangTutor] Invalid environment configuration:",
+    );
+  });
+});
+
 describe("parseEnv — invalid configs", () => {
   it("throws with a clear message when MAC_LLM_BASE_URL is not a valid URL", () => {
     expect(() => parseEnv({ ...VALID_LOCAL, MAC_LLM_BASE_URL: "not-a-url" })).toThrowError(
@@ -80,7 +116,7 @@ describe("parseEnv — invalid configs", () => {
   });
 
   it("throws when LANGTUTOR_MODE is an unsupported value", () => {
-    expect(() => parseEnv({ LANGTUTOR_MODE: "cloud" })).toThrowError(
+    expect(() => parseEnv({ LANGTUTOR_MODE: "hybrid" })).toThrowError(
       "[LangTutor] Invalid environment configuration:",
     );
   });
