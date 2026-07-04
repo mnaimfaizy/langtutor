@@ -1,7 +1,9 @@
 import { run, claudeCode, cursor, copilot } from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
+import dotenv from "dotenv";
 import { mkdirSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { join } from "node:path";
 
 // Usage:
 //   pnpm sandcastle [--agent claude|cursor|copilot]
@@ -14,6 +16,8 @@ import { execSync } from "node:child_process";
 
 // Ensure the persistent pnpm store directory exists before docker() validates it.
 mkdirSync(".sandcastle/.pnpm-store", { recursive: true });
+
+dotenv.config({ path: join(process.cwd(), ".sandcastle", ".env") });
 
 const SANDBOX = docker({
   imageName: "sandcastle:lang-tutor",
@@ -30,7 +34,8 @@ const SANDBOX = docker({
 
 function getAgent() {
   const agentFlag = process.argv.indexOf("--agent");
-  const agentStr = agentFlag !== -1 ? process.argv[agentFlag + 1] : "claude";
+  const agentStr =
+    agentFlag !== -1 ? process.argv[agentFlag + 1] : (process.env.SANDCASTLE_AGENT ?? "claude");
 
   switch (agentStr) {
     case "cursor":
