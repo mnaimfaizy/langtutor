@@ -8,7 +8,7 @@ import { SESSION_COOKIE } from "@/lib/auth/constants";
  * Actual session validity is verified by resolveCurrentUser() in server components and route
  * handlers. Public paths — /login/** and /api/auth/** — are always allowed through.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/login") || pathname.startsWith("/api/auth/")) {
