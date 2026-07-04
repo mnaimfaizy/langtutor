@@ -29,3 +29,9 @@
 **Per-user table** — table scoped by `userId` (profile, cards, errorEvents, weakness, gamification).
 
 **Shared table** — global table with no `userId` (appConfig, lexiconCache, content) reused across users.
+
+**Postgres RLS (Defense-in-depth)** — Using Row Level Security in Postgres (via SQL session variables) as a backstop alongside App-enforced scoping.
+
+**Direct Drizzle Postgres Connection** — Connecting Drizzle directly to Postgres using `postgres.js` to maintain parity with SQLite, instead of querying via `@supabase/supabase-js`.
+
+**Cloud AI Providers** — External API services (e.g., Groq, Mistral) used in Cloud Mode for LLM, STT, and Embeddings, securely configured entirely via `.env` variables rather than the database.

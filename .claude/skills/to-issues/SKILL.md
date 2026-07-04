@@ -87,6 +87,14 @@ A concise description of this vertical slice. Describe the end-to-end behavior, 
 
 Avoid specific file paths or code snippets — they go stale fast. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it here and note briefly that it came from a prototype.
 
+## Implementation Tasks (AFK)
+
+- List automated or agent-actionable tasks (Away-From-Keyboard) here.
+
+## Human-in-the-Loop Tasks (HITL)
+
+- List tasks that require human intervention (e.g. provisioning keys, creating accounts, clicking through Cloud dashboards).
+
 ## Acceptance criteria
 
 - [ ] Criterion 1
