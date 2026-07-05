@@ -126,6 +126,18 @@ describe("parseEnv — invalid configs", () => {
     expect(cfg.GROQ_API_KEY).toBe("gsk_test_key");
   });
 
+  it("accepts optional Groq/Mistral model env vars when provided", () => {
+    const cfg = parseEnv({
+      ...VALID_LOCAL,
+      GROQ_CHAT_MODEL: "llama-3.1-8b-instant",
+      GROQ_STT_MODEL: "whisper-large-v3-turbo",
+      MISTRAL_EMBED_MODEL: "mistral-embed",
+    });
+    expect(cfg.GROQ_CHAT_MODEL).toBe("llama-3.1-8b-instant");
+    expect(cfg.GROQ_STT_MODEL).toBe("whisper-large-v3-turbo");
+    expect(cfg.MISTRAL_EMBED_MODEL).toBe("mistral-embed");
+  });
+
   it("allows GROQ_API_KEY to be omitted", () => {
     const cfg = parseEnv(VALID_LOCAL);
     expect(cfg.GROQ_API_KEY).toBeUndefined();
@@ -133,6 +145,18 @@ describe("parseEnv — invalid configs", () => {
 
   it("rejects empty GROQ_API_KEY", () => {
     expect(() => parseEnv({ ...VALID_LOCAL, GROQ_API_KEY: "" })).toThrowError(
+      "[LangTutor] Invalid environment configuration:",
+    );
+  });
+
+  it("rejects empty cloud model env vars", () => {
+    expect(() => parseEnv({ ...VALID_LOCAL, GROQ_CHAT_MODEL: "" })).toThrowError(
+      "[LangTutor] Invalid environment configuration:",
+    );
+    expect(() => parseEnv({ ...VALID_LOCAL, GROQ_STT_MODEL: "" })).toThrowError(
+      "[LangTutor] Invalid environment configuration:",
+    );
+    expect(() => parseEnv({ ...VALID_LOCAL, MISTRAL_EMBED_MODEL: "" })).toThrowError(
       "[LangTutor] Invalid environment configuration:",
     );
   });

@@ -1,5 +1,7 @@
 import { and, asc, eq, lte } from "drizzle-orm";
 
+import { env } from "@/lib/config/env";
+
 import type { BackupData } from "../backup/schema";
 import type {
   ContentQuery,
@@ -35,6 +37,22 @@ import type {
 } from "./schema";
 
 const APP_CONFIG_ID = 1;
+const DEFAULT_GROQ_CHAT_MODEL = "llama-3.3-70b-versatile";
+const DEFAULT_MISTRAL_EMBED_MODEL = "mistral-embed";
+
+function applyEnvFirstAiSettings(settings: ProfileSettings): ProfileSettings {
+  if (env.LANGTUTOR_MODE !== "cloud") return settings;
+
+  return {
+    ...settings,
+    chatProvider: "groq",
+    chatModel: env.GROQ_CHAT_MODEL?.trim() || settings.chatModel || DEFAULT_GROQ_CHAT_MODEL,
+    sttProvider: "groq",
+    embeddingsProvider: "mistral",
+    embeddingsModel:
+      env.MISTRAL_EMBED_MODEL?.trim() || settings.embeddingsModel || DEFAULT_MISTRAL_EMBED_MODEL,
+  };
+}
 
 // ─── JSON helpers ─────────────────────────────────────────────────────────────
 
@@ -229,7 +247,7 @@ export class SqliteContentRepository implements ContentRepository {
       .get();
 
     if (profileRow) {
-      return JSON.parse(profileRow.settings) as ProfileSettings;
+      return applyEnvFirstAiSettings(JSON.parse(profileRow.settings) as ProfileSettings);
     }
 
     // No profile yet — return global infra defaults from appConfig.
@@ -248,7 +266,7 @@ export class SqliteContentRepository implements ContentRepository {
     if (configRow.macUtilityModel) settings.macUtilityModel = configRow.macUtilityModel;
     if (configRow.macEmbedModel) settings.macEmbedModel = configRow.macEmbedModel;
     if (configRow.macSttUrl) settings.macSttUrl = configRow.macSttUrl;
-    return settings;
+    return applyEnvFirstAiSettings(settings);
   }
 
   async saveSettings(settings: ProfileSettings): Promise<void> {
@@ -841,14 +859,27 @@ export class SqliteContentRepository implements ContentRepository {
     const existing = this.db.select().from(appConfig).where(eq(appConfig.id, APP_CONFIG_ID)).get();
 
     if (existing) {
+      const cloudMode = env.LANGTUTOR_MODE === "cloud";
       this.db
         .update(appConfig)
         .set({
-          chatProvider: settings.chatProvider ?? existing.chatProvider,
-          chatModel: settings.chatModel ?? existing.chatModel,
-          sttProvider: settings.sttProvider ?? existing.sttProvider,
-          embeddingsProvider: settings.embeddingsProvider ?? existing.embeddingsProvider,
-          embeddingsModel: settings.embeddingsModel ?? existing.embeddingsModel,
+          chatProvider: cloudMode ? "groq" : (settings.chatProvider ?? existing.chatProvider),
+          chatModel: cloudMode
+            ? env.GROQ_CHAT_MODEL?.trim() ||
+              settings.chatModel ||
+              existing.chatModel ||
+              DEFAULT_GROQ_CHAT_MODEL
+            : (settings.chatModel ?? existing.chatModel),
+          sttProvider: cloudMode ? "groq" : (settings.sttProvider ?? existing.sttProvider),
+          embeddingsProvider: cloudMode
+            ? "mistral"
+            : (settings.embeddingsProvider ?? existing.embeddingsProvider),
+          embeddingsModel: cloudMode
+            ? env.MISTRAL_EMBED_MODEL?.trim() ||
+              settings.embeddingsModel ||
+              existing.embeddingsModel ||
+              DEFAULT_MISTRAL_EMBED_MODEL
+            : (settings.embeddingsModel ?? existing.embeddingsModel),
           macLlmBaseUrl: settings.macLlmBaseUrl ?? existing.macLlmBaseUrl,
           macLlmModel: settings.macLlmModel ?? existing.macLlmModel,
           macUtilityModel: settings.macUtilityModel ?? existing.macUtilityModel,
@@ -859,15 +890,22 @@ export class SqliteContentRepository implements ContentRepository {
         .where(eq(appConfig.id, APP_CONFIG_ID))
         .run();
     } else {
+      const cloudMode = env.LANGTUTOR_MODE === "cloud";
       this.db
         .insert(appConfig)
         .values({
           id: APP_CONFIG_ID,
-          chatProvider: settings.chatProvider ?? "mac",
-          chatModel: settings.chatModel ?? "",
-          sttProvider: settings.sttProvider ?? "mac",
-          embeddingsProvider: settings.embeddingsProvider ?? "mac",
-          embeddingsModel: settings.embeddingsModel ?? "",
+          chatProvider: cloudMode ? "groq" : (settings.chatProvider ?? "mac"),
+          chatModel: cloudMode
+            ? env.GROQ_CHAT_MODEL?.trim() || settings.chatModel || DEFAULT_GROQ_CHAT_MODEL
+            : (settings.chatModel ?? ""),
+          sttProvider: cloudMode ? "groq" : (settings.sttProvider ?? "mac"),
+          embeddingsProvider: cloudMode ? "mistral" : (settings.embeddingsProvider ?? "mac"),
+          embeddingsModel: cloudMode
+            ? env.MISTRAL_EMBED_MODEL?.trim() ||
+              settings.embeddingsModel ||
+              DEFAULT_MISTRAL_EMBED_MODEL
+            : (settings.embeddingsModel ?? ""),
           macLlmBaseUrl: settings.macLlmBaseUrl ?? "",
           macLlmModel: settings.macLlmModel ?? "",
           macUtilityModel: settings.macUtilityModel ?? "",

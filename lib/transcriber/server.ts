@@ -1,6 +1,7 @@
 import "server-only";
 
-import { getGroqApiKey } from "@/lib/ai/groq";
+import { getGroqApiKey, GROQ_WHISPER_MODEL } from "@/lib/ai/groq";
+import { env } from "@/lib/config/env";
 import type { SttProvider } from "@/lib/db/drizzle/schema.shared";
 
 import { GroqTranscriber } from "./groq-transcriber";
@@ -17,16 +18,17 @@ const DEFAULT_STT_PROVIDER: SttProvider = "mac";
  * a build error). Runtime overrides take precedence over env defaults.
  */
 export function getTranscriber(): Transcriber {
-  const provider = getRuntimeSttProvider() ?? DEFAULT_STT_PROVIDER;
+  const provider =
+    env.LANGTUTOR_MODE === "cloud" ? "groq" : (getRuntimeSttProvider() ?? DEFAULT_STT_PROVIDER);
 
   if (provider === "groq") {
     const apiKey = getGroqApiKey();
     if (!apiKey) {
       throw new Error("GROQ_API_KEY is required when sttProvider is groq");
     }
-    return new GroqTranscriber(apiKey);
+    return new GroqTranscriber(apiKey, env.GROQ_STT_MODEL?.trim() || GROQ_WHISPER_MODEL);
   }
 
-  const url = getRuntimeSttUrl() ?? process.env.MAC_STT_URL ?? DEFAULT_STT_URL;
+  const url = getRuntimeSttUrl() ?? env.MAC_STT_URL ?? DEFAULT_STT_URL;
   return new WhisperTranscriber(url);
 }

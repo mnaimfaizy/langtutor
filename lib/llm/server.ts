@@ -4,7 +4,7 @@ import { loadLLMConfig } from "./config";
 import type { LLMClient } from "./llm-client";
 import { OllamaLLMClient } from "./ollama-llm-client";
 import { getRuntimeOverride } from "./runtime-config";
-import { resolveLLMConfig } from "./settings";
+import { resolveLLMConfig } from "./settings.server";
 
 /**
  * Server-only composition for the LLM seam (PLAN §2.3). Imported **only** by route handlers

@@ -1,3 +1,9 @@
+import "server-only";
+
+import { DEFAULT_GROQ_CHAT_MODEL } from "@/lib/ai/groq";
+import { DEFAULT_MISTRAL_EMBED_MODEL } from "@/lib/ai/mistral";
+import { env } from "@/lib/config/env";
+
 import type { ChatProvider, EmbeddingsProvider } from "../db/drizzle/schema.shared";
 
 /**
@@ -21,17 +27,27 @@ export interface LLMConfig {
 /** Default to a local Ollama OpenAI-compatible endpoint. */
 const DEFAULT_BASE_URL = "http://localhost:11434/v1";
 
+function clean(value?: string): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 export function loadLLMConfig(): LLMConfig {
-  const macBaseURL = process.env.MAC_LLM_BASE_URL ?? DEFAULT_BASE_URL;
-  const macApiKey = process.env.MAC_LLM_API_KEY ?? "ollama";
+  const macBaseURL = env.MAC_LLM_BASE_URL ?? DEFAULT_BASE_URL;
+  const macApiKey = env.MAC_LLM_API_KEY ?? "ollama";
+  const cloudMode = env.LANGTUTOR_MODE === "cloud";
   return {
-    chatProvider: "mac",
+    chatProvider: cloudMode ? "groq" : "mac",
     baseURL: macBaseURL,
     apiKey: macApiKey,
-    chatModel: process.env.MAC_LLM_MODEL ?? "qwen2.5:14b-instruct",
-    utilityModel: process.env.MAC_UTILITY_MODEL ?? "qwen2.5:7b-instruct",
-    embeddingsProvider: "mac",
-    embedModel: process.env.MAC_EMBED_MODEL ?? "nomic-embed-text",
+    chatModel: cloudMode
+      ? (clean(env.GROQ_CHAT_MODEL) ?? DEFAULT_GROQ_CHAT_MODEL)
+      : env.MAC_LLM_MODEL,
+    utilityModel: env.MAC_UTILITY_MODEL,
+    embeddingsProvider: cloudMode ? "mistral" : "mac",
+    embedModel: cloudMode
+      ? (clean(env.MISTRAL_EMBED_MODEL) ?? DEFAULT_MISTRAL_EMBED_MODEL)
+      : env.MAC_EMBED_MODEL,
     macBaseURL,
     macApiKey,
   };
