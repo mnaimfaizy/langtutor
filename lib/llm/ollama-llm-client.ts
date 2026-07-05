@@ -60,7 +60,7 @@ export class OllamaLLMClient implements LLMClient {
 
   constructor(private readonly config: LLMConfig) {
     this.provider = createOpenAICompatible({
-      name: "ollama",
+      name: config.chatProvider === "groq" ? "groq" : "ollama",
       baseURL: config.baseURL,
       apiKey: config.apiKey,
     });

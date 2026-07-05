@@ -41,6 +41,9 @@ export default function SettingsPage() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   // LLM settings state
+  const [chatProvider, setChatProvider] = useState<"mac" | "groq">("mac");
+  const [cloudChatModel, setCloudChatModel] = useState("");
+  const [sttProvider, setSttProvider] = useState<"mac" | "groq">("mac");
   const [baseUrl, setBaseUrl] = useState("");
   const [chatModel, setChatModel] = useState("");
   const [utilityModel, setUtilityModel] = useState("");
@@ -71,6 +74,9 @@ export default function SettingsPage() {
       ([profile, role]) => {
         if (!active) return;
         const s = profile?.settings ?? {};
+        setChatProvider(s.chatProvider ?? "mac");
+        setCloudChatModel(s.chatModel ?? "");
+        setSttProvider(s.sttProvider ?? "mac");
         setBaseUrl(s.macLlmBaseUrl ?? "");
         setChatModel(s.macLlmModel ?? "");
         setUtilityModel(s.macUtilityModel ?? "");
@@ -123,11 +129,14 @@ export default function SettingsPage() {
     setBanner(null);
     try {
       await saveAdminConfig({
-        macLlmBaseUrl: baseUrl.trim() || undefined,
-        macLlmModel: chatModel.trim() || undefined,
+        chatProvider,
+        chatModel: chatProvider === "groq" ? cloudChatModel.trim() || undefined : undefined,
+        sttProvider,
+        macLlmBaseUrl: chatProvider === "mac" ? baseUrl.trim() || undefined : undefined,
+        macLlmModel: chatProvider === "mac" ? chatModel.trim() || undefined : undefined,
         macUtilityModel: utilityModel.trim() || undefined,
         macEmbedModel: embedModel.trim() || undefined,
-        macSttUrl: sttUrl.trim() || undefined,
+        macSttUrl: sttProvider === "mac" ? sttUrl.trim() || undefined : undefined,
       });
       setBanner({ tone: "ok", text: "Saved. New calls route to these endpoints." });
     } catch (error) {
@@ -152,7 +161,7 @@ export default function SettingsPage() {
         const reason = parsed.success
           ? (parsed.data.error ?? "unreachable")
           : "unexpected response";
-        setBanner({ tone: "error", text: `Mac LLM unreachable: ${reason}` });
+        setBanner({ tone: "error", text: `LLM unreachable: ${reason}` });
       }
     } catch (error) {
       setBanner({
@@ -176,7 +185,7 @@ export default function SettingsPage() {
         const reason = parsed.success
           ? (parsed.data.error ?? "unreachable")
           : "unexpected response";
-        setBanner({ tone: "error", text: `Mac STT unreachable: ${reason}` });
+        setBanner({ tone: "error", text: `STT unreachable: ${reason}` });
       }
     } catch (error) {
       setBanner({
@@ -258,32 +267,64 @@ export default function SettingsPage() {
 
       {isAdmin && (
         <Card className="mt-6">
-          <CardTitle>Mac / LLM</CardTitle>
+          <CardTitle>AI providers</CardTitle>
           <CardDescription>
-            Defaults come from server env; values here override them at runtime. Leave a field blank
-            to use its env default.
+            Choose Mac (local) or Groq (cloud) for chat and speech-to-text. API keys are set in
+            server env only — never stored in the database.
           </CardDescription>
           <CardContent className="space-y-4">
-            <Field label="Base URL" hint="e.g. http://192.168.1.x:11434/v1 or your Tailscale host">
-              <Input
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="http://localhost:11434/v1"
+            <Field label="Chat provider">
+              <select
+                value={chatProvider}
+                onChange={(e) => setChatProvider(e.target.value as "mac" | "groq")}
                 disabled={!loaded || busy}
-                inputMode="url"
-                autoComplete="off"
-              />
+                className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="mac">Mac (Ollama)</option>
+                <option value="groq">Groq (cloud)</option>
+              </select>
             </Field>
 
-            <Field label="Chat model">
-              <Input
-                value={chatModel}
-                onChange={(e) => setChatModel(e.target.value)}
-                placeholder="qwen2.5:14b-instruct"
-                disabled={!loaded || busy}
-                autoComplete="off"
-              />
-            </Field>
+            {chatProvider === "groq" ? (
+              <Field
+                label="Groq chat model"
+                hint="e.g. llama-3.3-70b-versatile or llama-3.1-8b-instant"
+              >
+                <Input
+                  value={cloudChatModel}
+                  onChange={(e) => setCloudChatModel(e.target.value)}
+                  placeholder="llama-3.3-70b-versatile"
+                  disabled={!loaded || busy}
+                  autoComplete="off"
+                />
+              </Field>
+            ) : (
+              <>
+                <Field
+                  label="Base URL"
+                  hint="e.g. http://192.168.1.x:11434/v1 or your Tailscale host"
+                >
+                  <Input
+                    value={baseUrl}
+                    onChange={(e) => setBaseUrl(e.target.value)}
+                    placeholder="http://localhost:11434/v1"
+                    disabled={!loaded || busy}
+                    inputMode="url"
+                    autoComplete="off"
+                  />
+                </Field>
+
+                <Field label="Chat model">
+                  <Input
+                    value={chatModel}
+                    onChange={(e) => setChatModel(e.target.value)}
+                    placeholder="qwen2.5:14b-instruct"
+                    disabled={!loaded || busy}
+                    autoComplete="off"
+                  />
+                </Field>
+              </>
+            )}
 
             <Field
               label="Utility model"
@@ -308,19 +349,33 @@ export default function SettingsPage() {
               />
             </Field>
 
-            <Field
-              label="STT server URL"
-              hint="whisper.cpp HTTP server — e.g. http://192.168.1.x:8080"
-            >
-              <Input
-                value={sttUrl}
-                onChange={(e) => setSttUrl(e.target.value)}
-                placeholder="http://localhost:8080"
+            <Field label="STT provider">
+              <select
+                value={sttProvider}
+                onChange={(e) => setSttProvider(e.target.value as "mac" | "groq")}
                 disabled={!loaded || busy}
-                inputMode="url"
-                autoComplete="off"
-              />
+                className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="mac">Mac (whisper.cpp)</option>
+                <option value="groq">Groq (whisper-large-v3)</option>
+              </select>
             </Field>
+
+            {sttProvider === "mac" && (
+              <Field
+                label="STT server URL"
+                hint="whisper.cpp HTTP server — e.g. http://192.168.1.x:8080"
+              >
+                <Input
+                  value={sttUrl}
+                  onChange={(e) => setSttUrl(e.target.value)}
+                  placeholder="http://localhost:8080"
+                  disabled={!loaded || busy}
+                  inputMode="url"
+                  autoComplete="off"
+                />
+              </Field>
+            )}
 
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <Button onClick={() => void handleSave()} disabled={!loaded || busy}>

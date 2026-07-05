@@ -121,8 +121,10 @@ describe("Migration — schema shape", () => {
     );
   }
 
-  it("app_config has no user_id (shared table)", () => {
-    expect(columns("app_config")).not.toContain("user_id");
+  it("app_config has provider routing columns", () => {
+    expect(columns("app_config")).toContain("chat_provider");
+    expect(columns("app_config")).toContain("chat_model");
+    expect(columns("app_config")).toContain("stt_provider");
     expect(columns("app_config")).toContain("mac_llm_base_url");
     expect(columns("app_config")).toContain("mac_llm_model");
   });

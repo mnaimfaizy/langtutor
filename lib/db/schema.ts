@@ -27,6 +27,9 @@ export type LearnerGoal = "travel" | "work" | "exam" | "general";
  * env; these only ever override at runtime. No secrets/API keys live here.
  */
 export interface ProfileSettings {
+  chatProvider?: "mac" | "groq";
+  chatModel?: string;
+  sttProvider?: "mac" | "groq";
   macLlmBaseUrl?: string;
   macLlmModel?: string;
   macUtilityModel?: string;

@@ -238,6 +238,9 @@ export class SqliteContentRepository implements ContentRepository {
     if (!configRow) return {};
 
     const settings: ProfileSettings = {};
+    if (configRow.chatProvider) settings.chatProvider = configRow.chatProvider;
+    if (configRow.chatModel) settings.chatModel = configRow.chatModel;
+    if (configRow.sttProvider) settings.sttProvider = configRow.sttProvider;
     if (configRow.macLlmBaseUrl) settings.macLlmBaseUrl = configRow.macLlmBaseUrl;
     if (configRow.macLlmModel) settings.macLlmModel = configRow.macLlmModel;
     if (configRow.macUtilityModel) settings.macUtilityModel = configRow.macUtilityModel;
@@ -820,6 +823,9 @@ export class SqliteContentRepository implements ContentRepository {
 
   private syncMacFieldsToAppConfig(settings: ProfileSettings): void {
     const hasMacFields =
+      settings.chatProvider !== undefined ||
+      settings.chatModel !== undefined ||
+      settings.sttProvider !== undefined ||
       settings.macLlmBaseUrl !== undefined ||
       settings.macLlmModel !== undefined ||
       settings.macUtilityModel !== undefined ||
@@ -834,6 +840,9 @@ export class SqliteContentRepository implements ContentRepository {
       this.db
         .update(appConfig)
         .set({
+          chatProvider: settings.chatProvider ?? existing.chatProvider,
+          chatModel: settings.chatModel ?? existing.chatModel,
+          sttProvider: settings.sttProvider ?? existing.sttProvider,
           macLlmBaseUrl: settings.macLlmBaseUrl ?? existing.macLlmBaseUrl,
           macLlmModel: settings.macLlmModel ?? existing.macLlmModel,
           macUtilityModel: settings.macUtilityModel ?? existing.macUtilityModel,
@@ -848,6 +857,9 @@ export class SqliteContentRepository implements ContentRepository {
         .insert(appConfig)
         .values({
           id: APP_CONFIG_ID,
+          chatProvider: settings.chatProvider ?? "mac",
+          chatModel: settings.chatModel ?? "",
+          sttProvider: settings.sttProvider ?? "mac",
           macLlmBaseUrl: settings.macLlmBaseUrl ?? "",
           macLlmModel: settings.macLlmModel ?? "",
           macUtilityModel: settings.macUtilityModel ?? "",

@@ -5,14 +5,17 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/lib/auth/resolve-current-user", () => ({ resolveCurrentUser: vi.fn() }));
 vi.mock("@/lib/db/server", () => ({ getServerContentRepository: vi.fn() }));
 vi.mock("@/lib/llm/runtime-config", () => ({ setRuntimeOverride: vi.fn() }));
-vi.mock("@/lib/transcriber/runtime-config", () => ({ setRuntimeSttUrl: vi.fn() }));
+vi.mock("@/lib/transcriber/runtime-config", () => ({
+  setRuntimeSttUrl: vi.fn(),
+  setRuntimeSttProvider: vi.fn(),
+}));
 
 import { redirect } from "next/navigation";
 
 import { resolveCurrentUser } from "@/lib/auth/resolve-current-user";
 import { getServerContentRepository } from "@/lib/db/server";
 import { setRuntimeOverride } from "@/lib/llm/runtime-config";
-import { setRuntimeSttUrl } from "@/lib/transcriber/runtime-config";
+import { setRuntimeSttProvider, setRuntimeSttUrl } from "@/lib/transcriber/runtime-config";
 import { saveAdminConfig, saveUserPrefs } from "@/app/settings/actions";
 import type { ProfileSettings } from "@/lib/db/schema";
 
@@ -70,6 +73,7 @@ describe("saveAdminConfig", () => {
     );
     expect(setRuntimeOverride).toHaveBeenCalled();
     expect(setRuntimeSttUrl).toHaveBeenCalledWith("http://new.local:8080");
+    expect(setRuntimeSttProvider).toHaveBeenCalled();
     expect(redirect).not.toHaveBeenCalled();
   });
 
@@ -119,6 +123,8 @@ describe("saveUserPrefs", () => {
     expect(saved.macLlmBaseUrl).toBeUndefined();
     expect(saved.macLlmModel).toBeUndefined();
     expect(saved.macSttUrl).toBeUndefined();
+    expect(saved.chatProvider).toBeUndefined();
+    expect(saved.sttProvider).toBeUndefined();
   });
 
   it("preserves mac fields in profile when admin saves TTS prefs", async () => {

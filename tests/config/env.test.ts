@@ -120,4 +120,20 @@ describe("parseEnv — invalid configs", () => {
       "[LangTutor] Invalid environment configuration:",
     );
   });
+
+  it("accepts GROQ_API_KEY when provided", () => {
+    const cfg = parseEnv({ ...VALID_LOCAL, GROQ_API_KEY: "gsk_test_key" });
+    expect(cfg.GROQ_API_KEY).toBe("gsk_test_key");
+  });
+
+  it("allows GROQ_API_KEY to be omitted", () => {
+    const cfg = parseEnv(VALID_LOCAL);
+    expect(cfg.GROQ_API_KEY).toBeUndefined();
+  });
+
+  it("rejects empty GROQ_API_KEY", () => {
+    expect(() => parseEnv({ ...VALID_LOCAL, GROQ_API_KEY: "" })).toThrowError(
+      "[LangTutor] Invalid environment configuration:",
+    );
+  });
 });

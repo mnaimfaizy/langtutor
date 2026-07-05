@@ -20,6 +20,9 @@ export function seedAppConfig(db: DrizzleClient): void {
   db.insert(appConfig)
     .values({
       id: APP_CONFIG_ID,
+      chatProvider: "mac",
+      chatModel: "",
+      sttProvider: "mac",
       macLlmBaseUrl: env.MAC_LLM_BASE_URL,
       macLlmModel: env.MAC_LLM_MODEL,
       macUtilityModel: env.MAC_UTILITY_MODEL,

@@ -11,6 +11,8 @@ const macConfigFields = {
   MAC_UTILITY_MODEL: z.string().default("qwen2.5:7b-instruct"),
   MAC_EMBED_MODEL: z.string().default("nomic-embed-text"),
   MAC_STT_URL: z.string().url().default("http://localhost:8080"),
+  /** Groq API key — server-only; optional until chat/stt provider is set to groq. */
+  GROQ_API_KEY: z.string().min(1).optional(),
 };
 
 const localConfigSchema = z.object({

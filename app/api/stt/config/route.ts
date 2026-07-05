@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 import { resolveCurrentUser } from "@/lib/auth/resolve-current-user";
-import { setRuntimeSttUrl } from "@/lib/transcriber/runtime-config";
+import { STT_PROVIDER_VALUES } from "@/lib/db/drizzle/schema.shared";
+import { setRuntimeSttProvider, setRuntimeSttUrl } from "@/lib/transcriber/runtime-config";
 import { isSameOrigin } from "@/lib/server/origin";
 import { isAllowedProxyTarget } from "@/lib/server/ssrf";
 
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 const SttConfigSchema = z.object({
   sttUrl: z.url().max(2048).optional(),
+  sttProvider: z.enum(STT_PROVIDER_VALUES).optional(),
 });
 
 export async function POST(request: Request) {
@@ -41,5 +43,6 @@ export async function POST(request: Request) {
   }
 
   setRuntimeSttUrl(parsed.data.sttUrl);
+  setRuntimeSttProvider(parsed.data.sttProvider);
   return Response.json({ ok: true });
 }

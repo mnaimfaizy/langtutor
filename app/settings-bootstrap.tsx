@@ -28,13 +28,17 @@ export function SettingsBootstrap() {
             })
           : Promise.resolve();
 
-        const pushStt = settings?.macSttUrl
-          ? fetch("/api/stt/config", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ sttUrl: settings.macSttUrl }),
-            })
-          : Promise.resolve();
+        const pushStt =
+          settings?.sttProvider || settings?.macSttUrl
+            ? fetch("/api/stt/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  sttProvider: settings.sttProvider,
+                  sttUrl: settings.sttProvider === "mac" ? settings.macSttUrl : undefined,
+                }),
+              })
+            : Promise.resolve();
 
         return Promise.all([pushLlm, pushStt]);
       })

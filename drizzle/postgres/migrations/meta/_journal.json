@@ -15,6 +15,13 @@
       "when": 1783100000000,
       "tag": "0001_enable_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783200000000,
+      "tag": "0002_cloud_ai_routing",
+      "breakpoints": true
     }
   ]
 }

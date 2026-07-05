@@ -3,6 +3,11 @@ export const SKILL_VALUES = ["reading", "writing", "listening", "speaking"] as c
 export const CONTENT_TYPE_VALUES = ["passage", "quiz", "prompt", "lesson"] as const;
 export const CONTENT_SOURCE_VALUES = ["seed", "generated", "agent"] as const;
 export const USER_ROLE_VALUES = ["admin", "standard"] as const;
+export const CHAT_PROVIDER_VALUES = ["mac", "groq"] as const;
+export const STT_PROVIDER_VALUES = ["mac", "groq"] as const;
+
+export type ChatProvider = (typeof CHAT_PROVIDER_VALUES)[number];
+export type SttProvider = (typeof STT_PROVIDER_VALUES)[number];
 
 /** Bootstrap userId for local SQLite migrations from Phase 1a data. */
 export const BOOTSTRAP_ADMIN_ID = "00000000-0000-0000-0000-000000000001";

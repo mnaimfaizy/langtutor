@@ -5,16 +5,26 @@ import { getServerContentRepository } from "@/lib/db/server";
 import type { ProfileSettings } from "@/lib/db/schema";
 import { setRuntimeOverride } from "@/lib/llm/runtime-config";
 import { settingsToOverrides } from "@/lib/llm/settings";
-import { setRuntimeSttUrl } from "@/lib/transcriber/runtime-config";
+import { setRuntimeSttProvider, setRuntimeSttUrl } from "@/lib/transcriber/runtime-config";
 
-type MacConfig = Pick<
+type AdminConfig = Pick<
   ProfileSettings,
-  "macLlmBaseUrl" | "macLlmModel" | "macUtilityModel" | "macEmbedModel" | "macSttUrl"
+  | "chatProvider"
+  | "chatModel"
+  | "sttProvider"
+  | "macLlmBaseUrl"
+  | "macLlmModel"
+  | "macUtilityModel"
+  | "macEmbedModel"
+  | "macSttUrl"
 >;
 
 type TtsPrefs = Pick<ProfileSettings, "ttsRate" | "ttsVoiceUri" | "ttsLang">;
 
-const MAC_KEYS: Array<keyof MacConfig> = [
+const ADMIN_KEYS: Array<keyof AdminConfig> = [
+  "chatProvider",
+  "chatModel",
+  "sttProvider",
   "macLlmBaseUrl",
   "macLlmModel",
   "macUtilityModel",
@@ -22,9 +32,9 @@ const MAC_KEYS: Array<keyof MacConfig> = [
   "macSttUrl",
 ];
 
-function stripMacFields(settings: ProfileSettings): ProfileSettings {
+function stripAdminFields(settings: ProfileSettings): ProfileSettings {
   const stripped = { ...settings };
-  for (const key of MAC_KEYS) delete stripped[key];
+  for (const key of ADMIN_KEYS) delete stripped[key];
   return stripped;
 }
 
@@ -39,14 +49,16 @@ export async function getSettingsRole(): Promise<"admin" | "standard"> {
  * appConfig table, then push runtime overrides so the current process uses the updated
  * endpoints immediately without requiring a server restart.
  */
-export async function saveAdminConfig(config: MacConfig): Promise<void> {
+export async function saveAdminConfig(config: AdminConfig): Promise<void> {
   await requireAdmin();
   const repo = await getServerContentRepository();
   const current = await repo.getSettings();
   const merged: ProfileSettings = { ...current, ...config };
   await repo.saveSettings(merged);
   setRuntimeOverride(settingsToOverrides(merged));
-  setRuntimeSttUrl(merged.macSttUrl);
+  const resolvedSttProvider = merged.sttProvider ?? "mac";
+  setRuntimeSttUrl(resolvedSttProvider === "mac" ? merged.macSttUrl : undefined);
+  setRuntimeSttProvider(resolvedSttProvider);
 }
 
 /**
@@ -58,6 +70,6 @@ export async function saveUserPrefs(prefs: Partial<TtsPrefs>): Promise<void> {
   const user = await requireUser();
   const repo = await getServerContentRepository();
   const current = await repo.getSettings();
-  const base = user.role === "admin" ? current : stripMacFields(current);
+  const base = user.role === "admin" ? current : stripAdminFields(current);
   await repo.saveSettings({ ...base, ...prefs });
 }
