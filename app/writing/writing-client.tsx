@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import type { Cefr, Content, Weakness } from "@/lib/db";
 import { PromptSchema, WRITING_TOPICS } from "@/lib/content/prompt";
 import type { PromptPayload } from "@/lib/content/prompt";
+import { fetchSingleEmbedding } from "@/lib/content/client-embeddings";
 import { rankTopicsByWeakness, WRITING_TOPIC_AFFINITIES } from "@/lib/content/adaptive-selection";
 import { computeWeaknesses } from "@/lib/diagnostics/weakness";
 import { getContentRepository } from "@/lib/registry";
@@ -106,6 +107,7 @@ export function WritingClient() {
 
       const data = (await res.json()) as { prompt: unknown };
       const prompt = PromptSchema.parse(data.prompt);
+      const embedding = await fetchSingleEmbedding(prompt.instruction);
 
       const repo = getContentRepository();
       const contentId = await repo.putContent({
@@ -115,6 +117,7 @@ export function WritingClient() {
         payload: prompt satisfies PromptPayload,
         source: "generated",
         validatedAt: new Date(),
+        embedding,
       });
 
       router.push(`/writing/${contentId}`);

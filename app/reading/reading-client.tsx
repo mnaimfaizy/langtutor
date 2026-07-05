@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import type { Cefr, Content, Weakness } from "@/lib/db";
 import { PassageSchema, READING_TOPICS } from "@/lib/content/passage";
 import type { PassagePayload } from "@/lib/content/passage";
+import { fetchSingleEmbedding } from "@/lib/content/client-embeddings";
 import { rankTopicsByWeakness, READING_TOPIC_AFFINITIES } from "@/lib/content/adaptive-selection";
 import { computeWeaknesses } from "@/lib/diagnostics/weakness";
 import { getContentRepository } from "@/lib/registry";
@@ -106,6 +107,7 @@ export function ReadingClient() {
 
       const data = (await res.json()) as { passage: unknown };
       const passage = PassageSchema.parse(data.passage);
+      const embedding = await fetchSingleEmbedding(passage.body);
 
       const repo = getContentRepository();
       const contentId = await repo.putContent({
@@ -115,6 +117,7 @@ export function ReadingClient() {
         payload: passage satisfies PassagePayload,
         source: "generated",
         validatedAt: new Date(),
+        embedding,
       });
 
       router.push(`/reading/${contentId}`);
