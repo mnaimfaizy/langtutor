@@ -2,6 +2,7 @@ import { getTranscriber } from "@/lib/transcriber/server";
 import { isSameOrigin } from "@/lib/server/origin";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024; // 10 MB
 

@@ -83,6 +83,11 @@ export class LocalAuthProvider implements AuthProvider {
     this.db.delete(sessions).where(eq(sessions.id, sessionId)).run();
   }
 
+  async signUp(email: string, password: string): Promise<{ sessionId: string; user: AuthUser }> {
+    await this.createUser(email, password, "standard");
+    return this.signIn(email, password);
+  }
+
   async createUser(
     email: string,
     password: string,

@@ -136,6 +136,29 @@ export class SupabaseAuthProvider implements AuthProvider {
     return toAuthUser(authUser.id, authUser.email, role);
   }
 
+  async signUp(email: string, password: string): Promise<{ sessionId: string; user: AuthUser }> {
+    const db = await this.ensureReady();
+
+    const { data, error } = await this.clients.anon.auth.signUp({ email, password });
+
+    if (error) throw new Error(error.message);
+    if (!data.session || !data.user) throw new Error("Sign-up did not return a session");
+
+    const session = supabaseSessionSchema.parse(data.session);
+
+    await db.insert(users).values({
+      id: session.user.id,
+      email: session.user.email,
+      role: "standard",
+      createdAt: new Date(),
+    });
+
+    return {
+      sessionId: session.access_token,
+      user: toAuthUser(session.user.id, session.user.email, "standard"),
+    };
+  }
+
   async signIn(email: string, password: string): Promise<{ sessionId: string; user: AuthUser }> {
     const db = await this.ensureReady();
     const input = signInSchema.parse({ email, password });

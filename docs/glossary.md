@@ -35,3 +35,11 @@
 **Direct Drizzle Postgres Connection** — Connecting Drizzle directly to Postgres using `postgres.js` to maintain parity with SQLite, instead of querying via `@supabase/supabase-js`.
 
 **Cloud AI Providers** — External API services (e.g., Groq, Mistral) used in Cloud Mode for LLM, STT, and Embeddings, securely configured entirely via `.env` variables rather than the database.
+
+**Groq LPU** — Groq's Language Processing Unit hardware; delivers LLM completions in 2–6 s for typical prompts, making Vercel Hobby's 10 s function timeout viable for most AI routes.
+
+**`maxDuration`** — Vercel route-level export (`export const maxDuration = N`) that raises the function timeout above the plan default; used on content-generation routes that may exceed 10 s.
+
+**Self-service registration** — Public sign-up flow where any visitor can create an account via Supabase Auth, without requiring an admin to create the account first (amends ADR 0001).
+
+**Per-user rate limiting** — A guard that caps the number of AI API requests a single user can make per day, protecting shared free-tier API keys from exhaustion. Deferred post-launch feature (ADR 0012).

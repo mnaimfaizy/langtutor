@@ -5,6 +5,7 @@ import { getLLMClient } from "@/lib/llm/server";
 import { isSameOrigin } from "@/lib/server/origin";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const RequestSchema = z.object({
   word: z.string().min(1).max(100),

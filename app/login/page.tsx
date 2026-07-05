@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getAuthProvider } from "@/lib/auth/server";
@@ -20,6 +21,15 @@ export default async function LoginPage() {
         <div className="mt-6">
           <LoginForm />
         </div>
+        <p className="text-muted mt-4 text-center text-sm">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/sign-up"
+            className="text-foreground font-medium underline underline-offset-4"
+          >
+            Sign up
+          </Link>
+        </p>
       </div>
     </main>
   );

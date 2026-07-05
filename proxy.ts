@@ -11,7 +11,11 @@ import { SESSION_COOKIE } from "@/lib/auth/constants";
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/login") || pathname.startsWith("/api/auth/")) {
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/sign-up") ||
+    pathname.startsWith("/api/auth/")
+  ) {
     return NextResponse.next();
   }
 

@@ -6,10 +6,12 @@ const mockCreateUser = vi.fn();
 const mockDeleteUser = vi.fn();
 const mockSignInWithPassword = vi.fn();
 const mockGetUser = vi.fn();
+const mockSignUp = vi.fn();
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => ({
     auth: {
+      signUp: mockSignUp,
       signInWithPassword: mockSignInWithPassword,
       getUser: mockGetUser,
       admin: {
@@ -146,6 +148,60 @@ describe("SupabaseAuthProvider auth flows", () => {
     const provider = new SupabaseAuthProvider();
     await expect(provider.createBootstrapAdmin("a@b.com", "password1")).rejects.toThrow(
       "Cloud mode bootstraps the admin",
+    );
+  });
+});
+
+describe("SupabaseAuthProvider signUp", () => {
+  const NEW_USER_ID = "33333333-3333-4333-8333-333333333333";
+
+  beforeEach(() => {
+    usersRows = [{ id: ADMIN_ID, email: "admin@example.com", role: "admin" }];
+
+    mockSignUp.mockResolvedValue({
+      data: {
+        session: {
+          access_token: "signup-token-abc",
+          user: { id: NEW_USER_ID, email: "newuser@example.com" },
+        },
+        user: { id: NEW_USER_ID, email: "newuser@example.com" },
+      },
+      error: null,
+    });
+  });
+
+  it("calls supabase.auth.signUp (not admin.createUser) and returns a session", async () => {
+    const provider = new SupabaseAuthProvider();
+    const result = await provider.signUp("newuser@example.com", "securePass1");
+
+    expect(mockSignUp).toHaveBeenCalledWith({
+      email: "newuser@example.com",
+      password: "securePass1",
+    });
+    expect(mockCreateUser).not.toHaveBeenCalledWith(
+      expect.objectContaining({ email: "newuser@example.com" }),
+    );
+    expect(result.sessionId).toBe("signup-token-abc");
+    expect(result.user.email).toBe("newuser@example.com");
+    expect(result.user.role).toBe("standard");
+  });
+
+  it("inserts the new user into our users table with standard role", async () => {
+    const provider = new SupabaseAuthProvider();
+    await provider.signUp("newuser@example.com", "securePass1");
+
+    expect(mockDb.insert).toHaveBeenCalled();
+  });
+
+  it("throws when Supabase returns an error", async () => {
+    mockSignUp.mockResolvedValue({
+      data: { session: null, user: null },
+      error: { message: "Email already registered" },
+    });
+
+    const provider = new SupabaseAuthProvider();
+    await expect(provider.signUp("taken@example.com", "securePass1")).rejects.toThrow(
+      "Email already registered",
     );
   });
 });

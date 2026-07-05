@@ -171,3 +171,25 @@ describe("last-admin protection", () => {
     ).resolves.toBeUndefined();
   });
 });
+
+describe("signUp", () => {
+  it("creates a standard user and returns a valid session", async () => {
+    const { sessionId, user } = await provider.signUp("newuser@example.com", "securePass1");
+
+    expect(user.email).toBe("newuser@example.com");
+    expect(user.role).toBe("standard");
+    expect(sessionId).toBeTruthy();
+
+    const resolved = await provider.getCurrentUser(sessionId);
+    expect(resolved?.id).toBe(user.id);
+  });
+
+  it("rejects a password shorter than 8 characters", async () => {
+    await expect(provider.signUp("short@example.com", "short")).rejects.toThrow();
+  });
+
+  it("rejects a duplicate email", async () => {
+    await provider.signUp("taken@example.com", "firstPass1");
+    await expect(provider.signUp("taken@example.com", "secondPass1")).rejects.toThrow();
+  });
+});

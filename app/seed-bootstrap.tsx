@@ -22,7 +22,7 @@ export function SeedBootstrap() {
   const [status, setStatus] = useState<SeedStatus | null>(null);
 
   useEffect(() => {
-    if (pathname.startsWith("/login")) return;
+    if (pathname.startsWith("/login") || pathname.startsWith("/sign-up")) return;
     let active = true;
     const repo = getContentRepository();
 

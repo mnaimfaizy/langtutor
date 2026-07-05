@@ -4,6 +4,7 @@ import { getLLMClient } from "@/lib/llm/server";
 import { isSameOrigin } from "@/lib/server/origin";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // The request body is untrusted external input → Zod-parse it at the boundary (hard rule #3).
 // Bounds cap memory/forwarded payload (basic DoS guard for the no-auth local proxy).

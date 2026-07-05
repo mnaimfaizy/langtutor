@@ -19,6 +19,11 @@ export interface AuthProvider {
   signIn(email: string, password: string): Promise<{ sessionId: string; user: AuthUser }>;
   /** Destroys the session. No-op if session does not exist. */
   signOut(sessionId: string): Promise<void>;
+  /**
+   * Self-service registration: creates a standard user and opens a session in one step.
+   * Unlike `createUser`, this is NOT admin-only — it is the public sign-up entry point.
+   */
+  signUp(email: string, password: string): Promise<{ sessionId: string; user: AuthUser }>;
   /** Creates a new user. Admin-only by convention — callers must enforce. */
   createUser(email: string, password: string, role?: UserRole): Promise<AuthUser>;
   /** Lists all users. Admin-only by convention. */
