@@ -11,8 +11,9 @@ const EmbeddingsRequest = z.object({
 });
 
 /**
- * `POST /api/llm/embeddings` — same-origin proxy to the Mac embedding model.
- * Returns `{ embeddings }`, row-aligned with `texts`.
+ * `POST /api/llm/embeddings` — same-origin proxy to the active embeddings provider.
+ * Provider is resolved server-side from runtime/env config (Mac in local mode,
+ * Mistral in cloud mode). Returns `{ embeddings }`, row-aligned with `texts`.
  */
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) {
