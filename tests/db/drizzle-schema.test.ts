@@ -125,6 +125,8 @@ describe("Migration — schema shape", () => {
     expect(columns("app_config")).toContain("chat_provider");
     expect(columns("app_config")).toContain("chat_model");
     expect(columns("app_config")).toContain("stt_provider");
+    expect(columns("app_config")).toContain("embeddings_provider");
+    expect(columns("app_config")).toContain("embeddings_model");
     expect(columns("app_config")).toContain("mac_llm_base_url");
     expect(columns("app_config")).toContain("mac_llm_model");
   });

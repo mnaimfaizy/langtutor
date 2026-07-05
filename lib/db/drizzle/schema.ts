@@ -14,6 +14,7 @@ export {
   CHAT_PROVIDER_VALUES,
   CONTENT_SOURCE_VALUES,
   CONTENT_TYPE_VALUES,
+  EMBEDDINGS_PROVIDER_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   USER_ROLE_VALUES,
@@ -23,6 +24,7 @@ import {
   CHAT_PROVIDER_VALUES,
   CONTENT_SOURCE_VALUES,
   CONTENT_TYPE_VALUES,
+  EMBEDDINGS_PROVIDER_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   USER_ROLE_VALUES,
@@ -57,6 +59,10 @@ export const appConfig = sqliteTable("app_config", {
   chatProvider: text("chat_provider", { enum: CHAT_PROVIDER_VALUES }).notNull().default("mac"),
   chatModel: text("chat_model").notNull().default(""),
   sttProvider: text("stt_provider", { enum: STT_PROVIDER_VALUES }).notNull().default("mac"),
+  embeddingsProvider: text("embeddings_provider", { enum: EMBEDDINGS_PROVIDER_VALUES })
+    .notNull()
+    .default("mac"),
+  embeddingsModel: text("embeddings_model").notNull().default(""),
   macLlmBaseUrl: text("mac_llm_base_url").notNull(),
   macLlmModel: text("mac_llm_model").notNull(),
   macUtilityModel: text("mac_utility_model").notNull(),

@@ -1,6 +1,68 @@
 import { describe, expect, it } from "vitest";
 
-import { cosineSimilarity, findNearest } from "@/lib/content/embeddings";
+import {
+  cosineSimilarity,
+  DEFAULT_MISTRAL_EMBED_MODEL,
+  findNearest,
+  MISTRAL_EMBEDDINGS_BASE_URL,
+  resolveEmbeddingRoute,
+} from "@/lib/content/embeddings";
+
+describe("resolveEmbeddingRoute()", () => {
+  it("routes to Mistral when embeddingsProvider is mistral", () => {
+    expect(
+      resolveEmbeddingRoute({
+        embeddingsProvider: "mistral",
+        model: "mistral-embed",
+        macBaseUrl: "http://mac:11434/v1",
+        macApiKey: "ollama",
+        mistralApiKey: "mistral_secret",
+      }),
+    ).toEqual({
+      baseURL: MISTRAL_EMBEDDINGS_BASE_URL,
+      apiKey: "mistral_secret",
+      model: "mistral-embed",
+    });
+  });
+
+  it("defaults to mistral-embed when model is blank", () => {
+    expect(
+      resolveEmbeddingRoute({
+        embeddingsProvider: "mistral",
+        model: "  ",
+        macBaseUrl: "http://mac:11434/v1",
+        macApiKey: "ollama",
+        mistralApiKey: "mistral_secret",
+      }).model,
+    ).toBe(DEFAULT_MISTRAL_EMBED_MODEL);
+  });
+
+  it("throws when Mistral is selected without an API key", () => {
+    expect(() =>
+      resolveEmbeddingRoute({
+        embeddingsProvider: "mistral",
+        model: "mistral-embed",
+        macBaseUrl: "http://mac:11434/v1",
+        macApiKey: "ollama",
+      }),
+    ).toThrow("MISTRAL_API_KEY is required when embeddingsProvider is mistral");
+  });
+
+  it("routes to Mac Ollama when embeddingsProvider is mac", () => {
+    expect(
+      resolveEmbeddingRoute({
+        embeddingsProvider: "mac",
+        model: "nomic-embed-text",
+        macBaseUrl: "http://mac:11434/v1",
+        macApiKey: "ollama",
+      }),
+    ).toEqual({
+      baseURL: "http://mac:11434/v1",
+      apiKey: "ollama",
+      model: "nomic-embed-text",
+    });
+  });
+});
 
 // ── cosineSimilarity() ────────────────────────────────────────────────────────
 

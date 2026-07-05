@@ -12,7 +12,10 @@ const base: LLMConfig = {
   apiKey: "ollama",
   chatModel: "env-chat",
   utilityModel: "env-utility",
+  embeddingsProvider: "mac",
   embedModel: "env-embed",
+  macBaseURL: "http://env:11434/v1",
+  macApiKey: "ollama",
 };
 
 describe("resolveLLMConfig", () => {
@@ -55,7 +58,10 @@ describe("resolveLLMConfig", () => {
       apiKey: "gsk_test_key",
       chatModel: "llama-3.1-8b-instant",
       utilityModel: "env-utility",
+      embeddingsProvider: "mac",
       embedModel: "env-embed",
+      macBaseURL: "http://env:11434/v1",
+      macApiKey: "ollama",
     });
     vi.unstubAllEnvs();
   });
@@ -74,6 +80,33 @@ describe("resolveLLMConfig", () => {
     );
     vi.unstubAllEnvs();
   });
+
+  it("routes embeddings to Mistral when embeddingsProvider is mistral", () => {
+    vi.stubEnv("MISTRAL_API_KEY", "mistral_test_key");
+    const resolved = resolveLLMConfig(base, {
+      embeddingsProvider: "mistral",
+      embeddingsModel: "mistral-embed",
+    });
+    expect(resolved.embeddingsProvider).toBe("mistral");
+    expect(resolved.embedModel).toBe("mistral-embed");
+    expect(resolved.macBaseURL).toBe("http://env:11434/v1");
+    vi.unstubAllEnvs();
+  });
+
+  it("uses default Mistral embed model when none is provided", () => {
+    vi.stubEnv("MISTRAL_API_KEY", "mistral_test_key");
+    const resolved = resolveLLMConfig(base, { embeddingsProvider: "mistral" });
+    expect(resolved.embedModel).toBe("mistral-embed");
+    vi.unstubAllEnvs();
+  });
+
+  it("throws when Mistral is selected without MISTRAL_API_KEY", () => {
+    vi.stubEnv("MISTRAL_API_KEY", "");
+    expect(() => resolveLLMConfig(base, { embeddingsProvider: "mistral" })).toThrow(
+      "MISTRAL_API_KEY is required when embeddingsProvider is mistral",
+    );
+    vi.unstubAllEnvs();
+  });
 });
 
 describe("settingsToOverrides", () => {
@@ -87,10 +120,12 @@ describe("settingsToOverrides", () => {
       }),
     ).toEqual({
       chatProvider: undefined,
+      embeddingsProvider: undefined,
       baseURL: "http://mac/v1",
       chatModel: "qwen",
       utilityModel: "qwen-small",
       embedModel: undefined,
+      embeddingsModel: undefined,
     });
   });
 
@@ -102,20 +137,41 @@ describe("settingsToOverrides", () => {
       }),
     ).toEqual({
       chatProvider: "groq",
+      embeddingsProvider: undefined,
       baseURL: undefined,
       chatModel: "llama-3.3-70b-versatile",
       utilityModel: undefined,
       embedModel: undefined,
+      embeddingsModel: undefined,
+    });
+  });
+
+  it("maps mistral embeddings provider settings without mac embed model", () => {
+    expect(
+      settingsToOverrides({
+        embeddingsProvider: "mistral",
+        embeddingsModel: "mistral-embed",
+      }),
+    ).toEqual({
+      chatProvider: undefined,
+      embeddingsProvider: "mistral",
+      baseURL: undefined,
+      chatModel: undefined,
+      utilityModel: undefined,
+      embedModel: undefined,
+      embeddingsModel: "mistral-embed",
     });
   });
 
   it("handles undefined settings", () => {
     expect(settingsToOverrides(undefined)).toEqual({
       chatProvider: undefined,
+      embeddingsProvider: undefined,
       baseURL: undefined,
       chatModel: undefined,
       utilityModel: undefined,
       embedModel: undefined,
+      embeddingsModel: undefined,
     });
   });
 

@@ -125,6 +125,7 @@ describe("saveUserPrefs", () => {
     expect(saved.macSttUrl).toBeUndefined();
     expect(saved.chatProvider).toBeUndefined();
     expect(saved.sttProvider).toBeUndefined();
+    expect(saved.embeddingsProvider).toBeUndefined();
   });
 
   it("preserves mac fields in profile when admin saves TTS prefs", async () => {

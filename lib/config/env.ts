@@ -13,6 +13,8 @@ const macConfigFields = {
   MAC_STT_URL: z.string().url().default("http://localhost:8080"),
   /** Groq API key — server-only; optional until chat/stt provider is set to groq. */
   GROQ_API_KEY: z.string().min(1).optional(),
+  /** Mistral API key — server-only; optional until embeddingsProvider is set to mistral. */
+  MISTRAL_API_KEY: z.string().min(1).optional(),
 };
 
 const localConfigSchema = z.object({

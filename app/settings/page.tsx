@@ -44,6 +44,8 @@ export default function SettingsPage() {
   const [chatProvider, setChatProvider] = useState<"mac" | "groq">("mac");
   const [cloudChatModel, setCloudChatModel] = useState("");
   const [sttProvider, setSttProvider] = useState<"mac" | "groq">("mac");
+  const [embeddingsProvider, setEmbeddingsProvider] = useState<"mac" | "mistral">("mac");
+  const [cloudEmbeddingsModel, setCloudEmbeddingsModel] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [chatModel, setChatModel] = useState("");
   const [utilityModel, setUtilityModel] = useState("");
@@ -77,6 +79,8 @@ export default function SettingsPage() {
         setChatProvider(s.chatProvider ?? "mac");
         setCloudChatModel(s.chatModel ?? "");
         setSttProvider(s.sttProvider ?? "mac");
+        setEmbeddingsProvider(s.embeddingsProvider ?? "mac");
+        setCloudEmbeddingsModel(s.embeddingsModel ?? "");
         setBaseUrl(s.macLlmBaseUrl ?? "");
         setChatModel(s.macLlmModel ?? "");
         setUtilityModel(s.macUtilityModel ?? "");
@@ -132,10 +136,13 @@ export default function SettingsPage() {
         chatProvider,
         chatModel: chatProvider === "groq" ? cloudChatModel.trim() || undefined : undefined,
         sttProvider,
+        embeddingsProvider,
+        embeddingsModel:
+          embeddingsProvider === "mistral" ? cloudEmbeddingsModel.trim() || undefined : undefined,
         macLlmBaseUrl: chatProvider === "mac" ? baseUrl.trim() || undefined : undefined,
         macLlmModel: chatProvider === "mac" ? chatModel.trim() || undefined : undefined,
         macUtilityModel: utilityModel.trim() || undefined,
-        macEmbedModel: embedModel.trim() || undefined,
+        macEmbedModel: embeddingsProvider === "mac" ? embedModel.trim() || undefined : undefined,
         macSttUrl: sttProvider === "mac" ? sttUrl.trim() || undefined : undefined,
       });
       setBanner({ tone: "ok", text: "Saved. New calls route to these endpoints." });
@@ -269,8 +276,8 @@ export default function SettingsPage() {
         <Card className="mt-6">
           <CardTitle>AI providers</CardTitle>
           <CardDescription>
-            Choose Mac (local) or Groq (cloud) for chat and speech-to-text. API keys are set in
-            server env only — never stored in the database.
+            Choose Mac (local), Groq (cloud chat/STT), or Mistral (cloud embeddings). API keys are
+            set in server env only — never stored in the database.
           </CardDescription>
           <CardContent className="space-y-4">
             <Field label="Chat provider">
@@ -339,15 +346,39 @@ export default function SettingsPage() {
               />
             </Field>
 
-            <Field label="Embedding model">
-              <Input
-                value={embedModel}
-                onChange={(e) => setEmbedModel(e.target.value)}
-                placeholder="nomic-embed-text"
+            <Field label="Embeddings provider">
+              <select
+                value={embeddingsProvider}
+                onChange={(e) => setEmbeddingsProvider(e.target.value as "mac" | "mistral")}
                 disabled={!loaded || busy}
-                autoComplete="off"
-              />
+                className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="mac">Mac (Ollama)</option>
+                <option value="mistral">Mistral (cloud)</option>
+              </select>
             </Field>
+
+            {embeddingsProvider === "mistral" ? (
+              <Field label="Mistral embedding model" hint="e.g. mistral-embed">
+                <Input
+                  value={cloudEmbeddingsModel}
+                  onChange={(e) => setCloudEmbeddingsModel(e.target.value)}
+                  placeholder="mistral-embed"
+                  disabled={!loaded || busy}
+                  autoComplete="off"
+                />
+              </Field>
+            ) : (
+              <Field label="Embedding model">
+                <Input
+                  value={embedModel}
+                  onChange={(e) => setEmbedModel(e.target.value)}
+                  placeholder="nomic-embed-text"
+                  disabled={!loaded || busy}
+                  autoComplete="off"
+                />
+              </Field>
+            )}
 
             <Field label="STT provider">
               <select

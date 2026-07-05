@@ -30,6 +30,8 @@ export interface ProfileSettings {
   chatProvider?: "mac" | "groq";
   chatModel?: string;
   sttProvider?: "mac" | "groq";
+  embeddingsProvider?: "mac" | "mistral";
+  embeddingsModel?: string;
   macLlmBaseUrl?: string;
   macLlmModel?: string;
   macUtilityModel?: string;

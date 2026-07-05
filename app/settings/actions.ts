@@ -12,6 +12,8 @@ type AdminConfig = Pick<
   | "chatProvider"
   | "chatModel"
   | "sttProvider"
+  | "embeddingsProvider"
+  | "embeddingsModel"
   | "macLlmBaseUrl"
   | "macLlmModel"
   | "macUtilityModel"
@@ -25,6 +27,8 @@ const ADMIN_KEYS: Array<keyof AdminConfig> = [
   "chatProvider",
   "chatModel",
   "sttProvider",
+  "embeddingsProvider",
+  "embeddingsModel",
   "macLlmBaseUrl",
   "macLlmModel",
   "macUtilityModel",

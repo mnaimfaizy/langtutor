@@ -1,10 +1,33 @@
 /**
  * Embedding utilities for semantic search (PLAN §1.6).
- * All functions are pure and side-effect-free — testable with precomputed vectors.
- * Actual embedding generation goes through `LLMClient.embed()` (server-side).
+ * Pure similarity helpers are side-effect-free; routing helpers map provider
+ * selection to the correct endpoint without persisting secrets.
  */
 
+import type { EmbeddingsProvider } from "@/lib/db/drizzle/schema.shared";
+
+/** Mistral OpenAI-compatible embeddings endpoint. */
+export const MISTRAL_EMBEDDINGS_BASE_URL = "https://api.mistral.ai/v1";
+
+/** Default Mistral embedding model when none is configured in appConfig. */
+export const DEFAULT_MISTRAL_EMBED_MODEL = "mistral-embed";
+
 // ── types ─────────────────────────────────────────────────────────────────────
+
+/** Resolved endpoint + model for an embedding request (no secrets stored in DB). */
+export interface EmbeddingRoute {
+  baseURL: string;
+  apiKey: string;
+  model: string;
+}
+
+export interface EmbeddingRouteInput {
+  embeddingsProvider: EmbeddingsProvider;
+  model: string;
+  macBaseUrl: string;
+  macApiKey: string;
+  mistralApiKey?: string;
+}
 
 /** A candidate item paired with its embedding vector. */
 export interface EmbeddedItem<T> {
@@ -17,6 +40,32 @@ export interface SimilarityResult<T> {
   item: T;
   /** Cosine similarity in [−1, 1]. Higher = more similar. */
   score: number;
+}
+
+// ── provider routing ──────────────────────────────────────────────────────────
+
+/**
+ * Map embeddings provider selection to the OpenAI-compatible endpoint and model.
+ * Mistral uses `api.mistral.ai/v1` with the server env token; Mac uses the Ollama URL.
+ */
+export function resolveEmbeddingRoute(input: EmbeddingRouteInput): EmbeddingRoute {
+  if (input.embeddingsProvider === "mistral") {
+    const apiKey = input.mistralApiKey?.trim();
+    if (!apiKey) {
+      throw new Error("MISTRAL_API_KEY is required when embeddingsProvider is mistral");
+    }
+    return {
+      baseURL: MISTRAL_EMBEDDINGS_BASE_URL,
+      apiKey,
+      model: input.model.trim() || DEFAULT_MISTRAL_EMBED_MODEL,
+    };
+  }
+
+  return {
+    baseURL: input.macBaseUrl,
+    apiKey: input.macApiKey,
+    model: input.model,
+  };
 }
 
 // ── cosine similarity ─────────────────────────────────────────────────────────

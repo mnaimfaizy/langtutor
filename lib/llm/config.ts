@@ -1,4 +1,4 @@
-import type { ChatProvider } from "../db/drizzle/schema.shared";
+import type { ChatProvider, EmbeddingsProvider } from "../db/drizzle/schema.shared";
 
 /**
  * Mac/LLM configuration, read from server-only env (PLAN §3.2). Used solely on the
@@ -11,19 +11,28 @@ export interface LLMConfig {
   apiKey: string;
   chatModel: string;
   utilityModel: string;
+  embeddingsProvider: EmbeddingsProvider;
   embedModel: string;
+  /** Mac Ollama endpoint — used for embeddings when embeddingsProvider is mac. */
+  macBaseURL: string;
+  macApiKey: string;
 }
 
 /** Default to a local Ollama OpenAI-compatible endpoint. */
 const DEFAULT_BASE_URL = "http://localhost:11434/v1";
 
 export function loadLLMConfig(): LLMConfig {
+  const macBaseURL = process.env.MAC_LLM_BASE_URL ?? DEFAULT_BASE_URL;
+  const macApiKey = process.env.MAC_LLM_API_KEY ?? "ollama";
   return {
     chatProvider: "mac",
-    baseURL: process.env.MAC_LLM_BASE_URL ?? DEFAULT_BASE_URL,
-    apiKey: process.env.MAC_LLM_API_KEY ?? "ollama",
+    baseURL: macBaseURL,
+    apiKey: macApiKey,
     chatModel: process.env.MAC_LLM_MODEL ?? "qwen2.5:14b-instruct",
     utilityModel: process.env.MAC_UTILITY_MODEL ?? "qwen2.5:7b-instruct",
+    embeddingsProvider: "mac",
     embedModel: process.env.MAC_EMBED_MODEL ?? "nomic-embed-text",
+    macBaseURL,
+    macApiKey,
   };
 }

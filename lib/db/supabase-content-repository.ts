@@ -251,6 +251,8 @@ export class SupabaseContentRepository implements ContentRepository {
       if (configRow.chatProvider) settings.chatProvider = configRow.chatProvider;
       if (configRow.chatModel) settings.chatModel = configRow.chatModel;
       if (configRow.sttProvider) settings.sttProvider = configRow.sttProvider;
+      if (configRow.embeddingsProvider) settings.embeddingsProvider = configRow.embeddingsProvider;
+      if (configRow.embeddingsModel) settings.embeddingsModel = configRow.embeddingsModel;
       if (configRow.macLlmBaseUrl) settings.macLlmBaseUrl = configRow.macLlmBaseUrl;
       if (configRow.macLlmModel) settings.macLlmModel = configRow.macLlmModel;
       if (configRow.macUtilityModel) settings.macUtilityModel = configRow.macUtilityModel;
@@ -841,6 +843,8 @@ export class SupabaseContentRepository implements ContentRepository {
       settings.chatProvider !== undefined ||
       settings.chatModel !== undefined ||
       settings.sttProvider !== undefined ||
+      settings.embeddingsProvider !== undefined ||
+      settings.embeddingsModel !== undefined ||
       settings.macLlmBaseUrl !== undefined ||
       settings.macLlmModel !== undefined ||
       settings.macUtilityModel !== undefined ||
@@ -863,6 +867,8 @@ export class SupabaseContentRepository implements ContentRepository {
           chatProvider: settings.chatProvider ?? existing.chatProvider,
           chatModel: settings.chatModel ?? existing.chatModel,
           sttProvider: settings.sttProvider ?? existing.sttProvider,
+          embeddingsProvider: settings.embeddingsProvider ?? existing.embeddingsProvider,
+          embeddingsModel: settings.embeddingsModel ?? existing.embeddingsModel,
           macLlmBaseUrl: settings.macLlmBaseUrl ?? existing.macLlmBaseUrl,
           macLlmModel: settings.macLlmModel ?? existing.macLlmModel,
           macUtilityModel: settings.macUtilityModel ?? existing.macUtilityModel,
@@ -877,6 +883,8 @@ export class SupabaseContentRepository implements ContentRepository {
         chatProvider: settings.chatProvider ?? "mac",
         chatModel: settings.chatModel ?? "",
         sttProvider: settings.sttProvider ?? "mac",
+        embeddingsProvider: settings.embeddingsProvider ?? "mac",
+        embeddingsModel: settings.embeddingsModel ?? "",
         macLlmBaseUrl: settings.macLlmBaseUrl ?? "",
         macLlmModel: settings.macLlmModel ?? "",
         macUtilityModel: settings.macUtilityModel ?? "",

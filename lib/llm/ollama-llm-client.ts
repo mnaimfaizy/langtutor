@@ -4,6 +4,8 @@ import { createOpenAICompatible, type OpenAICompatibleProvider } from "@ai-sdk/o
 import { embedMany, generateText, streamText, type ModelMessage } from "ai";
 import { z } from "zod";
 
+import { getMistralApiKey } from "@/lib/ai/mistral";
+import { resolveEmbeddingRoute } from "@/lib/content/embeddings";
 import type { LLMConfig } from "./config";
 import type { LLMClient } from "./llm-client";
 import type { ChatMessage, ChatObjectOptions, ChatOptions } from "./types";
@@ -134,8 +136,22 @@ export class OllamaLLMClient implements LLMClient {
   }
 
   async embed(texts: string[]): Promise<number[][]> {
+    const route = resolveEmbeddingRoute({
+      embeddingsProvider: this.config.embeddingsProvider,
+      model: this.config.embedModel,
+      macBaseUrl: this.config.macBaseURL,
+      macApiKey: this.config.macApiKey,
+      mistralApiKey: getMistralApiKey(),
+    });
+
+    const embedProvider = createOpenAICompatible({
+      name: this.config.embeddingsProvider === "mistral" ? "mistral" : "ollama",
+      baseURL: route.baseURL,
+      apiKey: route.apiKey,
+    });
+
     const { embeddings } = await embedMany({
-      model: this.provider.textEmbeddingModel(this.config.embedModel),
+      model: embedProvider.textEmbeddingModel(route.model),
       values: texts,
     });
     return embeddings;

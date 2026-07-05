@@ -23,6 +23,8 @@ export function seedAppConfig(db: DrizzleClient): void {
       chatProvider: "mac",
       chatModel: "",
       sttProvider: "mac",
+      embeddingsProvider: "mac",
+      embeddingsModel: "",
       macLlmBaseUrl: env.MAC_LLM_BASE_URL,
       macLlmModel: env.MAC_LLM_MODEL,
       macUtilityModel: env.MAC_UTILITY_MODEL,
