@@ -1,11 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import type { Cefr } from "@/lib/db";
 import { buildNewCard, isDuplicate } from "@/lib/deck";
+import { resolveMotionPreset } from "@/lib/motion";
 import { getContentRepository } from "@/lib/registry";
-import { Button } from "@/ui/button";
+import { Badge, Button, Card, Input, SelectPill } from "@/ui";
 import { cn } from "@/ui/cn";
 
 type LookupStatus =
@@ -21,6 +23,8 @@ const CEFR_LEVELS: Cefr[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
 export function AddWordForm() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const reducedMotion = useReducedMotion() ?? false;
+  const enter = resolveMotionPreset("enter", reducedMotion);
   const [query, setQuery] = useState("");
   const [lookup, setLookup] = useState<LookupStatus>({ kind: "idle" });
   // CEFR can be overridden by the user when the lexicon returns null
@@ -96,11 +100,9 @@ export function AddWordForm() {
   }
 
   return (
-    <div data-testid="add-word-form" className="w-full max-w-sm">
-      <h2 className="text-foreground text-lg font-semibold">Add a word</h2>
-
-      <div className="mt-4 flex gap-2">
-        <input
+    <div data-testid="add-word-form" className="mt-8 w-full">
+      <div className="flex gap-2">
+        <Input
           ref={inputRef}
           data-testid="word-input"
           type="text"
@@ -110,7 +112,7 @@ export function AddWordForm() {
             if (e.key === "Enter") void handleLookup();
           }}
           placeholder="e.g. luminous"
-          className="border-border bg-card text-foreground placeholder:text-muted focus:ring-accent h-10 flex-1 rounded-lg border px-3 text-sm focus:ring-2 focus:outline-none"
+          className="flex-1"
         />
         <Button
           data-testid="btn-lookup"
@@ -123,51 +125,68 @@ export function AddWordForm() {
         </Button>
       </div>
 
-      {/* Lookup result */}
-      {lookup.kind === "found" && (
-        <div data-testid="lookup-result" className="border-border mt-4 rounded-xl border p-4">
-          <p className="text-foreground text-base font-semibold">{lookup.word}</p>
-          <p className="text-muted mt-1 text-sm leading-6">{lookup.definition}</p>
-          {lookup.examples.length > 0 && (
-            <ul className="mt-2 space-y-1">
-              {lookup.examples.map((ex, i) => (
-                <li key={i} className="text-muted text-xs italic">
-                  &ldquo;{ex}&rdquo;
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="mt-3 flex items-center gap-3">
-            <label className="text-muted text-xs font-medium">CEFR</label>
-            <select
-              data-testid="cefr-select"
-              value={selectedCefr}
-              onChange={(e) => setSelectedCefr(e.target.value as Cefr)}
-              className="border-border bg-card text-foreground focus:ring-accent rounded-lg border px-2 py-1 text-xs focus:ring-2 focus:outline-none"
-            >
-              {CEFR_LEVELS.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </select>
-            {lookup.cefr === null && (
-              <span className="text-warning text-xs">Not in CEFR data — please choose</span>
-            )}
-          </div>
-
-          <Button
-            data-testid="btn-add-to-deck"
-            size="md"
-            className="mt-4 w-full"
-            disabled={addStatus === "adding" || addStatus === "added"}
-            onClick={() => void handleAdd()}
+      <AnimatePresence mode="wait">
+        {/* Lookup result */}
+        {lookup.kind === "found" && (
+          <motion.div
+            key="found"
+            initial={enter.initial}
+            animate={enter.animate}
+            exit={enter.exit}
+            transition={enter.transition}
           >
-            {addStatus === "adding" ? "Adding…" : "Add to deck"}
-          </Button>
-        </div>
-      )}
+            <Card data-testid="lookup-result" className="mt-4">
+              <p className="text-foreground text-base font-semibold">{lookup.word}</p>
+              <p className="text-muted mt-1 text-sm leading-6">{lookup.definition}</p>
+              {lookup.examples.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {lookup.examples.map((ex, i) => (
+                    <li key={i} className="text-muted text-xs italic">
+                      &ldquo;{ex}&rdquo;
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-foreground text-xs font-medium tracking-wide uppercase">
+                    CEFR level
+                  </p>
+                  {lookup.cefr === null && (
+                    <Badge variant="warning" size="sm">
+                      Not in CEFR data — please choose
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-2 grid grid-cols-6 gap-1.5">
+                  {CEFR_LEVELS.map((l) => (
+                    <SelectPill
+                      key={l}
+                      data-testid={`cefr-pill-${l}`}
+                      selected={selectedCefr === l}
+                      onClick={() => setSelectedCefr(l)}
+                      className="justify-center px-2 py-2 text-center"
+                    >
+                      {l}
+                    </SelectPill>
+                  ))}
+                </div>
+              </div>
+
+              <Button
+                data-testid="btn-add-to-deck"
+                size="md"
+                className="mt-4 w-full"
+                disabled={addStatus === "adding" || addStatus === "added"}
+                onClick={() => void handleAdd()}
+              >
+                {addStatus === "adding" ? "Adding…" : "Add to deck"}
+              </Button>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {lookup.kind === "not-found" && (
         <p data-testid="msg-not-found" className="text-muted mt-3 text-sm">

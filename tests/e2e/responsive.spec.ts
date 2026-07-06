@@ -38,6 +38,46 @@ test.describe("phone-width layout: authenticated shell", () => {
   });
 });
 
+/**
+ * Issue #50 (UI/UX revamp slice 9) — responsive pass for the deck, diagnostics,
+ * settings, and admin pages.
+ */
+test.describe("phone-width layout: deck, diagnostics, and admin", () => {
+  test.use({ viewport: PHONE_VIEWPORT });
+
+  test("deck page renders without horizontal overflow and add-word form is usable", async ({
+    page,
+  }) => {
+    await page.goto("/deck");
+    await expect(page.getByRole("heading", { name: "Add words", level: 1 })).toBeVisible();
+    await expectNoHorizontalScroll(page);
+
+    const wordInput = page.getByTestId("word-input");
+    await expect(wordInput).toBeVisible();
+    const box = await wordInput.boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET_PX);
+  });
+
+  test("diagnostics page renders without horizontal overflow and skill tabs are usable", async ({
+    page,
+  }) => {
+    await page.goto("/diagnostics");
+    await expect(page.getByRole("heading", { name: "Diagnostics", level: 1 })).toBeVisible();
+    await expectNoHorizontalScroll(page);
+
+    const readingTab = page.getByTestId("skill-tab-reading");
+    await expect(readingTab).toBeVisible();
+    const box = await readingTab.boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET_PX);
+  });
+
+  test("admin users page renders without horizontal overflow", async ({ page }) => {
+    await page.goto("/admin/users");
+    await expect(page.getByRole("heading", { name: "User management", level: 1 })).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+});
+
 test.describe("phone-width layout: auth screens", () => {
   // Auth screens are reached unauthenticated — drop the shared session storage state.
   test.use({ viewport: PHONE_VIEWPORT, storageState: { cookies: [], origins: [] } });

@@ -6,7 +6,7 @@ import { Skeleton } from "@/ui/skeleton";
 
 function DiagnosticsSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4 px-6 py-10">
+    <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-8 sm:px-6 sm:py-10">
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-10 w-full" />
       <Skeleton className="h-64 w-full" />

@@ -4,6 +4,9 @@ import { useState } from "react";
 
 import type { AuthUser, UserRole } from "@/lib/auth/auth-provider";
 import {
+  Avatar,
+  BackLink,
+  Badge,
   Button,
   Card,
   CardContent,
@@ -15,10 +18,16 @@ import {
   DialogDescription,
   DialogTitle,
   Input,
+  SelectPill,
   cn,
 } from "@/ui";
 
 import { createUser, deleteUser } from "./actions";
+
+const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
+  { value: "standard", label: "Standard" },
+  { value: "admin", label: "Admin" },
+];
 
 type Banner = { tone: "ok" | "error"; text: string } | null;
 
@@ -71,8 +80,9 @@ export function UsersClient({ initialUsers }: { initialUsers: AuthUser[] }) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-10">
-      <h1 className="text-foreground text-2xl font-semibold">User management</h1>
+    <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
+      <BackLink href="/settings" label="Settings" />
+      <h1 className="text-foreground mt-2 text-2xl font-semibold">User management</h1>
       <p className="text-muted mt-1 text-sm">Admin-only. Create and manage user accounts.</p>
 
       <Card className="mt-6">
@@ -96,22 +106,28 @@ export function UsersClient({ initialUsers }: { initialUsers: AuthUser[] }) {
             <ul className="divide-border divide-y">
               {users.map((u) => (
                 <li key={u.id} className="flex items-center justify-between gap-3 py-3">
-                  <div>
-                    <span className="text-foreground text-sm font-medium">{u.email}</span>
-                    <span
-                      className={cn(
-                        "ml-2 rounded-full px-2 py-0.5 text-xs font-medium",
-                        u.role === "admin"
-                          ? "bg-accent/10 text-accent"
-                          : "bg-foreground/5 text-muted",
-                      )}
-                    >
-                      {u.role}
-                    </span>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar
+                      size="sm"
+                      fallback={u.email.slice(0, 1).toUpperCase()}
+                      alt={u.email}
+                      className="shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-foreground truncate text-sm font-medium">{u.email}</p>
+                      <Badge
+                        variant={u.role === "admin" ? "accent" : "neutral"}
+                        size="sm"
+                        className="mt-1"
+                      >
+                        {u.role}
+                      </Badge>
+                    </div>
                   </div>
                   <Button
                     variant="secondary"
                     size="sm"
+                    className="shrink-0"
                     onClick={() => setConfirmTarget(u)}
                     disabled={deletingId === u.id}
                     aria-label={`Delete ${u.email}`}
@@ -182,18 +198,22 @@ export function UsersClient({ initialUsers }: { initialUsers: AuthUser[] }) {
               className="mt-1.5"
             />
           </label>
-          <label className="block">
+          <div>
             <span className="text-foreground text-sm font-medium">Role</span>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as UserRole)}
-              disabled={creating}
-              className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
-            >
-              <option value="standard">Standard</option>
-              <option value="admin">Admin</option>
-            </select>
-          </label>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              {ROLE_OPTIONS.map(({ value, label }) => (
+                <SelectPill
+                  key={value}
+                  selected={role === value}
+                  disabled={creating}
+                  onClick={() => setRole(value)}
+                  className="justify-center text-center"
+                >
+                  {label}
+                </SelectPill>
+              ))}
+            </div>
+          </div>
           <div className="pt-1">
             <Button
               onClick={() => void handleCreate()}

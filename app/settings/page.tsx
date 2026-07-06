@@ -15,13 +15,27 @@ import {
 import { HealthResponseSchema } from "@/lib/llm/settings";
 import { getContentRepository } from "@/lib/registry";
 import { applyPalette } from "@/lib/theme";
-import { Button, Card, CardContent, CardDescription, CardTitle, Input, cn } from "@/ui";
+import {
+  Button,
+  buttonClassName,
+  Card,
+  CardContent,
+  CardDescription,
+  CardTitle,
+  Input,
+  SelectPill,
+  cn,
+} from "@/ui";
 import { getSettingsRole, saveAdminConfig, saveUserPrefs } from "./actions";
 import { BackupSection } from "./backup-section";
 
 const TTS_RATE_MIN = 0.5;
 const TTS_RATE_MAX = 2;
 const TTS_RATE_STEP = 0.1;
+
+// Matches ui/Input's focus treatment for native <select> elements (no Select primitive in ui/ yet).
+const SELECT_CLASS =
+  "border-border bg-background text-foreground focus-visible:border-accent focus-visible:ring-accent focus-visible:ring-offset-background focus-visible:shadow-glow mt-1.5 block w-full rounded-md border px-3 py-2 text-sm transition-[colors,box-shadow] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50";
 
 type Banner = { tone: "ok" | "error"; text: string } | null;
 
@@ -305,7 +319,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-10">
+    <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
       <h1 className="text-foreground text-2xl font-semibold">Settings</h1>
       <p className="text-muted mt-1 text-sm">Manage your language learning preferences.</p>
 
@@ -317,28 +331,18 @@ export default function SettingsPage() {
         </CardDescription>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
-            {EXPERIENCE_MODE_OPTIONS.map(({ value, label, hint }) => {
-              const active = experienceMode === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  data-testid={`experience-mode-btn-${value}`}
-                  aria-pressed={active}
-                  disabled={experienceModeBusy}
-                  onClick={() => handleSelectExperienceMode(value)}
-                  className={cn(
-                    "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
-                    active
-                      ? "border-accent bg-accent/10 text-foreground font-medium"
-                      : "border-border text-muted hover:border-foreground/30",
-                  )}
-                >
-                  {label}
-                  <span className="text-muted mt-0.5 block text-xs font-normal">{hint}</span>
-                </button>
-              );
-            })}
+            {EXPERIENCE_MODE_OPTIONS.map(({ value, label, hint }) => (
+              <SelectPill
+                key={value}
+                data-testid={`experience-mode-btn-${value}`}
+                selected={experienceMode === value}
+                disabled={experienceModeBusy}
+                onClick={() => handleSelectExperienceMode(value)}
+              >
+                {label}
+                <span className="text-muted mt-0.5 block text-xs font-normal">{hint}</span>
+              </SelectPill>
+            ))}
           </div>
 
           <div className="pt-1">
@@ -370,7 +374,10 @@ export default function SettingsPage() {
           <CardTitle>User management</CardTitle>
           <CardDescription>Create, list, and delete user accounts.</CardDescription>
           <CardContent>
-            <Link href="/admin/users" className="text-accent text-sm hover:underline">
+            <Link
+              href="/admin/users"
+              className={buttonClassName({ variant: "secondary", size: "sm" })}
+            >
               Manage users →
             </Link>
           </CardContent>
@@ -390,7 +397,7 @@ export default function SettingsPage() {
                 value={chatProvider}
                 onChange={(e) => setChatProvider(e.target.value as "mac" | "groq")}
                 disabled={!loaded || busy}
-                className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
+                className={SELECT_CLASS}
               >
                 <option value="mac">Mac (Ollama)</option>
                 <option value="groq">Groq (cloud)</option>
@@ -456,7 +463,7 @@ export default function SettingsPage() {
                 value={embeddingsProvider}
                 onChange={(e) => setEmbeddingsProvider(e.target.value as "mac" | "mistral")}
                 disabled={!loaded || busy}
-                className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
+                className={SELECT_CLASS}
               >
                 <option value="mac">Mac (Ollama)</option>
                 <option value="mistral">Mistral (cloud)</option>
@@ -490,7 +497,7 @@ export default function SettingsPage() {
                 value={sttProvider}
                 onChange={(e) => setSttProvider(e.target.value as "mac" | "groq")}
                 disabled={!loaded || busy}
-                className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
+                className={SELECT_CLASS}
               >
                 <option value="mac">Mac (whisper.cpp)</option>
                 <option value="groq">Groq (whisper-large-v3)</option>
@@ -550,7 +557,7 @@ export default function SettingsPage() {
                 value={ttsLang}
                 onChange={(e) => handleTtsLangChange(e.target.value)}
                 disabled={!loaded || ttsBusy}
-                className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
+                className={SELECT_CLASS}
               >
                 <option value="">All languages</option>
                 {availableLangs.map((lang) => (
@@ -585,7 +592,7 @@ export default function SettingsPage() {
               value={ttsVoiceUri}
               onChange={(e) => setTtsVoiceUri(e.target.value)}
               disabled={!loaded || ttsBusy}
-              className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
+              className={SELECT_CLASS}
             >
               <option value="">System default</option>
               {filteredVoices.map((v) => (
@@ -628,7 +635,7 @@ export default function SettingsPage() {
                 value={profileLevel}
                 onChange={(e) => setProfileLevel(e.target.value as Cefr)}
                 disabled={profileBusy}
-                className="border-border bg-background text-foreground mt-1.5 block w-full rounded-md border px-3 py-2 text-sm"
+                className={SELECT_CLASS}
               >
                 {CEFR_LEVELS.map((level) => (
                   <option key={level} value={level}>
@@ -640,26 +647,18 @@ export default function SettingsPage() {
 
             <Field label="Goals">
               <div className="mt-1.5 grid grid-cols-2 gap-2">
-                {GOAL_OPTIONS.map(({ value, label }) => {
-                  const active = profileGoals.includes(value);
-                  return (
-                    <button
-                      key={value}
-                      data-testid={`profile-goal-btn-${value}`}
-                      aria-pressed={active}
-                      disabled={profileBusy}
-                      onClick={() => toggleProfileGoal(value)}
-                      className={cn(
-                        "rounded-lg border px-3 py-2 text-sm transition-colors",
-                        active
-                          ? "border-accent bg-accent/10 text-foreground font-medium"
-                          : "border-border text-muted hover:border-foreground/30",
-                      )}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
+                {GOAL_OPTIONS.map(({ value, label }) => (
+                  <SelectPill
+                    key={value}
+                    data-testid={`profile-goal-btn-${value}`}
+                    selected={profileGoals.includes(value)}
+                    disabled={profileBusy}
+                    onClick={() => toggleProfileGoal(value)}
+                    className="justify-center text-center"
+                  >
+                    {label}
+                  </SelectPill>
+                ))}
               </div>
             </Field>
 

@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import type { Cefr, ErrorEventRecord, Skill, Weakness } from "@/lib/db";
 import { computeWeaknesses } from "@/lib/diagnostics/weakness";
+import { resolveMotionPreset } from "@/lib/motion";
 import { getContentRepository } from "@/lib/registry";
+import { Card } from "@/ui";
 import { cn } from "@/ui/cn";
 
 const SKILLS: Skill[] = ["reading", "writing", "listening", "speaking"];
@@ -37,6 +40,10 @@ const TIER_LABEL: Record<MasteryTier, string> = {
 };
 
 export function DiagnosticsClient() {
+  const reducedMotion = useReducedMotion() ?? false;
+  const enter = resolveMotionPreset("enter", reducedMotion);
+  const press = resolveMotionPreset("press", reducedMotion);
+
   const [events, setEvents] = useState<ErrorEventRecord[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [activeSkill, setActiveSkill] = useState<Skill>("reading");
@@ -118,7 +125,7 @@ export function DiagnosticsClient() {
   }
 
   return (
-    <div data-testid="diagnostics-page" className="flex flex-1 flex-col px-6 py-10">
+    <div data-testid="diagnostics-page" className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-3xl space-y-8">
         <section>
           <h1 className="text-foreground text-2xl font-semibold tracking-tight">Diagnostics</h1>
@@ -130,37 +137,37 @@ export function DiagnosticsClient() {
         {/* Skill tabs */}
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Skills">
           {SKILLS.map((skill) => (
-            <button
+            <motion.button
               key={skill}
               role="tab"
               aria-selected={skill === activeSkill}
               data-testid={`skill-tab-${skill}`}
               onClick={() => handleSkillClick(skill)}
+              whileTap={press.whileTap}
+              transition={press.transition}
               className={cn(
-                "rounded-lg px-4 py-2 text-sm font-medium capitalize transition-colors",
+                "rounded-lg px-4 py-2 text-sm font-medium capitalize transition-[colors,box-shadow] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+                "focus-visible:ring-accent focus-visible:ring-offset-background",
                 skill === activeSkill
-                  ? "bg-accent text-accent-foreground"
-                  : "border-border text-muted hover:text-foreground border",
+                  ? "bg-accent text-accent-foreground shadow-glow"
+                  : "border-border bg-card text-muted hover:text-foreground border",
               )}
             >
               {skill}
-            </button>
+            </motion.button>
           ))}
         </div>
 
         {!loaded ? (
           <p className="text-muted text-sm">Loading…</p>
         ) : events.length === 0 ? (
-          <div
-            data-testid="diagnostics-empty"
-            className="border-border rounded-xl border p-10 text-center"
-          >
+          <Card data-testid="diagnostics-empty" className="p-10 text-center">
             <p className="text-foreground text-sm font-medium">No practice data yet</p>
             <p className="text-muted mt-2 text-sm leading-6">
               Complete reading, writing, listening, or speaking exercises to build your weakness
               profile.
             </p>
-          </div>
+          </Card>
         ) : (
           <div data-testid="diagnostics-heatmap" className="space-y-6">
             {categories.length === 0 ? (
@@ -169,7 +176,7 @@ export function DiagnosticsClient() {
               </p>
             ) : (
               <>
-                <div className="overflow-x-auto">
+                <Card className="overflow-x-auto p-4 sm:p-5">
                   <table className="w-full border-collapse text-sm">
                     <thead>
                       <tr>
@@ -201,7 +208,7 @@ export function DiagnosticsClient() {
                             if (!weakness) {
                               return (
                                 <td key={cefr} className="px-1 py-1.5 text-center">
-                                  <div className="border-border mx-auto h-8 w-16 rounded border opacity-30" />
+                                  <div className="border-border mx-auto h-8 w-16 rounded-lg border opacity-30" />
                                 </td>
                               );
                             }
@@ -209,18 +216,20 @@ export function DiagnosticsClient() {
                             const tier = masteryTier(weakness.score);
                             return (
                               <td key={cefr} className="px-1 py-1.5 text-center">
-                                <button
+                                <motion.button
                                   onClick={() => handleCellClick(category, cefr)}
                                   aria-pressed={isSelected}
                                   title={`${TIER_LABEL[tier]} — ${Math.round(weakness.score * 100)}% weakness`}
+                                  whileTap={press.whileTap}
+                                  transition={press.transition}
                                   className={cn(
-                                    "mx-auto flex h-8 w-16 items-center justify-center rounded border text-[10px] font-semibold transition-opacity hover:opacity-80",
+                                    "mx-auto flex h-8 w-16 items-center justify-center rounded-lg border text-[10px] font-semibold transition-[colors,box-shadow,opacity] hover:opacity-80",
                                     TIER_STYLE[tier],
-                                    isSelected && "ring-accent ring-2 ring-offset-1",
+                                    isSelected && "ring-accent shadow-glow ring-2 ring-offset-1",
                                   )}
                                 >
                                   {TIER_ABBR[tier]}
-                                </button>
+                                </motion.button>
                               </td>
                             );
                           })}
@@ -228,7 +237,7 @@ export function DiagnosticsClient() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </Card>
 
                 {/* Legend */}
                 <div className="flex flex-wrap gap-4 text-xs">
@@ -247,23 +256,30 @@ export function DiagnosticsClient() {
                 </div>
 
                 {/* Drill-down panel */}
-                {selectedCell && selectedContexts.length > 0 && (
-                  <div
-                    data-testid="diagnostics-drilldown"
-                    className="border-border bg-card space-y-2 rounded-xl border p-4"
-                  >
-                    <p className="text-foreground text-sm font-medium capitalize">
-                      {selectedCell.category} · {selectedCell.cefr} — recent error contexts
-                    </p>
-                    <ul className="space-y-1.5">
-                      {selectedContexts.map((ctx, i) => (
-                        <li key={i} className="text-muted text-xs leading-relaxed">
-                          &ldquo;{ctx}&rdquo;
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                <AnimatePresence>
+                  {selectedCell && selectedContexts.length > 0 && (
+                    <motion.div
+                      key={`${selectedCell.category}|${selectedCell.cefr}`}
+                      initial={enter.initial}
+                      animate={enter.animate}
+                      exit={enter.exit}
+                      transition={enter.transition}
+                    >
+                      <Card data-testid="diagnostics-drilldown" className="space-y-2">
+                        <p className="text-foreground text-sm font-medium capitalize">
+                          {selectedCell.category} · {selectedCell.cefr} — recent error contexts
+                        </p>
+                        <ul className="space-y-1.5">
+                          {selectedContexts.map((ctx, i) => (
+                            <li key={i} className="text-muted text-xs leading-relaxed">
+                              &ldquo;{ctx}&rdquo;
+                            </li>
+                          ))}
+                        </ul>
+                      </Card>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </>
             )}
           </div>
