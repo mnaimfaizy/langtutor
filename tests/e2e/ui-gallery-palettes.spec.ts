@@ -22,6 +22,15 @@ test("gallery renders every palette without console errors and stays WCAG AA com
     await page.getByTestId(`palette-switcher-${palette}`).click();
     await expect(page.locator("html")).toHaveAttribute("data-palette", palette);
 
+    // Elevated variants (gradient button, glass card) render and stay interactive.
+    await expect(page.getByTestId("button-gradient")).toBeVisible();
+    await expect(page.getByTestId("card-surface")).toBeVisible();
+    await expect(page.getByTestId("card-glass")).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Reading" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
     const bodyColors = await page.evaluate(() => {
       const style = getComputedStyle(document.body);
       return { color: style.color, backgroundColor: style.backgroundColor };

@@ -22,7 +22,10 @@ export function Progress({
         className={cn("bg-foreground/10 h-2 w-full overflow-hidden rounded-full", trackClassName)}
       >
         <BaseProgress.Indicator
-          className={cn("bg-accent h-full rounded-full transition-all", indicatorClassName)}
+          className={cn(
+            "from-gradient-from via-gradient-via to-gradient-to shadow-glow h-full rounded-full bg-gradient-to-r transition-all",
+            indicatorClassName,
+          )}
         />
       </BaseProgress.Track>
     </BaseProgress.Root>

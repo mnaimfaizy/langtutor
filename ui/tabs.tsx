@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import { Tabs as BaseTabs } from "@base-ui/react/tabs";
+import { motion, useReducedMotion } from "framer-motion";
+import { resolveMotionPreset } from "@/lib/motion";
 import { cn } from "./cn";
+
+const MotionTabsTab = motion.create(BaseTabs.Tab);
 
 export function Tabs({
   className,
@@ -30,12 +34,16 @@ export function TabsTab({
   className,
   ...props
 }: Omit<React.ComponentProps<typeof BaseTabs.Tab>, "className"> & { className?: string }) {
+  const reducedMotion = useReducedMotion() ?? false;
+  const press = resolveMotionPreset("press", reducedMotion);
   return (
-    <BaseTabs.Tab
+    <MotionTabsTab
       className={cn(
-        "text-muted hover:text-foreground data-[selected]:bg-accent data-[selected]:text-accent-foreground cursor-default rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+        "text-muted hover:text-foreground data-[selected]:bg-accent data-[selected]:text-accent-foreground data-[selected]:shadow-glow cursor-default rounded-md px-3 py-1.5 text-sm font-medium transition-[colors,box-shadow]",
         className,
       )}
+      whileTap={press.whileTap}
+      transition={press.transition}
       {...props}
     />
   );

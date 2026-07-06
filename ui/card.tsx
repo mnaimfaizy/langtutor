@@ -3,10 +3,19 @@ import { cn } from "./cn";
 
 // Hand-built: Base UI has no Card primitive. Pure presentational; safe as a Server Component.
 
-export function Card({ className, ...props }: React.ComponentProps<"div">) {
+export type CardVariant = "surface" | "glass";
+
+const cardVariants: Record<CardVariant, string> = {
+  surface: "border-border bg-card",
+  glass: "border-glass-border bg-glass backdrop-blur-lg",
+};
+
+export type CardProps = React.ComponentProps<"div"> & { variant?: CardVariant };
+
+export function Card({ className, variant = "surface", ...props }: CardProps) {
   return (
     <div
-      className={cn("border-border bg-card rounded-xl border p-5 shadow-sm", className)}
+      className={cn("rounded-xl border p-5 shadow-sm", cardVariants[variant], className)}
       {...props}
     />
   );

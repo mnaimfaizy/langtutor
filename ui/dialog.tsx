@@ -2,8 +2,13 @@
 
 import * as React from "react";
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
+import { motion, useReducedMotion } from "framer-motion";
+import { resolveMotionPreset } from "@/lib/motion";
 import { cn } from "./cn";
 import { buttonClassName, type ButtonSize, type ButtonVariant } from "./button";
+
+const MotionDialogTrigger = motion.create(BaseDialog.Trigger);
+const MotionDialogClose = motion.create(BaseDialog.Close);
 
 export function Dialog(props: React.ComponentProps<typeof BaseDialog.Root>) {
   return <BaseDialog.Root {...props} />;
@@ -24,8 +29,15 @@ export function DialogTrigger({
   size = "md",
   ...props
 }: DialogTriggerProps) {
+  const reducedMotion = useReducedMotion() ?? false;
+  const press = resolveMotionPreset("press", reducedMotion);
   return (
-    <BaseDialog.Trigger className={buttonClassName({ variant, size, className })} {...props} />
+    <MotionDialogTrigger
+      className={buttonClassName({ variant, size, className })}
+      whileTap={press.whileTap}
+      transition={press.transition}
+      {...props}
+    />
   );
 }
 
@@ -91,5 +103,14 @@ export function DialogClose({
   size = "md",
   ...props
 }: DialogCloseProps) {
-  return <BaseDialog.Close className={buttonClassName({ variant, size, className })} {...props} />;
+  const reducedMotion = useReducedMotion() ?? false;
+  const press = resolveMotionPreset("press", reducedMotion);
+  return (
+    <MotionDialogClose
+      className={buttonClassName({ variant, size, className })}
+      whileTap={press.whileTap}
+      transition={press.transition}
+      {...props}
+    />
+  );
 }

@@ -100,6 +100,9 @@ export default function UiGalleryPage() {
           <Button variant="primary">Primary</Button>
           <Button variant="secondary">Secondary</Button>
           <Button variant="ghost">Ghost</Button>
+          <Button variant="gradient" data-testid="button-gradient">
+            Gradient
+          </Button>
           <Button variant="primary" disabled>
             Disabled
           </Button>
@@ -115,14 +118,25 @@ export default function UiGalleryPage() {
           <Input placeholder="Type a word…" className="max-w-xs" />
         </Section>
 
-        <Section title="Card">
-          <Card className="max-w-sm">
-            <CardTitle>Card title</CardTitle>
-            <CardDescription>A hand-built surface using theme tokens.</CardDescription>
+        <Section title="Card — variants">
+          <Card className="max-w-sm" data-testid="card-surface">
+            <CardTitle>Surface</CardTitle>
+            <CardDescription>The default opaque card surface.</CardDescription>
             <CardContent>
               <Button size="sm">Action</Button>
             </CardContent>
           </Card>
+          <div className="from-gradient-from via-gradient-via to-gradient-to relative max-w-sm flex-1 rounded-xl bg-gradient-to-br p-4">
+            <Card variant="glass" className="max-w-none" data-testid="card-glass">
+              <CardTitle>Glass</CardTitle>
+              <CardDescription>Translucent surface, blurred over a busy backdrop.</CardDescription>
+              <CardContent>
+                <Button size="sm" variant="gradient">
+                  Action
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </Section>
 
         <Section title="Dialog">
