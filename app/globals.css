@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* Light fallback when bootstrap has not run (no-JS). */
 :root {
   --background: #fafaf9;
   --foreground: #1c1917;
@@ -11,6 +12,49 @@
   --success: #16a34a;
   --warning: #d97706;
   --danger: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-palette]) {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --muted: #a1a1aa;
+    --card: #171717;
+    --border: #262626;
+    --accent: #6366f1;
+    --accent-foreground: #ffffff;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --danger: #f87171;
+  }
+}
+
+:root[data-palette="adult-light"],
+:root[data-palette="kid-bright"] {
+  --background: #fafaf9;
+  --foreground: #1c1917;
+  --muted: #78716c;
+  --card: #ffffff;
+  --border: #e7e5e4;
+  --accent: #4f46e5;
+  --accent-foreground: #ffffff;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+}
+
+:root[data-palette="adult-dark"],
+:root[data-palette="kid-dark"] {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --muted: #a1a1aa;
+  --card: #171717;
+  --border: #262626;
+  --accent: #6366f1;
+  --accent-foreground: #ffffff;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
 }
 
 @theme inline {
@@ -26,21 +70,6 @@
   --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --muted: #a1a1aa;
-    --card: #171717;
-    --border: #262626;
-    --accent: #6366f1;
-    --accent-foreground: #ffffff;
-    --success: #4ade80;
-    --warning: #fbbf24;
-    --danger: #f87171;
-  }
 }
 
 body {

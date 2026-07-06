@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { SerwistProvider } from "@serwist/turbopack/react";
+import { PALETTE_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 import { ConnectivityIndicator } from "./connectivity-indicator";
 import { GamificationHud } from "./gamification-hud";
@@ -39,7 +40,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: PALETTE_BOOTSTRAP_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">
         <SerwistProvider swUrl="/serwist/sw.js">
           <MotionProvider>
