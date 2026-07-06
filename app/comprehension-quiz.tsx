@@ -7,7 +7,7 @@ import type { ComprehensionQuestion } from "@/lib/content/comprehension";
 import type { Cefr } from "@/lib/db";
 import { createListeningComprehensionErrorEvent, createReadingErrorEvent } from "@/lib/diagnostics";
 import { getContentRepository } from "@/lib/registry";
-import { Button } from "@/ui/button";
+import { Button, Card, SelectPill } from "@/ui";
 
 type QuizPhase = "idle" | "loading" | "answering" | "result" | "error";
 
@@ -135,7 +135,7 @@ export function ComprehensionQuiz({ title, body, level, skill }: Props) {
           </p>
         )}
         {questions.map((q, i) => (
-          <div key={i} className="border-border rounded-xl border p-4">
+          <Card key={i}>
             <p className="text-foreground mb-2 text-sm font-medium">{q.question}</p>
             <ul className="space-y-1">
               {q.options.map((opt, j) => (
@@ -153,7 +153,7 @@ export function ComprehensionQuiz({ title, body, level, skill }: Props) {
                 </li>
               ))}
             </ul>
-          </div>
+          </Card>
         ))}
       </div>
     );
@@ -164,7 +164,7 @@ export function ComprehensionQuiz({ title, body, level, skill }: Props) {
   return (
     <div className="mt-8 space-y-6" data-testid={`${p}quiz-answering`}>
       {questions.map((q, i) => (
-        <div key={i} className="border-border rounded-xl border p-4">
+        <Card key={i}>
           <p
             className="text-foreground mb-3 text-sm font-medium"
             data-testid={`${qp}question-${i}`}
@@ -174,21 +174,18 @@ export function ComprehensionQuiz({ title, body, level, skill }: Props) {
           <ul className="space-y-2">
             {q.options.map((opt, j) => (
               <li key={j}>
-                <button
+                <SelectPill
                   data-testid={`${qp}option-${i}-${j}`}
+                  selected={selected[i] === j}
                   onClick={() => select(i, j)}
-                  className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-                    selected[i] === j
-                      ? "border-accent text-foreground bg-accent/10"
-                      : "border-border text-muted hover:border-accent/50"
-                  }`}
+                  className="w-full rounded-lg"
                 >
                   {opt}
-                </button>
+                </SelectPill>
               </li>
             ))}
           </ul>
-        </div>
+        </Card>
       ))}
       <Button
         size="md"

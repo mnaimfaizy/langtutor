@@ -11,9 +11,8 @@ import type { WerResult } from "@/lib/diagnostics/wer";
 import { useRecorder } from "@/lib/audio/use-recorder";
 import { getContentRepository } from "@/lib/registry";
 import { TranscribeResponseSchema } from "../transcribe-schema";
-import { CEFR_COLOR } from "@/lib/cefr";
-import { Button } from "@/ui/button";
-import { cn } from "@/ui/cn";
+import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
+import { Badge, BackLink, Button, Card } from "@/ui";
 import { TtsButton } from "@/ui/tts-button";
 import { WerDisplay } from "@/ui/wer-display";
 
@@ -152,33 +151,30 @@ export function SpeakingView({ id }: { id: number }) {
   const body = passage?.body ?? "";
 
   return (
-    <div className="flex flex-1 flex-col px-6 py-10">
+    <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl space-y-8">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <Link
-              href="/speaking"
-              className="text-muted hover:text-foreground mb-1 inline-block text-xs"
-            >
-              ← Speaking
-            </Link>
-            <h1 className="text-foreground text-xl font-semibold">{title}</h1>
-            <p className="text-muted mt-0.5 text-sm capitalize">
-              {content.topic} ·{" "}
-              <span className={cn("font-semibold", CEFR_COLOR[content.level])}>
-                {content.level}
-              </span>
-            </p>
+        <div>
+          <BackLink href="/speaking" label="Speaking" className="mb-1" />
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="text-foreground text-xl font-semibold">{title}</h1>
+              <p className="text-muted mt-1 flex items-center gap-1.5 text-sm capitalize">
+                {content.topic} ·{" "}
+                <Badge variant={CEFR_BADGE_VARIANT[content.level]} size="sm">
+                  {content.level}
+                </Badge>
+              </p>
+            </div>
+            {body && <TtsButton text={body} />}
           </div>
-          {body && <TtsButton text={body} />}
         </div>
 
         {/* Passage text — shown upfront so the user can read it */}
         {body && (
-          <div className="border-border bg-card rounded-xl border p-5">
+          <Card>
             <p className="text-foreground text-sm leading-7 whitespace-pre-wrap">{body}</p>
-          </div>
+          </Card>
         )}
 
         {/* Instructions */}
@@ -191,6 +187,7 @@ export function SpeakingView({ id }: { id: number }) {
         <div className="flex flex-wrap gap-3">
           {!isRecording ? (
             <Button
+              variant="gradient"
               onClick={() => {
                 setTranscribeState("idle");
                 setWerResult(null);
@@ -221,7 +218,8 @@ export function SpeakingView({ id }: { id: number }) {
 
         {isRecording && (
           <p className="text-warning flex items-center gap-2 text-sm font-medium" role="status">
-            <span aria-hidden>●</span> Recording — read the passage, then press Stop
+            <span className="bg-warning size-2 shrink-0 animate-pulse rounded-full" aria-hidden />
+            Recording — read the passage, then press Stop
           </p>
         )}
 
@@ -240,18 +238,18 @@ export function SpeakingView({ id }: { id: number }) {
 
         {/* Mac unavailable */}
         {transcribeState === "mac-unavailable" && (
-          <div
-            className="bg-warning/10 border-warning/30 rounded-lg border p-4 text-sm"
+          <Card
+            className="border-warning/30 bg-warning/10"
             data-testid="transcript-mac-unavailable"
             role="alert"
           >
-            <p className="text-warning font-medium">Mac STT server not reachable</p>
-            <p className="text-muted mt-1">
+            <p className="text-warning text-sm font-medium">Mac STT server not reachable</p>
+            <p className="text-muted mt-1 text-sm">
               Start your whisper-server on the Mac and make sure{" "}
               <code className="bg-card rounded px-1">MAC_STT_URL</code> is set in{" "}
               <code className="bg-card rounded px-1">.env.local</code>, then try again.
             </p>
-          </div>
+          </Card>
         )}
 
         {transcribeState === "error" && (

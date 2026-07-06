@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 
+import { Card } from "@/ui/card";
 import { Skeleton } from "@/ui/skeleton";
 
 function ReviewSkeleton() {
@@ -9,10 +10,10 @@ function ReviewSkeleton() {
     <div className="flex flex-1 flex-col items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm space-y-4">
         <Skeleton className="h-2 w-full" />
-        <div className="border-border rounded-2xl border p-8">
+        <Card className="rounded-2xl p-8">
           <Skeleton className="mx-auto h-8 w-32" />
           <Skeleton className="mt-8 h-10 w-full" />
-        </div>
+        </Card>
       </div>
     </div>
   );

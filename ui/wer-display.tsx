@@ -1,7 +1,8 @@
 "use client";
 
 import type { WerAlignment, WerResult } from "@/lib/diagnostics/wer";
-import { cn } from "@/ui/cn";
+import { Card } from "./card";
+import { cn } from "./cn";
 
 function werColor(wer: number): string {
   if (wer <= 0.2) return "text-success";
@@ -37,7 +38,7 @@ export function WerDisplay({ result, scoreLabel = "Score", referenceBody }: WerD
   const pct = isFinite(result.wer) ? Math.round(result.wer * 100) : 100;
   return (
     <div data-testid="wer-result" className="mt-8 space-y-5">
-      <div className="border-border rounded-xl border p-5">
+      <Card>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-muted text-xs font-medium tracking-wider uppercase">{scoreLabel}</p>
@@ -57,10 +58,10 @@ export function WerDisplay({ result, scoreLabel = "Score", referenceBody }: WerD
             </p>
           </div>
         </div>
-      </div>
+      </Card>
 
       {result.alignment.length > 0 && (
-        <div className="border-border rounded-xl border p-5">
+        <Card>
           <p className="text-foreground mb-3 text-xs font-medium tracking-wider uppercase">
             Alignment
           </p>
@@ -77,11 +78,11 @@ export function WerDisplay({ result, scoreLabel = "Score", referenceBody }: WerD
             · <span className="text-danger">[red]</span> = missed word ·{" "}
             <span className="text-warning">+orange</span> = extra word
           </p>
-        </div>
+        </Card>
       )}
 
       {referenceBody && (
-        <details className="border-border rounded-xl border p-4">
+        <details className="border-border bg-card rounded-xl border p-4">
           <summary className="text-muted cursor-pointer text-sm select-none">
             Show reference text
           </summary>

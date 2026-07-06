@@ -9,9 +9,8 @@ import { createListeningErrorEvents } from "@/lib/diagnostics";
 import { computeWer } from "@/lib/diagnostics/wer";
 import type { WerResult } from "@/lib/diagnostics/wer";
 import { getContentRepository } from "@/lib/registry";
-import { CEFR_COLOR } from "@/lib/cefr";
-import { Button } from "@/ui/button";
-import { cn } from "@/ui/cn";
+import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
+import { Badge, BackLink, Button } from "@/ui";
 import { TtsButton } from "@/ui/tts-button";
 import { WerDisplay } from "@/ui/wer-display";
 
@@ -113,25 +112,13 @@ export function DictationView({ id }: { id: number }) {
   const body = parsed.success ? parsed.data.body : "";
 
   return (
-    <div className="flex flex-1 flex-col px-6 py-10">
+    <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
-        <Link
-          href="/listening"
-          className="text-muted hover:text-foreground mb-6 inline-flex items-center gap-1 text-sm transition-colors"
-        >
-          ← Listening
-        </Link>
+        <BackLink href="/listening" label="Listening" className="mb-6" />
 
         <article data-testid="dictation-article" className="mt-2">
-          <div className="mb-1 flex items-center gap-2">
-            <span
-              className={cn(
-                "text-xs font-semibold tracking-wider uppercase",
-                CEFR_COLOR[content.level] ?? "text-muted",
-              )}
-            >
-              {content.level}
-            </span>
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <Badge variant={CEFR_BADGE_VARIANT[content.level]}>{content.level}</Badge>
             <span className="text-muted text-xs capitalize">{content.topic}</span>
           </div>
 
@@ -163,7 +150,7 @@ export function DictationView({ id }: { id: number }) {
               setWerResult(null);
             }}
             placeholder="Type what you heard…"
-            className="border-border bg-background text-foreground placeholder:text-muted focus:ring-accent w-full resize-y rounded-xl border px-4 py-3 text-sm leading-7 focus:ring-2 focus:outline-none"
+            className="border-border bg-card text-foreground placeholder:text-muted focus-visible:border-accent focus-visible:ring-accent focus-visible:ring-offset-background w-full resize-y rounded-xl border px-4 py-3 text-sm leading-7 transition-[colors,box-shadow] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           />
           <div className="mt-3 flex items-center gap-3">
             <Button

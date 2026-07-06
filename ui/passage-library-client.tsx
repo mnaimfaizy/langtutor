@@ -6,8 +6,9 @@ import Link from "next/link";
 import type { Content } from "@/lib/db";
 import { PassageSchema } from "@/lib/content/passage";
 import { getContentRepository } from "@/lib/registry";
-import { CEFR_COLOR } from "@/lib/cefr";
-import { cn } from "./cn";
+import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
+import { Badge } from "./badge";
+import { Card } from "./card";
 
 interface PassageLibraryClientProps {
   title: string;
@@ -43,7 +44,7 @@ export function PassageLibraryClient({
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col px-6 py-10">
+    <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl space-y-10">
         <section>
           <h1 className="text-foreground text-2xl font-semibold tracking-tight">{title}</h1>
@@ -73,22 +74,21 @@ export function PassageLibraryClient({
                     <Link
                       href={`${basePath}/${item.id}`}
                       data-testid={`passage-item-${item.id}`}
-                      className="border-border bg-card hover:border-foreground/20 flex items-center justify-between rounded-xl border px-4 py-3 transition-colors"
+                      className="focus-visible:ring-accent focus-visible:ring-offset-background block rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                     >
-                      <div className="min-w-0">
-                        <p className="text-foreground truncate text-sm font-medium">{itemTitle}</p>
-                        <p className="text-muted mt-0.5 truncate text-xs capitalize">
-                          {item.topic} · {item.source}
-                        </p>
-                      </div>
-                      <span
-                        className={cn(
-                          "ml-4 shrink-0 text-xs font-semibold tracking-wider uppercase",
-                          CEFR_COLOR[item.level],
-                        )}
-                      >
-                        {item.level}
-                      </span>
+                      <Card className="hover:border-accent/40 hover:shadow-glow flex flex-row items-center justify-between gap-4 py-3 transition-[colors,box-shadow]">
+                        <div className="min-w-0">
+                          <p className="text-foreground truncate text-sm font-medium">
+                            {itemTitle}
+                          </p>
+                          <p className="text-muted mt-0.5 truncate text-xs capitalize">
+                            {item.topic} · {item.source}
+                          </p>
+                        </div>
+                        <Badge variant={CEFR_BADGE_VARIANT[item.level]} className="shrink-0">
+                          {item.level}
+                        </Badge>
+                      </Card>
                     </Link>
                   </li>
                 );

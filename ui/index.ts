@@ -4,12 +4,14 @@
 export { cn } from "./cn";
 export * from "./button-styles";
 export { Button, type ButtonProps } from "./button";
+export * from "./back-link";
 export * from "./input";
 export * from "./card";
 export * from "./dialog";
 export * from "./tooltip";
 export * from "./popover";
 export * from "./tabs";
+export * from "./select-pill";
 export * from "./progress";
 export * from "./progress-ring";
 export * from "./badge";

@@ -2,16 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
-import type { Achievement, Card } from "@/lib/db";
+import type { Achievement, Card as CardRow } from "@/lib/db";
 import { ACHIEVEMENT_DEFS, applyReview, localDateString } from "@/lib/gamification";
 import { getContentRepository } from "@/lib/registry";
-import { CEFR_COLOR } from "@/lib/cefr";
+import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
+import { resolveMotionPreset } from "@/lib/motion";
 import { scheduleCard } from "@/lib/srs";
 import type { SrsRating } from "@/lib/srs";
-import { Button } from "@/ui/button";
-import { Skeleton } from "@/ui/skeleton";
+import { Badge, Button, Card, Progress, Skeleton } from "@/ui";
 import { cn } from "@/ui/cn";
 
 type Phase = "loading" | "empty" | "reviewing" | "summary" | "error";
@@ -53,14 +53,18 @@ const achievementVariants = {
   },
 };
 
-const achievementItem = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
-};
-
 export function ReviewSession() {
+  const reducedMotion = useReducedMotion() ?? false;
+  const enter = resolveMotionPreset("enter", reducedMotion);
+  const celebrate = resolveMotionPreset("celebrate", reducedMotion);
+
+  const achievementItem = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0, transition: enter.transition },
+  };
+
   const [phase, setPhase] = useState<Phase>("loading");
-  const [cards, setCards] = useState<Card[]>([]);
+  const [cards, setCards] = useState<CardRow[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [counts, setCounts] = useState<RatingCounts>({ again: 0, hard: 0, good: 0, easy: 0 });
@@ -138,10 +142,10 @@ export function ReviewSession() {
       >
         <div className="w-full max-w-sm space-y-4">
           <Skeleton className="h-2 w-full" />
-          <div className="border-border rounded-2xl border p-8">
+          <Card className="rounded-2xl p-8">
             <Skeleton className="mx-auto h-8 w-32" />
             <Skeleton className="mt-8 h-10 w-full" />
-          </div>
+          </Card>
         </div>
       </div>
     );
@@ -178,9 +182,9 @@ export function ReviewSession() {
         <motion.div
           data-testid="review-summary"
           className="w-full max-w-sm"
-          initial={{ opacity: 0, scale: 0.94 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
+          initial={celebrate.initial}
+          animate={celebrate.animate}
+          transition={celebrate.transition}
         >
           <h1 className="text-foreground text-center text-3xl font-semibold">Session complete</h1>
           <p className="text-muted mt-2 text-center text-base">{total} cards reviewed</p>
@@ -237,19 +241,15 @@ export function ReviewSession() {
 
           <div className="mt-6 grid grid-cols-2 gap-3">
             {(["again", "hard", "good", "easy"] as const).map((r) => (
-              <div
-                key={r}
-                data-testid={`summary-count-${r}`}
-                className="border-border rounded-xl border p-4 text-center"
-              >
+              <Card key={r} data-testid={`summary-count-${r}`} className="p-4 text-center">
                 <p className={cn("text-2xl font-bold", ratingColor(r))}>{counts[r]}</p>
                 <p className="text-muted mt-1 text-sm capitalize">{r}</p>
-              </div>
+              </Card>
             ))}
           </div>
 
           <Link href="/" className="mt-8 block">
-            <Button variant="primary" size="lg" className="w-full">
+            <Button variant="gradient" size="lg" className="w-full">
               Back to home
             </Button>
           </Link>
@@ -298,23 +298,12 @@ export function ReviewSession() {
           <span data-testid="review-progress">
             {currentIndex + 1} / {total}
           </span>
-          <span
-            className={cn(
-              "text-xs font-semibold tracking-wider uppercase",
-              CEFR_COLOR[card.cefr] ?? "text-muted",
-            )}
-          >
+          <Badge variant={CEFR_BADGE_VARIANT[card.cefr]} size="sm">
             {card.cefr}
-          </span>
+          </Badge>
         </div>
 
-        <div className="bg-foreground/10 mb-6 h-1 w-full rounded-full">
-          <motion.div
-            className="bg-accent h-1 rounded-full"
-            animate={{ width: `${((currentIndex + 1) / total) * 100}%` }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          />
-        </div>
+        <Progress value={((currentIndex + 1) / total) * 100} className="mb-6" />
 
         {/* Card slides out left and new card enters from right on each advance */}
         <AnimatePresence mode="wait">
@@ -323,9 +312,9 @@ export function ReviewSession() {
             initial={{ opacity: 0, x: 40 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -40 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            transition={enter.transition}
           >
-            <div data-testid="review-card" className="border-border rounded-2xl border p-8">
+            <Card data-testid="review-card" className="rounded-2xl p-8">
               <p
                 data-testid="card-word"
                 className="text-foreground text-center text-3xl font-semibold tracking-tight"
@@ -348,7 +337,7 @@ export function ReviewSession() {
                   className="mt-6"
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  transition={enter.transition}
                 >
                   <p
                     data-testid="card-definition"
@@ -406,7 +395,7 @@ export function ReviewSession() {
                   </div>
                 </motion.div>
               )}
-            </div>
+            </Card>
           </motion.div>
         </AnimatePresence>
       </div>

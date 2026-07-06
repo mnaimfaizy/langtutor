@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import type { Cefr, Content, Weakness } from "@/lib/db";
 import { PromptSchema, WRITING_TOPICS } from "@/lib/content/prompt";
@@ -11,9 +12,9 @@ import { fetchSingleEmbedding } from "@/lib/content/client-embeddings";
 import { rankTopicsByWeakness, WRITING_TOPIC_AFFINITIES } from "@/lib/content/adaptive-selection";
 import { computeWeaknesses } from "@/lib/diagnostics/weakness";
 import { getContentRepository } from "@/lib/registry";
-import { CEFR_COLOR } from "@/lib/cefr";
-import { Button } from "@/ui/button";
-import { cn } from "@/ui/cn";
+import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
+import { resolveMotionPreset } from "@/lib/motion";
+import { Badge, Button, Card, Input, SelectPill } from "@/ui";
 
 const CEFR_LEVELS: Cefr[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
@@ -21,6 +22,8 @@ type GenPhase = "idle" | "generating" | "error";
 
 export function WritingClient() {
   const router = useRouter();
+  const reducedMotion = useReducedMotion() ?? false;
+  const enter = resolveMotionPreset("enter", reducedMotion);
 
   const [profileLevel, setProfileLevel] = useState<Cefr>("B1");
   const [selectedLevel, setSelectedLevel] = useState<Cefr | null>(null);
@@ -130,7 +133,7 @@ export function WritingClient() {
   }
 
   return (
-    <div className="flex flex-1 flex-col px-6 py-10">
+    <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl space-y-10">
         {/* ── Generator ─────────────────────────────────────────────────────── */}
         <section>
@@ -144,22 +147,18 @@ export function WritingClient() {
             <p className="text-foreground mb-2 text-sm font-medium">Level</p>
             <div className="flex flex-wrap gap-2">
               {CEFR_LEVELS.map((lvl) => (
-                <button
+                <SelectPill
                   key={lvl}
                   data-testid={`level-${lvl}`}
+                  selected={effectiveLevel === lvl}
                   onClick={() => setSelectedLevel(lvl)}
-                  className={cn(
-                    "border-border rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
-                    effectiveLevel === lvl
-                      ? "bg-accent text-accent-foreground border-accent"
-                      : "text-muted hover:text-foreground hover:border-foreground/30",
-                  )}
+                  className="rounded-lg px-3 py-1.5"
                 >
                   {lvl}
                   {lvl === profileLevel && selectedLevel === null && (
                     <span className="text-muted ml-1 text-xs">(profile)</span>
                   )}
-                </button>
+                </SelectPill>
               ))}
             </div>
           </div>
@@ -169,67 +168,68 @@ export function WritingClient() {
             <p className="text-foreground mb-2 text-sm font-medium">Topic</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {WRITING_TOPICS.map((t) => (
-                <button
+                <SelectPill
                   key={t}
                   data-testid={`topic-${t.replace(/\s+/g, "-")}`}
+                  selected={!useCustom && topic === t}
                   onClick={() => {
                     setTopic(t);
                     setUseCustom(false);
                   }}
-                  className={cn(
-                    "border-border relative rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
-                    !useCustom && topic === t
-                      ? "bg-accent/10 border-accent text-foreground font-medium"
-                      : "text-muted hover:text-foreground hover:border-foreground/30",
-                  )}
                 >
                   {t}
                   {weaknesses.length > 0 && suggestedTopics.has(t) && (
-                    <span
+                    <Badge
                       data-testid={`suggested-${t.replace(/\s+/g, "-")}`}
-                      className="bg-accent text-accent-foreground absolute -top-1.5 -right-1.5 rounded-full px-1.5 py-0.5 text-[9px] leading-none font-semibold"
+                      variant="gradient"
+                      size="sm"
+                      className="absolute -top-2 -right-2 px-1.5"
                     >
                       ★
-                    </span>
+                    </Badge>
                   )}
-                </button>
+                </SelectPill>
               ))}
-              <button
+              <SelectPill
                 data-testid="topic-custom"
+                selected={useCustom}
                 onClick={() => setUseCustom(true)}
-                className={cn(
-                  "border-border rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
-                  useCustom
-                    ? "bg-accent/10 border-accent text-foreground font-medium"
-                    : "text-muted hover:text-foreground hover:border-foreground/30",
-                )}
               >
                 Custom…
-              </button>
+              </SelectPill>
             </div>
 
             {useCustom && (
-              <input
+              <Input
                 autoFocus
                 data-testid="custom-topic-input"
                 type="text"
                 placeholder="Enter a topic…"
                 value={customTopic}
                 onChange={(e) => setCustomTopic(e.target.value)}
-                className="border-border bg-background text-foreground placeholder:text-muted focus:ring-accent mt-2 w-full rounded-xl border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none"
+                className="mt-2"
               />
             )}
           </div>
 
-          {genPhase === "error" && (
-            <p data-testid="gen-error" className="text-danger mt-3 text-sm">
-              {errorMsg || "Could not generate prompt. Make sure the Mac is reachable."}
-            </p>
-          )}
+          <AnimatePresence>
+            {genPhase === "error" && (
+              <motion.p
+                data-testid="gen-error"
+                className="text-danger mt-3 text-sm"
+                initial={enter.initial}
+                animate={enter.animate}
+                exit={enter.exit}
+                transition={enter.transition}
+              >
+                {errorMsg || "Could not generate prompt. Make sure the Mac is reachable."}
+              </motion.p>
+            )}
+          </AnimatePresence>
 
           <Button
             data-testid="btn-generate"
-            variant="primary"
+            variant="gradient"
             size="lg"
             className="mt-5 w-full sm:w-auto"
             disabled={genPhase === "generating" || (useCustom && !customTopic.trim())}
@@ -259,22 +259,19 @@ export function WritingClient() {
                     <Link
                       href={`/writing/${item.id}`}
                       data-testid={`prompt-item-${item.id}`}
-                      className="border-border bg-card hover:border-foreground/20 flex items-center justify-between rounded-xl border px-4 py-3 transition-colors"
+                      className="focus-visible:ring-accent focus-visible:ring-offset-background block rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                     >
-                      <div className="min-w-0">
-                        <p className="text-foreground truncate text-sm font-medium">{title}</p>
-                        <p className="text-muted mt-0.5 truncate text-xs capitalize">
-                          {item.topic} · {item.source}
-                        </p>
-                      </div>
-                      <span
-                        className={cn(
-                          "ml-4 shrink-0 text-xs font-semibold tracking-wider uppercase",
-                          CEFR_COLOR[item.level],
-                        )}
-                      >
-                        {item.level}
-                      </span>
+                      <Card className="hover:border-accent/40 hover:shadow-glow flex flex-row items-center justify-between gap-4 py-3 transition-[colors,box-shadow]">
+                        <div className="min-w-0">
+                          <p className="text-foreground truncate text-sm font-medium">{title}</p>
+                          <p className="text-muted mt-0.5 truncate text-xs capitalize">
+                            {item.topic} · {item.source}
+                          </p>
+                        </div>
+                        <Badge variant={CEFR_BADGE_VARIANT[item.level]} className="shrink-0">
+                          {item.level}
+                        </Badge>
+                      </Card>
                     </Link>
                   </li>
                 );

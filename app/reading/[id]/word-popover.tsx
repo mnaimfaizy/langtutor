@@ -6,9 +6,10 @@ import { buildNewCard, isDuplicate } from "@/lib/deck";
 import { DefineResponseSchema } from "@/lib/lexicon/define-response";
 import type { DefineFound } from "@/lib/lexicon/define-response";
 import { getContentRepository } from "@/lib/registry";
+import { Badge } from "@/ui/badge";
 import { Popover, PopoverContent, PopoverInlineTrigger } from "@/ui/popover";
 
-import { CEFR_COLOR } from "@/lib/cefr";
+import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
 
 const POS_LABEL: Record<string, string> = { n: "noun", v: "verb", a: "adj", r: "adv" };
 
@@ -229,11 +230,9 @@ function PopoverBody({
         <span className="text-foreground text-sm font-semibold">{data.word}</span>
         <div className="flex shrink-0 items-center gap-1.5">
           {data.cefr && (
-            <span
-              className={`text-xs font-semibold tracking-wider uppercase ${CEFR_COLOR[data.cefr] ?? "text-muted"}`}
-            >
+            <Badge variant={CEFR_BADGE_VARIANT[data.cefr]} size="sm">
               {data.cefr}
-            </span>
+            </Badge>
           )}
           <span className="text-muted text-xs uppercase">{POS_LABEL[data.pos] ?? data.pos}</span>
         </div>

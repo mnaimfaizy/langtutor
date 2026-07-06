@@ -6,9 +6,8 @@ import Link from "next/link";
 import type { Content } from "@/lib/db";
 import { PassageSchema } from "@/lib/content/passage";
 import { getContentRepository } from "@/lib/registry";
-import { CEFR_COLOR } from "@/lib/cefr";
-import { Button } from "@/ui/button";
-import { cn } from "@/ui/cn";
+import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
+import { Badge, BackLink, Button, Card } from "@/ui";
 import { TtsButton } from "@/ui/tts-button";
 import { ComprehensionQuiz } from "@/app/comprehension-quiz";
 import { WordPopover } from "./word-popover";
@@ -83,27 +82,14 @@ export function PassageView({ id }: { id: number }) {
   const body = parsed.success ? parsed.data.body : "";
 
   return (
-    <div className="flex flex-1 flex-col px-6 py-10">
+    <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
-        {/* Back link */}
-        <Link
-          href="/reading"
-          className="text-muted hover:text-foreground mb-6 inline-flex items-center gap-1 text-sm transition-colors"
-        >
-          ← Reading
-        </Link>
+        <BackLink href="/reading" label="Reading" className="mb-6" />
 
         {/* Passage */}
         <article data-testid="passage-article" className="mt-2">
-          <div className="mb-1 flex items-center gap-2">
-            <span
-              className={cn(
-                "text-xs font-semibold tracking-wider uppercase",
-                CEFR_COLOR[content.level] ?? "text-muted",
-              )}
-            >
-              {content.level}
-            </span>
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <Badge variant={CEFR_BADGE_VARIANT[content.level]}>{content.level}</Badge>
             <span className="text-muted text-xs capitalize">{content.topic}</span>
             <span className="text-muted/50 text-xs">·</span>
             <span className="text-muted text-xs capitalize">{content.source}</span>
@@ -118,18 +104,20 @@ export function PassageView({ id }: { id: number }) {
 
           <TtsButton text={body} className="mt-3 -ml-2" />
 
-          <p
-            data-testid="passage-body"
-            className="text-foreground mt-5 text-base leading-8 whitespace-pre-wrap"
-          >
-            {tokenize(body).map((token, i) =>
-              token.isWord ? (
-                <WordPopover key={i} word={token.value} />
-              ) : (
-                <span key={i}>{token.value}</span>
-              ),
-            )}
-          </p>
+          <Card className="mt-5">
+            <p
+              data-testid="passage-body"
+              className="text-foreground text-base leading-8 whitespace-pre-wrap"
+            >
+              {tokenize(body).map((token, i) =>
+                token.isWord ? (
+                  <WordPopover key={i} word={token.value} />
+                ) : (
+                  <span key={i}>{token.value}</span>
+                ),
+              )}
+            </p>
+          </Card>
         </article>
 
         {parsed.success && (

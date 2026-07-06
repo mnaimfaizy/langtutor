@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 
 import type { Content } from "@/lib/db";
 import { FeedbackSchema } from "@/lib/content/feedback";
@@ -9,8 +10,9 @@ import type { Correction, FeedbackPayload } from "@/lib/content/feedback";
 import { createWritingErrorEvents } from "@/lib/diagnostics";
 import { PromptSchema } from "@/lib/content/prompt";
 import { getContentRepository } from "@/lib/registry";
-import { CEFR_COLOR } from "@/lib/cefr";
-import { Button } from "@/ui/button";
+import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
+import { resolveMotionPreset } from "@/lib/motion";
+import { Badge, BackLink, Button, Card } from "@/ui";
 import { cn } from "@/ui/cn";
 import { TtsButton } from "@/ui/tts-button";
 
@@ -25,11 +27,9 @@ const SCORE_COLOR = (score: number) => {
 
 function CorrectionCard({ correction }: { correction: Correction }) {
   return (
-    <div className="border-border rounded-xl border p-4">
+    <Card>
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="bg-danger/10 text-danger rounded-full px-2.5 py-0.5 text-xs font-medium">
-          {correction.category}
-        </span>
+        <Badge variant="danger">{correction.category}</Badge>
       </div>
       <div className="grid gap-1 text-sm">
         <p>
@@ -42,7 +42,7 @@ function CorrectionCard({ correction }: { correction: Correction }) {
         </p>
       </div>
       <p className="text-muted mt-2 text-xs leading-6">{correction.explanation}</p>
-    </div>
+    </Card>
   );
 }
 
@@ -53,9 +53,18 @@ function FeedbackPanel({
   feedback: FeedbackPayload;
   onRevise: () => void;
 }) {
+  const reducedMotion = useReducedMotion() ?? false;
+  const enter = resolveMotionPreset("enter", reducedMotion);
+
   return (
-    <div data-testid="feedback-panel" className="mt-8 space-y-5">
-      <div className="border-border rounded-xl border p-5">
+    <motion.div
+      data-testid="feedback-panel"
+      className="mt-8 space-y-5"
+      initial={enter.initial}
+      animate={enter.animate}
+      transition={enter.transition}
+    >
+      <Card>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-muted text-xs font-medium tracking-wider uppercase">Overall score</p>
@@ -69,7 +78,7 @@ function FeedbackPanel({
             <p className="text-foreground mt-1 text-lg font-semibold">{feedback.structuralGrade}</p>
           </div>
         </div>
-      </div>
+      </Card>
 
       {feedback.corrections.length === 0 ? (
         <p className="text-success text-sm font-medium">No errors found — great work!</p>
@@ -88,7 +97,7 @@ function FeedbackPanel({
       <Button variant="secondary" size="md" onClick={onRevise} data-testid="btn-revise">
         Revise
       </Button>
-    </div>
+    </motion.div>
   );
 }
 
@@ -201,27 +210,14 @@ export function PromptView({ id }: { id: number }) {
   const context = parsedPayload.success ? parsedPayload.data.context : undefined;
 
   return (
-    <div className="flex flex-1 flex-col px-6 py-10">
+    <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
-        {/* Back link */}
-        <Link
-          href="/writing"
-          className="text-muted hover:text-foreground mb-6 inline-flex items-center gap-1 text-sm transition-colors"
-        >
-          ← Writing
-        </Link>
+        <BackLink href="/writing" label="Writing" className="mb-6" />
 
         {/* Prompt card */}
         <article data-testid="prompt-article" className="mt-2">
-          <div className="mb-1 flex items-center gap-2">
-            <span
-              className={cn(
-                "text-xs font-semibold tracking-wider uppercase",
-                CEFR_COLOR[content.level] ?? "text-muted",
-              )}
-            >
-              {content.level}
-            </span>
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <Badge variant={CEFR_BADGE_VARIANT[content.level]}>{content.level}</Badge>
             <span className="text-muted text-xs capitalize">{content.topic}</span>
             <span className="text-muted/50 text-xs">·</span>
             <span className="text-muted text-xs capitalize">{content.source}</span>
@@ -262,7 +258,7 @@ export function PromptView({ id }: { id: number }) {
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Write your response here…"
             disabled={submitPhase === "submitting"}
-            className="border-border bg-background text-foreground placeholder:text-muted focus:ring-accent w-full resize-y rounded-xl border px-4 py-3 text-sm leading-7 focus:ring-2 focus:outline-none disabled:opacity-60"
+            className="border-border bg-card text-foreground placeholder:text-muted focus-visible:border-accent focus-visible:ring-accent focus-visible:ring-offset-background w-full resize-y rounded-xl border px-4 py-3 text-sm leading-7 transition-[colors,box-shadow] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-60"
           />
           <div className="mt-3 flex items-center gap-3">
             {submitPhase !== "done" && (
