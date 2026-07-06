@@ -3,6 +3,19 @@
 import type { ReactNode } from "react";
 import { MotionConfig } from "framer-motion";
 
+export {
+  MOTION_DURATIONS,
+  MOTION_EASING,
+  MOTION_PRESET_NAMES,
+  resolveMotionPreset,
+  type CelebrateMotionPreset,
+  type EnterMotionPreset,
+  type MotionPreset,
+  type MotionPresetName,
+  type PathFillMotionPreset,
+  type PressMotionPreset,
+} from "@/lib/motion";
+
 /**
  * App-wide framer-motion configuration. `reducedMotion="user"` honours the
  * visitor's `prefers-reduced-motion` setting — disabling transform/layout

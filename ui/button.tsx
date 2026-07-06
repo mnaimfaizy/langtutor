@@ -2,10 +2,14 @@
 
 import * as React from "react";
 import { Button as BaseButton } from "@base-ui/react/button";
+import { motion, useReducedMotion } from "framer-motion";
+import { resolveMotionPreset } from "@/lib/motion";
 import { cn } from "./cn";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
+
+const MotionButton = motion.create(BaseButton);
 
 const base =
   "inline-flex cursor-default items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50";
@@ -37,5 +41,15 @@ export type ButtonProps = Omit<React.ComponentProps<typeof BaseButton>, "classNa
 };
 
 export function Button({ variant, size, className, ...props }: ButtonProps) {
-  return <BaseButton className={buttonClassName({ variant, size, className })} {...props} />;
+  const reducedMotion = useReducedMotion() ?? false;
+  const press = resolveMotionPreset("press", reducedMotion);
+
+  return (
+    <MotionButton
+      className={buttonClassName({ variant, size, className })}
+      whileTap={press.whileTap}
+      transition={press.transition}
+      {...props}
+    />
+  );
 }
