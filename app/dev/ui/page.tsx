@@ -2,6 +2,8 @@
 
 import { type ReactNode } from "react";
 import {
+  Avatar,
+  Badge,
   Button,
   Card,
   CardContent,
@@ -19,7 +21,9 @@ import {
   PopoverContent,
   PopoverTrigger,
   Progress,
+  ProgressRing,
   Skeleton,
+  Stat,
   Tabs,
   TabsList,
   TabsPanel,
@@ -185,6 +189,67 @@ export default function UiGalleryPage() {
 
         <Section title="Progress">
           <Progress value={66} className="max-w-md" />
+        </Section>
+
+        <Section title="Progress ring — sizes">
+          <ProgressRing
+            data-testid="progress-ring-sm"
+            value={30}
+            size="sm"
+            aria-label="Small progress"
+          />
+          <ProgressRing
+            data-testid="progress-ring-md"
+            value={66}
+            size="md"
+            aria-label="Medium progress"
+          >
+            <span className="text-foreground text-sm font-semibold">66%</span>
+          </ProgressRing>
+          <ProgressRing
+            data-testid="progress-ring-lg"
+            value={4}
+            min={0}
+            max={10}
+            size="lg"
+            aria-label="Level progress"
+          >
+            <span className="text-foreground text-lg font-semibold">Lv 4</span>
+          </ProgressRing>
+        </Section>
+
+        <Section title="Badge — variants">
+          <Badge data-testid="badge-neutral">Neutral</Badge>
+          <Badge variant="accent">Accent</Badge>
+          <Badge variant="success">Mastering</Badge>
+          <Badge variant="warning">Developing</Badge>
+          <Badge variant="danger">Struggling</Badge>
+          <Badge variant="gradient" data-testid="badge-gradient">
+            New badge
+          </Badge>
+        </Section>
+
+        <Section title="Badge — sizes">
+          <Badge size="sm">Small</Badge>
+          <Badge size="md">Medium</Badge>
+        </Section>
+
+        <Section title="Avatar">
+          <Avatar data-testid="avatar-initials" size="sm" fallback="AB" alt="Alex Baker" />
+          <Avatar size="md" fallback="AB" alt="Alex Baker" />
+          <Avatar
+            data-testid="avatar-image"
+            size="lg"
+            src="/icons/icon-192.png"
+            alt="Lang-Tutor mascot"
+            fallback="LT"
+          />
+        </Section>
+
+        <Section title="Stat">
+          <Stat data-testid="stat-xp" label="Total XP" value={1240} />
+          <Stat label="Day streak" value="12d" size="lg" />
+          <Stat label="Level" value={4} icon="⭐" />
         </Section>
 
         <Section title="Skeleton">

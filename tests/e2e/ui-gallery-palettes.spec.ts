@@ -31,6 +31,29 @@ test("gallery renders every palette without console errors and stays WCAG AA com
       "true",
     );
 
+    // New primitives (badge, avatar, stat, progress-ring) render with the right roles/content.
+    const mediumRing = page.getByTestId("progress-ring-md");
+    await expect(mediumRing).toBeVisible();
+    await expect(mediumRing).toHaveAttribute("role", "progressbar");
+    await expect(mediumRing).toHaveAttribute("aria-valuenow", "66");
+    await expect(mediumRing).toHaveAttribute("aria-valuemin", "0");
+    await expect(mediumRing).toHaveAttribute("aria-valuemax", "100");
+    await expect(mediumRing.getByText("66%")).toBeVisible();
+
+    const levelRing = page.getByTestId("progress-ring-lg");
+    await expect(levelRing).toHaveAttribute("aria-valuenow", "4");
+    await expect(levelRing).toHaveAttribute("aria-valuemax", "10");
+
+    await expect(page.getByTestId("badge-neutral")).toHaveText("Neutral");
+    await expect(page.getByTestId("badge-gradient")).toBeVisible();
+
+    await expect(page.getByTestId("avatar-initials")).toHaveText("AB");
+    await expect(page.getByTestId("avatar-image")).toBeVisible();
+
+    const xpStat = page.getByTestId("stat-xp");
+    await expect(xpStat).toContainText("1240");
+    await expect(xpStat).toContainText("Total XP");
+
     const bodyColors = await page.evaluate(() => {
       const style = getComputedStyle(document.body);
       return { color: style.color, backgroundColor: style.backgroundColor };
