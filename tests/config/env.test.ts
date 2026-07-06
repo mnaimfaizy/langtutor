@@ -91,6 +91,35 @@ describe("parseEnv — cloud mode", () => {
       "[LangTutor] Invalid environment configuration:",
     );
   });
+
+  it("includes an actionable hint when NEXT_PUBLIC_SUPABASE_URL is invalid", () => {
+    expect(() =>
+      parseEnv({
+        ...VALID_CLOUD,
+        NEXT_PUBLIC_SUPABASE_URL: "not-a-url",
+      }),
+    ).toThrowError("NEXT_PUBLIC_SUPABASE_URL should look like https://<project-ref>.supabase.co");
+  });
+
+  it("accepts quoted NEXT_PUBLIC_SUPABASE_URL", () => {
+    const cfg = parseEnv({
+      ...VALID_CLOUD,
+      NEXT_PUBLIC_SUPABASE_URL: '"https://example.supabase.co"',
+    });
+    expect(cfg.LANGTUTOR_MODE).toBe("cloud");
+    if (cfg.LANGTUTOR_MODE !== "cloud") return;
+    expect(cfg.NEXT_PUBLIC_SUPABASE_URL).toBe("https://example.supabase.co");
+  });
+
+  it("accepts NEXT_PUBLIC_SUPABASE_URL with surrounding whitespace", () => {
+    const cfg = parseEnv({
+      ...VALID_CLOUD,
+      NEXT_PUBLIC_SUPABASE_URL: "  https://example.supabase.co  ",
+    });
+    expect(cfg.LANGTUTOR_MODE).toBe("cloud");
+    if (cfg.LANGTUTOR_MODE !== "cloud") return;
+    expect(cfg.NEXT_PUBLIC_SUPABASE_URL).toBe("https://example.supabase.co");
+  });
 });
 
 describe("parseEnv — invalid configs", () => {

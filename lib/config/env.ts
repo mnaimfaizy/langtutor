@@ -52,6 +52,26 @@ export const appEnvSchema = z.discriminatedUnion("LANGTUTOR_MODE", [
   cloudConfigSchema,
 ]);
 
+function normalizeEnvValue(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+
+  const trimmed = value.trim();
+  const hasMatchingSingleQuotes = trimmed.startsWith("'") && trimmed.endsWith("'");
+  const hasMatchingDoubleQuotes = trimmed.startsWith('"') && trimmed.endsWith('"');
+
+  if ((hasMatchingSingleQuotes || hasMatchingDoubleQuotes) && trimmed.length >= 2) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
+function normalizeEnv(raw: Record<string, string | undefined>): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(raw).map(([key, value]) => [key, normalizeEnvValue(value)]),
+  );
+}
+
 /**
  * Parse and validate the environment. Accepts an explicit env map (for tests); defaults
  * to process.env. LANGTUTOR_MODE defaults to "local" when not set.
@@ -59,14 +79,33 @@ export const appEnvSchema = z.discriminatedUnion("LANGTUTOR_MODE", [
  * Throws with a clear diagnostic on any missing or invalid value.
  */
 export function parseEnv(raw: Record<string, string | undefined> = process.env): AppEnv {
-  const input = { LANGTUTOR_MODE: "local", ...raw };
+  const input = { LANGTUTOR_MODE: "local", ...normalizeEnv(raw) };
   const result = appEnvSchema.safeParse(input);
   if (!result.success) {
     const issues = result.error.issues
       .map((issue) => `  • ${issue.path.join(".")}: ${issue.message}`)
       .join("\n");
+
+    const hints = Array.from(
+      new Set(
+        result.error.issues.flatMap((issue) => {
+          const path = issue.path.join(".");
+          if (path === "NEXT_PUBLIC_SUPABASE_URL") {
+            return [
+              "NEXT_PUBLIC_SUPABASE_URL should look like https://<project-ref>.supabase.co",
+              "In Vercel env vars, do not wrap URLs in quotes.",
+            ];
+          }
+          return [];
+        }),
+      ),
+    );
+
+    const hintText =
+      hints.length > 0 ? `\n\nHints:\n${hints.map((hint) => `  • ${hint}`).join("\n")}` : "";
+
     throw new Error(
-      `[LangTutor] Invalid environment configuration:\n${issues}\n\nSee .env.example for reference.`,
+      `[LangTutor] Invalid environment configuration:\n${issues}${hintText}\n\nSee .env.example for reference.`,
     );
   }
   return result.data;
