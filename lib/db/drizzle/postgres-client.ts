@@ -29,6 +29,8 @@ async function connectAndMigrate(): Promise<PostgresDrizzleClient> {
 
   await migrate(_client, {
     migrationsFolder: path.join(process.cwd(), "drizzle/postgres/migrations"),
+    migrationsSchema: "public",
+    migrationsTable: "__drizzle_migrations",
   });
   await seedPostgresAppConfig(_client);
 

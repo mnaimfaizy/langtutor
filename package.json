@@ -16,6 +16,7 @@
     "test:e2e": "playwright test",
     "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "db:generate:postgres": "drizzle-kit generate --config drizzle.postgres.config.ts",
+    "db:migrate:postgres": "drizzle-kit migrate --config drizzle.postgres.config.ts",
     "data:build-wordnet": "node scripts/build-wordnet.mjs",
     "data:build-words-cefr": "node scripts/build-words-cefr.mjs",
     "sandcastle": "pnpm exec tsx .sandcastle/main.mts",
