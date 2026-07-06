@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getAuthProvider } from "@/lib/auth/server";
 import { resolveCurrentUser } from "@/lib/auth/resolve-current-user";
+import { env } from "@/lib/config/env";
 
 import { LoginForm } from "./login-form";
 
@@ -10,8 +11,14 @@ export default async function LoginPage() {
   const user = await resolveCurrentUser();
   if (user) redirect("/");
 
-  const existing = await getAuthProvider().listUsers();
-  if (existing.length === 0) redirect("/login/create-admin");
+  if (env.LANGTUTOR_MODE === "local") {
+    try {
+      const existing = await getAuthProvider().listUsers();
+      if (existing.length === 0) redirect("/login/create-admin");
+    } catch (error) {
+      console.error("[login/page] Failed to check existing users", error);
+    }
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
