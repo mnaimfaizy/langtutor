@@ -12,6 +12,7 @@ export type {
   ContentSource,
   ContentType,
   ErrorEventRecord,
+  ExperienceMode,
   FsrsState,
   GamificationState,
   LearnerGoal,
@@ -21,6 +22,7 @@ export type {
   Skill,
   Weakness,
 } from "./schema";
+export { DEFAULT_EXPERIENCE_MODE } from "./schema";
 
 export type { BackupData } from "../backup/schema";
 

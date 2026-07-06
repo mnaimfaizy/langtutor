@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { SerwistProvider } from "@serwist/turbopack/react";
-import { PALETTE_BOOTSTRAP_SCRIPT } from "@/lib/theme";
+import { getCurrentExperienceMode } from "@/lib/db/server";
+import { paletteBootstrapScript } from "@/lib/theme";
 import "./globals.css";
 import { ConnectivityIndicator } from "./connectivity-indicator";
 import { GamificationHud } from "./gamification-hud";
@@ -34,11 +35,13 @@ export const viewport: Viewport = {
   themeColor: "#4f46e5",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const experienceMode = await getCurrentExperienceMode();
+
   return (
     <html
       lang="en"
@@ -46,7 +49,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: PALETTE_BOOTSTRAP_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: paletteBootstrapScript(experienceMode) }} />
       </head>
       <body className="flex min-h-full flex-col">
         <SerwistProvider swUrl="/serwist/sw.js">

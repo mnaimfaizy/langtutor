@@ -6,6 +6,7 @@ export const USER_ROLE_VALUES = ["admin", "standard"] as const;
 export const CHAT_PROVIDER_VALUES = ["mac", "groq"] as const;
 export const STT_PROVIDER_VALUES = ["mac", "groq"] as const;
 export const EMBEDDINGS_PROVIDER_VALUES = ["mac", "mistral"] as const;
+export const EXPERIENCE_MODE_VALUES = ["adult", "kid"] as const;
 
 export type ChatProvider = (typeof CHAT_PROVIDER_VALUES)[number];
 export type SttProvider = (typeof STT_PROVIDER_VALUES)[number];

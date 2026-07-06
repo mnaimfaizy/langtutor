@@ -8,6 +8,7 @@ const ProfileRowSchema = z.object({
   cefrLevel: CefrSchema.optional(),
   goals: z.array(z.enum(["travel", "work", "exam", "general"])),
   createdAt: z.coerce.date(),
+  experienceMode: z.enum(["adult", "kid"]).optional(),
   settings: z.object({
     macLlmBaseUrl: z.string().optional(),
     macLlmModel: z.string().optional(),

@@ -5,9 +5,16 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
-import type { Cefr, LearnerGoal, Profile } from "@/lib/db";
+import {
+  DEFAULT_EXPERIENCE_MODE,
+  type Cefr,
+  type ExperienceMode,
+  type LearnerGoal,
+  type Profile,
+} from "@/lib/db";
 import { HealthResponseSchema } from "@/lib/llm/settings";
 import { getContentRepository } from "@/lib/registry";
+import { applyPalette } from "@/lib/theme";
 import { Button, Card, CardContent, CardDescription, CardTitle, Input, cn } from "@/ui";
 import { getSettingsRole, saveAdminConfig, saveUserPrefs } from "./actions";
 import { BackupSection } from "./backup-section";
@@ -33,6 +40,11 @@ const GOAL_OPTIONS: { value: LearnerGoal; label: string }[] = [
   { value: "work", label: "Work" },
   { value: "exam", label: "Exam prep" },
   { value: "general", label: "General" },
+];
+
+const EXPERIENCE_MODE_OPTIONS: { value: ExperienceMode; label: string; hint: string }[] = [
+  { value: "adult", label: "Adult", hint: "Premium dark, focused" },
+  { value: "kid", label: "Kid", hint: "Bright, playful" },
 ];
 
 const SttHealthSchema = z.object({ ok: z.boolean(), error: z.string().optional() });
@@ -62,6 +74,11 @@ export default function SettingsPage() {
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileBanner, setProfileBanner] = useState<Banner>(null);
 
+  // Experience mode (appearance) state
+  const [experienceMode, setExperienceMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
+  const [experienceModeBusy, setExperienceModeBusy] = useState(false);
+  const [experienceModeBanner, setExperienceModeBanner] = useState<Banner>(null);
+
   // TTS state
   const [ttsRate, setTtsRate] = useState(1);
   const [ttsVoiceUri, setTtsVoiceUri] = useState("");
@@ -88,6 +105,7 @@ export default function SettingsPage() {
         setSttUrl(s.macSttUrl ?? "");
         setProfileLevel(profile?.cefrLevel);
         setProfileGoals(profile?.goals ?? []);
+        setExperienceMode(profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE);
         setTtsRate(s.ttsRate ?? 1);
         setTtsVoiceUri(s.ttsVoiceUri ?? "");
         setTtsLang(s.ttsLang ?? "");
@@ -235,6 +253,37 @@ export default function SettingsPage() {
     );
   }
 
+  function handleSelectExperienceMode(mode: ExperienceMode) {
+    setExperienceMode(mode);
+    // Instant preview — the palette switches live even before Save persists it.
+    applyPalette(mode);
+  }
+
+  async function handleSaveExperienceMode() {
+    setExperienceModeBusy(true);
+    setExperienceModeBanner(null);
+    try {
+      const repo = getContentRepository();
+      const existing = await repo.getProfile();
+      const profile: Profile = {
+        cefrLevel: existing?.cefrLevel,
+        goals: existing?.goals ?? [],
+        createdAt: existing?.createdAt ?? new Date(),
+        settings: existing?.settings ?? {},
+        experienceMode,
+      };
+      await repo.saveProfile(profile);
+      setExperienceModeBanner({ tone: "ok", text: "Appearance saved." });
+    } catch (error) {
+      setExperienceModeBanner({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Save failed",
+      });
+    } finally {
+      setExperienceModeBusy(false);
+    }
+  }
+
   async function handleSaveTts() {
     setTtsBusy(true);
     setTtsBanner(null);
@@ -259,6 +308,62 @@ export default function SettingsPage() {
     <main className="mx-auto w-full max-w-2xl px-6 py-10">
       <h1 className="text-foreground text-2xl font-semibold">Settings</h1>
       <p className="text-muted mt-1 text-sm">Manage your language learning preferences.</p>
+
+      <Card className="mt-6" data-testid="experience-mode-section">
+        <CardTitle>Appearance</CardTitle>
+        <CardDescription>
+          Choose the experience that fits you best. Kid mode switches the whole app to a bright,
+          playful palette.
+        </CardDescription>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            {EXPERIENCE_MODE_OPTIONS.map(({ value, label, hint }) => {
+              const active = experienceMode === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  data-testid={`experience-mode-btn-${value}`}
+                  aria-pressed={active}
+                  disabled={experienceModeBusy}
+                  onClick={() => handleSelectExperienceMode(value)}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+                    active
+                      ? "border-accent bg-accent/10 text-foreground font-medium"
+                      : "border-border text-muted hover:border-foreground/30",
+                  )}
+                >
+                  {label}
+                  <span className="text-muted mt-0.5 block text-xs font-normal">{hint}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="pt-1">
+            <Button
+              data-testid="btn-save-experience-mode"
+              onClick={() => void handleSaveExperienceMode()}
+              disabled={experienceModeBusy}
+            >
+              Save appearance
+            </Button>
+          </div>
+
+          {experienceModeBanner && (
+            <p
+              className={cn(
+                "text-sm",
+                experienceModeBanner.tone === "ok" ? "text-success" : "text-danger",
+              )}
+              role="status"
+            >
+              {experienceModeBanner.text}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {isAdmin && (
         <Card className="mt-6">

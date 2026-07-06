@@ -202,6 +202,7 @@ export class SupabaseContentRepository implements ContentRepository {
         goals: JSON.parse(row.goals) as Profile["goals"],
         createdAt: row.createdAt,
         settings: JSON.parse(row.settings) as ProfileSettings,
+        experienceMode: row.experienceMode ?? undefined,
       };
     });
   }
@@ -225,6 +226,7 @@ export class SupabaseContentRepository implements ContentRepository {
             goals: goalsJson,
             createdAt: profile.createdAt,
             settings: settingsJson,
+            experienceMode: profile.experienceMode,
           })
           .where(eq(profilesTable.userId, this.userId));
       } else {
@@ -234,6 +236,7 @@ export class SupabaseContentRepository implements ContentRepository {
           goals: goalsJson,
           createdAt: profile.createdAt,
           settings: settingsJson,
+          experienceMode: profile.experienceMode,
         });
       }
 
@@ -682,6 +685,7 @@ export class SupabaseContentRepository implements ContentRepository {
             goals: JSON.parse(row.goals) as Profile["goals"],
             createdAt: row.createdAt,
             settings: JSON.parse(row.settings) as ProfileSettings,
+            experienceMode: row.experienceMode ?? undefined,
           })),
           cards: cardRows.map((row) => ({
             id: row.id,
@@ -753,6 +757,7 @@ export class SupabaseContentRepository implements ContentRepository {
           goals: JSON.stringify(row.goals),
           createdAt: row.createdAt,
           settings: JSON.stringify(row.settings),
+          experienceMode: row.experienceMode,
         });
       }
 

@@ -146,6 +146,10 @@ describe("Migration — schema shape", () => {
     expect(columns("profile")).toContain("user_id");
   });
 
+  it("profile has experience_mode (ADR 0014)", () => {
+    expect(columns("profile")).toContain("experience_mode");
+  });
+
   it("cards has user_id and due_at (per-user, denormalized due)", () => {
     expect(columns("cards")).toContain("user_id");
     expect(columns("cards")).toContain("due_at");

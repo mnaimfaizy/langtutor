@@ -15,6 +15,7 @@ export {
   CONTENT_SOURCE_VALUES,
   CONTENT_TYPE_VALUES,
   EMBEDDINGS_PROVIDER_VALUES,
+  EXPERIENCE_MODE_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   USER_ROLE_VALUES,
@@ -25,6 +26,7 @@ import {
   CONTENT_SOURCE_VALUES,
   CONTENT_TYPE_VALUES,
   EMBEDDINGS_PROVIDER_VALUES,
+  EXPERIENCE_MODE_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   USER_ROLE_VALUES,
@@ -109,6 +111,7 @@ export const profiles = sqliteTable(
     goals: text("goals").notNull().default("[]"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     settings: text("settings").notNull().default("{}"),
+    experienceMode: text("experience_mode", { enum: EXPERIENCE_MODE_VALUES }),
   },
   (t) => [uniqueIndex("idx_profile_user_id").on(t.userId)],
 );

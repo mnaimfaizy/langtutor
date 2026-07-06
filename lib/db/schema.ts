@@ -22,6 +22,16 @@ export type ContentSource = "seed" | "generated" | "agent";
 export type LearnerGoal = "travel" | "work" | "exam" | "general";
 
 /**
+ * Presentation mode for the whole app UI (ADR 0014): selects the palette family
+ * (premium-dark adult vs. bright kid) and, later, navigation density and content tone.
+ * Independent of `cefrLevel` — content difficulty and presentation style don't couple.
+ */
+export type ExperienceMode = "adult" | "kid";
+
+/** Default for new profiles and legacy rows saved before this field existed. */
+export const DEFAULT_EXPERIENCE_MODE: ExperienceMode = "adult";
+
+/**
  * Runtime overrides for the Mac endpoints / model names and TTS prefs, set in the
  * Settings UI and persisted in the profile (PLAN §3.2). Defaults come from server-only
  * env; these only ever override at runtime. No secrets/API keys live here.
@@ -54,6 +64,8 @@ export interface Profile {
   goals: LearnerGoal[];
   createdAt: Date;
   settings: ProfileSettings;
+  /** Undefined means "not chosen yet" — treat as {@link DEFAULT_EXPERIENCE_MODE}. */
+  experienceMode?: ExperienceMode;
 }
 
 /**

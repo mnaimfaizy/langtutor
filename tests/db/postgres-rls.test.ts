@@ -214,6 +214,30 @@ describe.skipIf(!postgresAvailable)("Postgres RLS enforcement", () => {
     expect(profile?.cefrLevel).toBe("A2");
   });
 
+  it("round-trips experienceMode for the session user (issue #45)", async () => {
+    const repo = new SupabaseContentRepository(db, USER_A);
+
+    await repo.saveProfile({
+      cefrLevel: "A2",
+      goals: [],
+      createdAt: new Date(),
+      settings: {},
+      experienceMode: "kid",
+    });
+
+    expect((await repo.getProfile())?.experienceMode).toBe("kid");
+
+    await repo.saveProfile({
+      cefrLevel: "A2",
+      goals: [],
+      createdAt: new Date(),
+      settings: {},
+      experienceMode: "adult",
+    });
+
+    expect((await repo.getProfile())?.experienceMode).toBe("adult");
+  });
+
   it("isolates users via RLS even when app filters are wrong", async () => {
     const repoA = new SupabaseContentRepository(db, USER_A);
     const repoB = new SupabaseContentRepository(db, USER_B);

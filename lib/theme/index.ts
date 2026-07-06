@@ -5,7 +5,8 @@ export {
   relativeLuminance,
   type Rgb,
 } from "./contrast";
-export { PALETTE_BOOTSTRAP_SCRIPT } from "./palette-bootstrap-script";
+export { applyPalette } from "./apply-palette";
+export { paletteBootstrapScript } from "./palette-bootstrap-script";
 export { resolvePalette } from "./resolve-palette";
 export {
   DEFAULT_EXPERIENCE_MODE,

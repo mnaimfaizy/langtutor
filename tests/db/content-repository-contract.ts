@@ -86,6 +86,25 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
 
         expect((await repo.getProfile())?.cefrLevel).toBe("C1");
       });
+
+      it("leaves experienceMode undefined (adult default) when not specified", async () => {
+        await repo.saveProfile(makeProfile());
+
+        expect((await repo.getProfile())?.experienceMode).toBeUndefined();
+      });
+
+      it("round-trips experienceMode", async () => {
+        await repo.saveProfile({ ...makeProfile(), experienceMode: "kid" });
+
+        expect((await repo.getProfile())?.experienceMode).toBe("kid");
+      });
+
+      it("updates experienceMode on repeated save", async () => {
+        await repo.saveProfile({ ...makeProfile(), experienceMode: "kid" });
+        await repo.saveProfile({ ...makeProfile(), experienceMode: "adult" });
+
+        expect((await repo.getProfile())?.experienceMode).toBe("adult");
+      });
     });
 
     // -------------------------------------------------------------------------
