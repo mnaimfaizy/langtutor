@@ -38,6 +38,26 @@
 
 **Groq LPU** — Groq's Language Processing Unit hardware; delivers LLM completions in 2–6 s for typical prompts, making Vercel Hobby's 10 s function timeout viable for most AI routes.
 
+**Experience mode** — per-account presentation mode (`kid` | `adult`) chosen at onboarding; drives palette, navigation density, and content register, independent of CEFR level.
+
+**Learning path** — the ordered sequence of units that forms the home experience; unlocks progressively and doubles as the main progress visualization.
+
+**Unit** — one node on the learning path: a themed bundle of activities (vocab, listening, reading, …) planned by the LLM teacher around the static backbone.
+
+**LLM teacher** — the server-side path planner persona: a professional English teacher (adult mode) or kindergarten teacher (kid mode) that plans and adapts units from profile, level, and weakness data.
+
+**Path buffer** — the N upcoming units whose plan and content are pre-generated while the Mac/provider is reachable, so the path continues offline.
+
+**Pre-A1 tier** — content tier below A1 for true beginners: alphabet, phonics, picture-word matching, listen-and-tap games; image- and audio-first.
+
+**Media asset store** — shared storage of generated/curated images and TTS audio, keyed by word/phrase; generate once, reuse forever across users.
+
+**Kid palette** — the bright/light theme family used in kid experience mode; shares the design system with the premium-dark adult brand.
+
+**Quest** — a daily/weekly gamification goal ("review 10 words") with a reward on completion.
+
+**Collectible** — a badge/sticker/creature earned by completing units or achievements; visually designed, browsable.
+
 **`maxDuration`** — Vercel route-level export (`export const maxDuration = N`) that raises the function timeout above the plan default; used on content-generation routes that may exceed 10 s.
 
 **Self-service registration** — Public sign-up flow where any visitor can create an account via Supabase Auth, without requiring an admin to create the account first (amends ADR 0001).

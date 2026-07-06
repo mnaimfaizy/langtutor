@@ -2,6 +2,14 @@
 
 > Risks, mitigations, legal notes, explicitly dropped features, and open roadmap items.
 
+## Open roadmap: UI/UX revamp (2026-07, ADRs 0014–0019)
+
+Workstream order: **1)** design-system refresh (premium-dark tokens + bright kid palette) →
+**2)** marketing landing page → **3)** guided learning path (LLM teacher + buffer) →
+**4)** pre-A1 kid tier + media asset store (needs image-gen provider research spike — NVIDIA NIM
+first candidate; Groq/Mistral do **not** offer image gen) → **5)** gamification revamp →
+**6)** deck overhaul (browser, stats dashboard, collections, picture cards, card management).
+
 > **⚠️ 2026-06 — locked decision #1 is being reversed.** The app is moving to **multi-user, with
 > auth, in both a local (SQLite) and a cloud (Supabase) mode**. This invalidates the single-user
 > threat model below: the **"Accepted security risks"** are no longer accepted and must be fixed
