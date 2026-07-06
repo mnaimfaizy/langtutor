@@ -5,7 +5,7 @@ import { Popover as BasePopover } from "@base-ui/react/popover";
 import { motion, useReducedMotion } from "framer-motion";
 import { resolveMotionPreset } from "@/lib/motion";
 import { cn } from "./cn";
-import { buttonClassName, type ButtonSize, type ButtonVariant } from "./button";
+import { buttonClassName, type ButtonSize, type ButtonVariant } from "./button-styles";
 
 const MotionPopoverTrigger = motion.create(BasePopover.Trigger);
 

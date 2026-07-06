@@ -5,7 +5,7 @@ import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { motion, useReducedMotion } from "framer-motion";
 import { resolveMotionPreset } from "@/lib/motion";
 import { cn } from "./cn";
-import { buttonClassName, type ButtonSize, type ButtonVariant } from "./button";
+import { buttonClassName, type ButtonSize, type ButtonVariant } from "./button-styles";
 
 const MotionDialogTrigger = motion.create(BaseDialog.Trigger);
 const MotionDialogClose = motion.create(BaseDialog.Close);

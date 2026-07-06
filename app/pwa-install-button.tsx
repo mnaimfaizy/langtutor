@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 
+import { InstallIcon } from "./icons";
+import { Button } from "@/ui";
+
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
   readonly userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -36,12 +39,15 @@ export function PWAInstallButton() {
   }
 
   return (
-    <button
-      onClick={handleInstall}
-      className="text-muted hover:text-foreground text-xs underline-offset-2 hover:underline"
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => void handleInstall()}
       aria-label="Install Lang-Tutor as an app"
+      className="gap-1.5 px-2.5 sm:px-3"
     >
-      Install app
-    </button>
+      <InstallIcon className="size-4" />
+      <span className="hidden sm:inline">Install app</span>
+    </Button>
   );
 }

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import type { GamificationState } from "@/lib/db";
 import { getContentRepository } from "@/lib/registry";
+import { Badge } from "@/ui";
 
 export function GamificationHud() {
   const [state, setState] = useState<GamificationState | null>(null);
@@ -24,19 +25,16 @@ export function GamificationHud() {
   if (!state) return null;
 
   return (
-    <div
-      data-testid="gamification-hud"
-      className="text-muted flex items-center gap-3 text-xs tabular-nums"
-    >
-      <span data-testid="hud-streak" title="Day streak">
-        {state.streakCount}d streak
-      </span>
-      <span data-testid="hud-level" title="Level">
+    <div data-testid="gamification-hud" className="flex items-center gap-1.5 tabular-nums">
+      <Badge variant="warning" size="sm" data-testid="hud-streak" title="Day streak">
+        {state.streakCount}d
+      </Badge>
+      <Badge variant="accent" size="sm" data-testid="hud-level" title="Level">
         Lv {state.level}
-      </span>
-      <span data-testid="hud-xp" title="Total XP">
+      </Badge>
+      <Badge variant="gradient" size="sm" data-testid="hud-xp" title="Total XP">
         {state.xp} XP
-      </span>
+      </Badge>
     </div>
   );
 }

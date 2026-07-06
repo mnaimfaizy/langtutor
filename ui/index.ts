@@ -2,7 +2,8 @@
 // never from "@base-ui/react/*" directly — keeps the primitive library swappable.
 
 export { cn } from "./cn";
-export * from "./button";
+export * from "./button-styles";
+export { Button, type ButtonProps } from "./button";
 export * from "./input";
 export * from "./card";
 export * from "./dialog";
