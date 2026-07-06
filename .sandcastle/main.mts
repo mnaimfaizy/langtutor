@@ -32,19 +32,50 @@ const SANDBOX = docker({
   ],
 });
 
+const DEFAULT_MODELS = {
+  cursor: "composer-2.5",
+  copilot: "claude-sonnet-5",
+  claude: "claude-sonnet-5",
+} as const;
+
+function readEnvModel(key: string, fallback: string) {
+  const raw = process.env[key];
+  if (!raw) return fallback;
+
+  const trimmed = raw.trim();
+  if (!trimmed) return fallback;
+
+  // Be tolerant of users writing quoted values in .env files.
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    const unquoted = trimmed.slice(1, -1).trim();
+    return unquoted || fallback;
+  }
+
+  return trimmed;
+}
+
 function getAgent() {
   const agentFlag = process.argv.indexOf("--agent");
   const agentStr =
     agentFlag !== -1 ? process.argv[agentFlag + 1] : (process.env.SANDCASTLE_AGENT ?? "claude");
 
   switch (agentStr) {
-    case "cursor":
-      return cursor("composer-2");
-    case "copilot":
-      return copilot("claude-sonnet-4.5");
+    case "cursor": {
+      const model = readEnvModel("SANDCASTLE_CURSOR_MODEL", DEFAULT_MODELS.cursor);
+      return cursor(model);
+    }
+    case "copilot": {
+      const model = readEnvModel("SANDCASTLE_COPILOT_MODEL", DEFAULT_MODELS.copilot);
+      return copilot(model);
+    }
     case "claude":
-    default:
-      return claudeCode("claude-sonnet-4-6");
+    default: {
+      const model = readEnvModel("SANDCASTLE_CLAUDE_MODEL", DEFAULT_MODELS.claude);
+      return claudeCode(model);
+    }
   }
 }
 
