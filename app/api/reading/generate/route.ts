@@ -1,12 +1,10 @@
 import { z } from "zod";
 
 import type { Cefr } from "@/lib/db";
-import { NullContentRepository } from "@/lib/content/null-adapters";
-import { LocalContentValidator } from "@/lib/content/content-validator";
-import type { ContentValidator } from "@/lib/content/content-validator";
+import { NoopContentSink } from "@/lib/content/null-adapters";
 import { buildPassageMessages, PassageSchema } from "@/lib/content/passage";
 import { generateContent } from "@/lib/content/pipeline";
-import { loadCefrData } from "@/lib/lexicon/data-loader";
+import { getContentValidator } from "@/lib/content/server";
 import { getLLMClient } from "@/lib/llm/server";
 import { isSameOrigin } from "@/lib/server/origin";
 
@@ -17,16 +15,6 @@ const RequestSchema = z.object({
   topic: z.string().min(1).max(200),
   level: z.enum(["A1", "A2", "B1", "B2", "C1", "C2"] as const satisfies readonly Cefr[]),
 });
-
-// Module-level singleton — cefrData is loaded once from disk on first generation request.
-let _validator: ContentValidator | undefined;
-
-function getValidator(): ContentValidator {
-  if (!_validator) {
-    _validator = new LocalContentValidator(loadCefrData());
-  }
-  return _validator;
-}
 
 /**
  * `POST /api/reading/generate` — generate a CEFR-valid reading passage.
@@ -60,8 +48,6 @@ export async function POST(request: Request) {
 
   try {
     const llmClient = await getLLMClient();
-    const validator = getValidator();
-    const repo = new NullContentRepository();
 
     const result = await generateContent(
       {
@@ -73,8 +59,8 @@ export async function POST(request: Request) {
         topic,
       },
       llmClient,
-      validator,
-      repo,
+      getContentValidator(),
+      new NoopContentSink(),
     );
 
     return Response.json({ passage: result.parsed });

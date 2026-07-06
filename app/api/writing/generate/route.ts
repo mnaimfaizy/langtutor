@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { Cefr } from "@/lib/db";
-import { NullContentRepository, NullContentValidator } from "@/lib/content/null-adapters";
+import { NoopContentSink } from "@/lib/content/null-adapters";
 import { buildPromptMessages, PromptSchema } from "@/lib/content/prompt";
 import { generateContent } from "@/lib/content/pipeline";
 import { getLLMClient } from "@/lib/llm/server";
@@ -48,8 +48,6 @@ export async function POST(request: Request) {
 
   try {
     const llmClient = await getLLMClient();
-    const validator = new NullContentValidator();
-    const repo = new NullContentRepository();
 
     const result = await generateContent(
       {
@@ -59,10 +57,11 @@ export async function POST(request: Request) {
         textField: "instruction",
         type: "prompt",
         topic,
+        skipValidation: true,
       },
       llmClient,
-      validator,
-      repo,
+      null,
+      new NoopContentSink(),
     );
 
     return Response.json({ prompt: result.parsed });

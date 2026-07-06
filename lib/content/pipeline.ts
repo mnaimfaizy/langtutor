@@ -1,6 +1,6 @@
 import type { ZodType } from "zod";
 
-import type { Cefr, ContentRepository, ContentType, NewContent } from "@/lib/db";
+import type { Cefr, ContentSink, ContentType, NewContent } from "@/lib/db";
 import type { LLMClient } from "@/lib/llm/llm-client";
 import type { ChatMessage } from "@/lib/llm/types";
 
@@ -41,6 +41,12 @@ export interface GenerateOptions<T extends Record<string, unknown>> {
    * the content is still saved. Defaults to false.
    */
   embed?: boolean;
+  /**
+   * When true, skip CEFR word/grammar validation entirely. Use for teacher-voice
+   * content (e.g. writing prompts) that should not be CEFR-gated. The validator
+   * param may be `null` when this is set. Defaults to false.
+   */
+  skipValidation?: boolean;
 }
 
 export interface GenerateResult<T> {
@@ -95,8 +101,8 @@ function violationSummary(violations: Violation[]): string {
 export async function generateContent<T extends Record<string, unknown>>(
   opts: GenerateOptions<T>,
   llmClient: LLMClient,
-  validator: ContentValidator,
-  repository: ContentRepository,
+  validator: ContentValidator | null,
+  repository: ContentSink,
 ): Promise<GenerateResult<T>> {
   const {
     messages: initial,
@@ -127,7 +133,13 @@ export async function generateContent<T extends Record<string, unknown>>(
       continue;
     }
     const text = String(parsed[textField] ?? "");
-    const validation = validator.validate(text, level);
+
+    // Skip validation when explicitly requested (teacher-voice content) or when
+    // no validator is provided. Treat as immediately valid.
+    const skipValidation = opts.skipValidation || !validator;
+    const validation = skipValidation
+      ? { ok: true as const, violations: [] as Violation[] }
+      : validator!.validate(text, level);
 
     if (validation.ok) {
       let embedding: number[] | undefined;

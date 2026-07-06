@@ -35,11 +35,22 @@ export interface ErrorEventQuery {
 }
 
 /**
+ * Narrow write-only seam consumed by the content generation pipeline. The pipeline
+ * only ever persists generated content — it never reads back or touches cards, profile,
+ * or gamification. Accepting this interface instead of the full `ContentRepository`
+ * keeps the pipeline's dependency honest and lets server routes pass a 3-line no-op
+ * instead of a 30-method stub.
+ */
+export interface ContentSink {
+  putContent(content: NewContent): Promise<number>;
+}
+
+/**
  * Persistence seam (PLAN §2.3). Feature code imports **this interface**, never a
  * concrete provider; the Dexie implementation is wired in `lib/registry.ts`. Swapping
  * to a future `SyncedRepository` (cloud) is then a registry change, not a call-site one.
  */
-export interface ContentRepository {
+export interface ContentRepository extends ContentSink {
   // profile (single row)
   getProfile(): Promise<Profile | undefined>;
   saveProfile(profile: Profile): Promise<void>;

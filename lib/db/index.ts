@@ -27,6 +27,7 @@ export type { BackupData } from "../backup/schema";
 export type {
   ContentQuery,
   ContentRepository,
+  ContentSink,
   ErrorEventQuery,
   NewCard,
   NewContent,

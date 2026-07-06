@@ -63,4 +63,4 @@ These are not blocking but are candidates for future phases:
 - **Badge catalog / quests / richer gamification** — expand beyond the 5 current milestone achievements.
 - **Dedicated exam/level-check mode** — a short mixed 4-skill check that re-estimates CEFR and snapshots progress.
 - **Conversation/speaking-practice free dialogue mode** — open-ended spoken exchange with the LLM.
-- **`skipValidation` option on `generateContent`** — make the intent of `NullContentValidator` explicit at the design level rather than a local class.
+- **`skipValidation` option on `generateContent`** — ✅ Done (ADR 0013). `NullContentValidator` deleted; `skipValidation: true` is the explicit design-level signal.
