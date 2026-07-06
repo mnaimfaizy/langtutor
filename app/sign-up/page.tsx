@@ -7,7 +7,7 @@ import { SignUpForm } from "./sign-up-form";
 
 export default async function SignUpPage() {
   const user = await resolveCurrentUser();
-  if (user) redirect("/");
+  if (user) redirect("/home");
 
   return (
     <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-12">

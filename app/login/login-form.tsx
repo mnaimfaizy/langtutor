@@ -30,7 +30,7 @@ export function LoginForm() {
         return;
       }
 
-      router.push("/");
+      router.push("/home");
       router.refresh();
     } catch {
       setError("Network error — please try again");

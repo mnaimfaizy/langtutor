@@ -14,7 +14,8 @@ export function GamificationHud() {
   // Re-fetch whenever the user navigates to a new route so the HUD reflects
   // XP/level/streak updated by a completed review session.
   useEffect(() => {
-    if (pathname.startsWith("/login") || pathname.startsWith("/sign-up")) return;
+    if (pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/sign-up"))
+      return;
     void getContentRepository()
       .getGamification()
       .then((g) => {

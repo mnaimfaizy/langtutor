@@ -10,7 +10,7 @@ import { LoginForm } from "./login-form";
 
 export default async function LoginPage() {
   const user = await resolveCurrentUser();
-  if (user) redirect("/");
+  if (user) redirect("/home");
 
   if (env.LANGTUTOR_MODE === "local") {
     try {

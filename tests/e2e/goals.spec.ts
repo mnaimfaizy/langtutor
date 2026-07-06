@@ -20,7 +20,7 @@ async function completeOnboarding(page: Page) {
   await expect(page.getByTestId("goals-picker")).toBeVisible();
   await page.getByTestId("goal-btn-general").click();
   await page.getByTestId("btn-save-goals").click();
-  await page.waitForURL("/");
+  await page.waitForURL("/home");
 }
 
 test("goals: level and goals persist across reload", async ({ page }) => {

@@ -29,9 +29,9 @@ setup("authenticate as admin", async ({ page }) => {
 
   if (bootstrapped.ok()) {
     // Fresh DB: bootstrap created the admin and returned a session cookie.
-    // We're already signed in — just confirm the app loads.
+    // We're already signed in — the root should redirect straight to /home.
     await page.goto("/");
-    await page.waitForURL("/");
+    await page.waitForURL("/home");
   } else {
     // DB already has users (409): sign in manually.
     await page.goto("/login");
@@ -40,7 +40,7 @@ setup("authenticate as admin", async ({ page }) => {
     await page.getByLabel("Email").fill(ADMIN_EMAIL);
     await page.getByLabel("Password").fill(ADMIN_PASSWORD);
     await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL("/");
+    await page.waitForURL("/home");
   }
 
   await page.context().storageState({ path: AUTH_FILE });

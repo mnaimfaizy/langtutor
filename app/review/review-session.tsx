@@ -162,7 +162,7 @@ export function ReviewSession() {
           <p className="text-muted mt-3 text-base leading-7">
             No cards are due right now. Check back later.
           </p>
-          <Link href="/" className="mt-8 inline-block">
+          <Link href="/home" className="mt-8 inline-block">
             <Button variant="secondary" size="lg">
               Back to home
             </Button>
@@ -248,7 +248,7 @@ export function ReviewSession() {
             ))}
           </div>
 
-          <Link href="/" className="mt-8 block">
+          <Link href="/home" className="mt-8 block">
             <Button variant="gradient" size="lg" className="w-full">
               Back to home
             </Button>
@@ -273,7 +273,7 @@ export function ReviewSession() {
             <Button variant="secondary" size="lg" onClick={() => setPhase("reviewing")}>
               Retry
             </Button>
-            <Link href="/">
+            <Link href="/home">
               <Button variant="secondary" size="lg">
                 Home
               </Button>

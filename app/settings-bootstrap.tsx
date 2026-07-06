@@ -13,7 +13,8 @@ import { getContentRepository } from "@/lib/registry";
 export function SettingsBootstrap() {
   const pathname = usePathname();
   useEffect(() => {
-    if (pathname.startsWith("/login") || pathname.startsWith("/sign-up")) return;
+    if (pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/sign-up"))
+      return;
     let active = true;
     void getContentRepository()
       .getSettings()

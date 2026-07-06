@@ -37,7 +37,7 @@ test("placement quiz: completes with all-unknown answers → A1 → proceeds to 
   // Select a goal and save
   await page.getByTestId("goal-btn-general").click();
   await page.getByTestId("btn-save-goals").click();
-  await page.waitForURL("/");
+  await page.waitForURL("/home");
 });
 
 test("placement quiz: redirects home if already onboarded", async ({ page }) => {
@@ -53,9 +53,9 @@ test("placement quiz: redirects home if already onboarded", async ({ page }) => 
   await expect(page.getByTestId("goals-picker")).toBeVisible();
   await page.getByTestId("goal-btn-general").click();
   await page.getByTestId("btn-save-goals").click();
-  await page.waitForURL("/");
+  await page.waitForURL("/home");
 
-  // Revisiting /onboarding should redirect straight to /
+  // Revisiting /onboarding should redirect straight to /home
   await page.goto("/onboarding");
-  await page.waitForURL("/");
+  await page.waitForURL("/home");
 });

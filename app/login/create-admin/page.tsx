@@ -9,7 +9,7 @@ import { CreateAdminForm } from "../create-admin-form";
 
 export default async function CreateAdminPage() {
   const user = await resolveCurrentUser();
-  if (user) redirect("/");
+  if (user) redirect("/home");
 
   if (env.LANGTUTOR_MODE === "cloud") {
     redirect("/login");

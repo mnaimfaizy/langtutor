@@ -21,7 +21,7 @@ async function setupWithSeed(page: Page) {
   await expect(page.getByTestId("goals-picker")).toBeVisible();
   await page.getByTestId("goal-btn-general").click();
   await page.getByTestId("btn-save-goals").click();
-  await page.waitForURL("/");
+  await page.waitForURL("/home");
   // Wait for the seed to be loaded before navigating to /review.
   await expect(page.getByTestId("seed-ready")).toBeVisible({ timeout: 15_000 });
 }
@@ -130,7 +130,7 @@ test("review: empty state when no cards are due", async ({ page }) => {
 
   // Return home then come back — all cards are now scheduled for the future
   await page.getByRole("link", { name: "Back to home" }).click();
-  await page.waitForURL("/");
+  await page.waitForURL("/home");
   await page.goto("/review");
 
   await expect(page.getByTestId("review-session")).toBeVisible();

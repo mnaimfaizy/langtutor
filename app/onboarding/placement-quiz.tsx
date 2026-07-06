@@ -36,7 +36,7 @@ export function PlacementQuiz() {
       .getProfile()
       .then((profile) => {
         if (profile?.cefrLevel) {
-          router.replace(profile.goals.length > 0 ? "/" : "/onboarding/goals");
+          router.replace(profile.goals.length > 0 ? "/home" : "/onboarding/goals");
           return;
         }
         setPhase("intro");

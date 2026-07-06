@@ -30,7 +30,7 @@ export function GoalsPicker() {
           return;
         }
         if (profile.goals.length > 0) {
-          router.replace("/");
+          router.replace("/home");
           return;
         }
         setLoading(false);
@@ -59,7 +59,7 @@ export function GoalsPicker() {
       }
       const profile: Profile = { ...existing, goals: [...selected] };
       await repo.saveProfile(profile);
-      router.replace("/");
+      router.replace("/home");
     } catch {
       setSaving(false);
     }
