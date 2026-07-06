@@ -1,3 +1,10 @@
+export {
+  contrastRatio,
+  meetsWcagAa,
+  parseRgbString,
+  relativeLuminance,
+  type Rgb,
+} from "./contrast";
 export { PALETTE_BOOTSTRAP_SCRIPT } from "./palette-bootstrap-script";
 export { resolvePalette } from "./resolve-palette";
 export {

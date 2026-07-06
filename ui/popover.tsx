@@ -66,7 +66,7 @@ export function PopoverContent({
       <BasePopover.Positioner sideOffset={sideOffset}>
         <BasePopover.Popup
           className={cn(
-            "border-border bg-card text-foreground w-64 rounded-xl border p-4 text-sm shadow-lg transition-all duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0",
+            "border-border bg-surface-2 text-foreground w-64 rounded-xl border p-4 text-sm shadow-lg transition-all duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0",
             className,
           )}
           {...props}

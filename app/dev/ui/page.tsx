@@ -14,16 +14,20 @@ import {
   DialogTitle,
   DialogTrigger,
   Input,
+  PassageLibraryClient,
   Popover,
   PopoverContent,
   PopoverTrigger,
   Progress,
+  Skeleton,
   Tabs,
   TabsList,
   TabsPanel,
   TabsTab,
   Tooltip,
+  TtsButton,
 } from "@/ui";
+import { PaletteSwitcher } from "./palette-switcher";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -37,14 +41,61 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 export default function UiGalleryPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
+      <PaletteSwitcher />
+
       <header className="mb-10">
         <h1 className="text-foreground text-2xl font-semibold tracking-tight">UI gallery</h1>
         <p className="text-muted mt-1 text-sm">
-          Every wrapper in the <code>ui/</code> layer (Base UI + Tailwind). Dev-only preview.
+          Every wrapper in the <code>ui/</code> layer (Base UI + Tailwind), rendered under all four
+          palette token sets. Dev-only preview.
         </p>
       </header>
 
       <div className="space-y-10">
+        <Section title="Surface elevation">
+          <div className="bg-surface-1 border-border w-40 rounded-xl border p-4 text-center">
+            <p className="text-foreground text-xs font-medium">surface-1</p>
+            <p className="text-muted mt-1 text-xs">base card</p>
+          </div>
+          <div className="bg-surface-2 border-border w-40 rounded-xl border p-4 text-center">
+            <p className="text-foreground text-xs font-medium">surface-2</p>
+            <p className="text-muted mt-1 text-xs">popover / tooltip</p>
+          </div>
+          <div className="bg-surface-3 border-border w-40 rounded-xl border p-4 text-center">
+            <p className="text-foreground text-xs font-medium">surface-3</p>
+            <p className="text-muted mt-1 text-xs">top-most overlay</p>
+          </div>
+        </Section>
+
+        <Section title="Gradient">
+          <div
+            data-testid="gradient-sample"
+            className="from-gradient-from via-gradient-via to-gradient-to text-gradient-foreground flex h-24 w-full items-center justify-center rounded-xl bg-gradient-to-br"
+          >
+            <p className="text-sm font-semibold drop-shadow-sm">gradient-from → via → to</p>
+          </div>
+        </Section>
+
+        <Section title="Glass">
+          <div className="from-gradient-from via-gradient-via to-gradient-to relative h-32 w-full overflow-hidden rounded-xl bg-gradient-to-br p-6">
+            <div
+              data-testid="glass-sample"
+              className="bg-glass border-glass-border absolute inset-4 flex items-center justify-center rounded-lg border backdrop-blur-lg"
+            >
+              <p className="text-foreground text-sm font-medium">translucent surface + blur</p>
+            </div>
+          </div>
+        </Section>
+
+        <Section title="Glow">
+          <div
+            data-testid="glow-sample"
+            className="bg-accent text-accent-foreground shadow-glow rounded-xl px-6 py-4 text-sm font-medium"
+          >
+            focus / celebration glow
+          </div>
+        </Section>
+
         <Section title="Button — variants">
           <Button variant="primary">Primary</Button>
           <Button variant="secondary">Secondary</Button>
@@ -120,6 +171,26 @@ export default function UiGalleryPage() {
 
         <Section title="Progress">
           <Progress value={66} className="max-w-md" />
+        </Section>
+
+        <Section title="Skeleton">
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-10 w-10 rounded-full" />
+        </Section>
+
+        <Section title="Tts button">
+          <TtsButton text="Lang-Tutor helps you practise reading, writing, listening, and speaking." />
+        </Section>
+
+        <Section title="Passage library">
+          <div className="border-border w-full rounded-xl border">
+            <PassageLibraryClient
+              title="Reading"
+              description="Every generated passage lives here, offline-first."
+              emptyLabel="reading"
+              basePath="/reading"
+            />
+          </div>
         </Section>
       </div>
     </main>

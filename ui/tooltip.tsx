@@ -22,7 +22,7 @@ export function Tooltip({ children, content, className, sideOffset = 8 }: Toolti
           <BaseTooltip.Positioner sideOffset={sideOffset}>
             <BaseTooltip.Popup
               className={cn(
-                "border-border bg-card text-foreground rounded-md border px-2 py-1 text-xs shadow-md",
+                "border-border bg-surface-3 text-foreground rounded-md border px-2 py-1 text-xs shadow-md",
                 className,
               )}
             >
