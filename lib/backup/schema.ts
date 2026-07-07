@@ -106,6 +106,8 @@ const UnitRowSchema = z.object({
   title: z.string(),
   teacherNote: z.string(),
   targetGrammarIds: z.array(z.string()),
+  // Default handles backups exported before the teacher planner (issue #58) existed.
+  targetVocab: z.array(z.string()).default([]),
   targetCefr: CefrSchema,
   activities: z.array(UnitActivityRefSchema),
   status: z.enum(["locked", "available", "in-progress", "completed"]),

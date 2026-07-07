@@ -68,5 +68,16 @@ Do not enter an edit → revert → reinstall → re-apply loop. One reinstall a
 - `data/wordnet.json` and `data/words-cefr.json` are gitignored and copied into the
   worktree by a host hook. If they are missing, lexicon API routes crash the dev server
   (ECONNRESET) — do not chase this as a code bug; note it on the issue instead.
+- **(issue #58) A killed/interrupted `next dev` process can corrupt `.next` and cause
+  e2e flakiness that looks like a networking problem**: after repeatedly killing
+  `next-server` processes mid-request while debugging, `tests/e2e/auth.setup.ts` started
+  failing with `ECONNRESET` on warm-up requests or the sign-in form showing "Network
+  error — please try again" and timing out waiting for `/home`, and separately
+  `pnpm typecheck` failed with syntax errors inside the generated
+  `.next/dev/types/routes.d.ts` (a file `next dev` was mid-write on when killed). Fix:
+  `rm -rf .next` (and remove the stale e2e DB, `rm -f langtutor-e2e.db*`, for a fully
+  clean slate) before the next Playwright run — Playwright/Next will regenerate both from
+  scratch. If you kill a dev server manually in this sandbox, always follow up with
+  `rm -rf .next` rather than assuming the next `pnpm dev`/Playwright run will self-heal.
 - (Add new, verified environment findings here — with the run/issue number — so the next
   agent does not re-discover them.)

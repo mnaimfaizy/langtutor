@@ -3,8 +3,8 @@
  *
  * Pure and deterministic: seeds an initial learning path from the static backbone (the
  * 39-entry grammar map, which already progresses A1 → C2 in curriculum order) anchored at
- * the learner's CEFR level. No LLM/network call — the LLM teacher (future work) fills in
- * richer titles/notes and adapts the plan once wired up.
+ * the learner's CEFR level. No LLM/network call — the LLM teacher (`lib/path/teacher-planner.ts`,
+ * issue #58) fills in richer titles/notes/vocab and adapts the plan once wired up.
  */
 import { GRAMMAR_MAP, type GrammarMap } from "@/lib/content/grammar-map";
 import type { Cefr, NewUnit, Skill, UnitActivityRef } from "@/lib/db";
@@ -42,6 +42,7 @@ export function seedBackbonePath(
     title: `Unit ${i + 1}: ${construction.label}`,
     teacherNote: construction.description,
     targetGrammarIds: [construction.id],
+    targetVocab: [],
     targetCefr: construction.cefr,
     activities: backboneActivities(),
     status: i === 0 ? "available" : "locked",

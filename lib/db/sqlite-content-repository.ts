@@ -174,6 +174,7 @@ type UnitRow = {
   title: string;
   teacherNote: string;
   targetGrammarIds: string;
+  targetVocab: string;
   targetCefr: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
   activities: string;
   status: "locked" | "available" | "in-progress" | "completed";
@@ -188,6 +189,7 @@ function rowToUnit(row: UnitRow): Unit {
     title: row.title,
     teacherNote: row.teacherNote,
     targetGrammarIds: JSON.parse(row.targetGrammarIds) as string[],
+    targetVocab: JSON.parse(row.targetVocab) as string[],
     targetCefr: row.targetCefr,
     activities: JSON.parse(row.activities) as UnitActivityRef[],
     status: row.status,
@@ -640,6 +642,7 @@ export class SqliteContentRepository implements ContentRepository {
         title: unit.title,
         teacherNote: unit.teacherNote,
         targetGrammarIds: JSON.stringify(unit.targetGrammarIds),
+        targetVocab: JSON.stringify(unit.targetVocab),
         targetCefr: unit.targetCefr,
         activities: JSON.stringify(unit.activities),
         status: unit.status,
@@ -666,6 +669,7 @@ export class SqliteContentRepository implements ContentRepository {
       title?: string;
       teacherNote?: string;
       targetGrammarIds?: string;
+      targetVocab?: string;
       targetCefr?: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
       activities?: string;
       status?: "locked" | "available" | "in-progress" | "completed";
@@ -678,6 +682,7 @@ export class SqliteContentRepository implements ContentRepository {
     if (changes.teacherNote !== undefined) patch.teacherNote = changes.teacherNote;
     if (changes.targetGrammarIds !== undefined)
       patch.targetGrammarIds = JSON.stringify(changes.targetGrammarIds);
+    if (changes.targetVocab !== undefined) patch.targetVocab = JSON.stringify(changes.targetVocab);
     if (changes.targetCefr !== undefined) patch.targetCefr = changes.targetCefr;
     if (changes.activities !== undefined) patch.activities = JSON.stringify(changes.activities);
     if (changes.status !== undefined) patch.status = changes.status;
@@ -957,6 +962,7 @@ export class SqliteContentRepository implements ContentRepository {
           title: u.title,
           teacherNote: u.teacherNote,
           targetGrammarIds: JSON.stringify(u.targetGrammarIds),
+          targetVocab: JSON.stringify(u.targetVocab),
           targetCefr: u.targetCefr,
           activities: JSON.stringify(u.activities),
           status: u.status,

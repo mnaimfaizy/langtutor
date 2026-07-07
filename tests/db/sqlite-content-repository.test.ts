@@ -84,6 +84,7 @@ describe("per-user isolation", () => {
       title: "Unit 1: Simple present tense",
       teacherNote: "Base verb form for habitual actions, facts, and permanent states.",
       targetGrammarIds: ["simple_present"],
+      targetVocab: [],
       targetCefr: "A1",
       activities: [{ skill: "reading" }],
       status: "available",

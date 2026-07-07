@@ -191,6 +191,8 @@ export const gamification = sqliteTable(
  * Learning path units (ADR 0015). `index` orders the path ascending; negative values are
  * reserved for a future pre-A1 tier (ADR 0016). Backbone seeding (issue #57) writes
  * `targetGrammarIds`/`activities` as JSON arrays, same convention as `examples`/`goals`.
+ * The teacher planner (issue #58) fills `targetVocab` (also JSON) once it plans a unit;
+ * empty is the "unplanned" signal.
  */
 export const units = sqliteTable(
   "units",
@@ -201,6 +203,7 @@ export const units = sqliteTable(
     title: text("title").notNull(),
     teacherNote: text("teacher_note").notNull(),
     targetGrammarIds: text("target_grammar_ids").notNull().default("[]"),
+    targetVocab: text("target_vocab").notNull().default("[]"),
     targetCefr: text("target_cefr", { enum: CEFR_VALUES }).notNull(),
     activities: text("activities").notNull().default("[]"),
     status: text("status", { enum: UNIT_STATUS_VALUES }).notNull().default("locked"),

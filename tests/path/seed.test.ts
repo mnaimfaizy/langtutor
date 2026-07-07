@@ -39,6 +39,7 @@ describe("loadPathIfEmpty", () => {
       title: "Existing unit",
       teacherNote: "note",
       targetGrammarIds: ["simple_present"],
+      targetVocab: [],
       targetCefr: "A1",
       activities: [],
       status: "available",

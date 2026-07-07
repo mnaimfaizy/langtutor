@@ -179,6 +179,7 @@ export const units = pgTable(
     title: text("title").notNull(),
     teacherNote: text("teacher_note").notNull(),
     targetGrammarIds: text("target_grammar_ids").notNull().default("[]"),
+    targetVocab: text("target_vocab").notNull().default("[]"),
     targetCefr: text("target_cefr", { enum: CEFR_VALUES }).notNull(),
     activities: text("activities").notNull().default("[]"),
     status: text("status", { enum: UNIT_STATUS_VALUES }).notNull().default("locked"),

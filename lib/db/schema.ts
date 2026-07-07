@@ -209,6 +209,12 @@ export interface Unit {
   teacherNote: string;
   /** Grammar-map construction ids (§`lib/content/grammar-map.ts`) this unit targets. */
   targetGrammarIds: string[];
+  /**
+   * Vocabulary words the teacher plan chose for this unit (issue #58). Empty means the
+   * unit is still an unplanned backbone placeholder — the teacher planner's own signal
+   * for "needs planning", so no separate plan-status field is needed.
+   */
+  targetVocab: string[];
   /** CEFR milestone this unit's vocabulary/grammar difficulty is anchored to. */
   targetCefr: Cefr;
   activities: UnitActivityRef[];

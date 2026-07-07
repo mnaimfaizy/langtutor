@@ -78,6 +78,12 @@ describe("seedBackbonePath", () => {
     expect(units.every((u) => u.bufferStatus === "empty")).toBe(true);
   });
 
+  it("starts every unit with empty targetVocab — the teacher planner's unplanned signal", () => {
+    const units = seedBackbonePath("A1", FIXTURE_MAP);
+
+    expect(units.every((u) => u.targetVocab.length === 0)).toBe(true);
+  });
+
   it("reserves an ordered activity slot per skill, in a fixed skill order", () => {
     const units = seedBackbonePath("A1", FIXTURE_MAP);
 

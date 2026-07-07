@@ -43,6 +43,13 @@
       "when": 1783500000000,
       "tag": "0005_units",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1783600000000,
+      "tag": "0006_unit_target_vocab",
+      "breakpoints": true
     }
   ]
 }

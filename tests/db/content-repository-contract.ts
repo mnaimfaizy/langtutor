@@ -55,6 +55,7 @@ function makeUnit(index: number, overrides: Partial<NewUnit> = {}): NewUnit {
     title: `Unit ${index + 1}: Simple present tense`,
     teacherNote: "Base verb form for habitual actions, facts, and permanent states.",
     targetGrammarIds: ["simple_present"],
+    targetVocab: [],
     targetCefr: "A1",
     activities: [{ skill: "reading" }, { skill: "writing" }],
     status: index === 0 ? "available" : "locked",
@@ -371,6 +372,20 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
         const units = await repo.getUnits();
         expect(units[0]?.status).toBe("in-progress");
         expect(units[0]?.title).toBe(makeUnit(0).title);
+      });
+
+      it("persists a teacher-planned title/note/vocab via updateUnit (issue #58)", async () => {
+        const id = await repo.addUnit(makeUnit(0));
+
+        await repo.updateUnit(id, {
+          title: "Talking About Yesterday",
+          teacherNote: "This unit builds on the learner's goal of chatting about daily life.",
+          targetVocab: ["yesterday", "walked", "finished", "already"],
+        });
+
+        const units = await repo.getUnits();
+        expect(units[0]?.title).toBe("Talking About Yesterday");
+        expect(units[0]?.targetVocab).toEqual(["yesterday", "walked", "finished", "already"]);
       });
 
       it("preserves activity order and content", async () => {
