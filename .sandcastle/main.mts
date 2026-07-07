@@ -111,25 +111,31 @@ const HOOKS = {
     // cache and finish in seconds. 300s covers a cold first run.
     onSandboxReady: [
       {
+        // ONE chained hook, not two: sandcastle runs onSandboxReady hooks with
+        // concurrency "unbounded", so separate hooks race each other. A separate
+        // `playwright install` hook deadlocks against the concurrent `pnpm install`
+        // (pnpm exec blocks on the in-progress install) and times out. Chaining
+        // with && guarantees ordering.
+        //
+        // pnpm install:
         // --store-dir   : use our bind-mounted Windows host cache (avoids re-downloading).
         // --virtual-store-dir : put the .pnpm virtual store inside the container's native Linux
         //   filesystem (not the Windows bind-mounted workspace). Extracting 500MB of packages
         //   through Docker's 9P Windows→Linux layer is very slow; the native layer is fast.
         //   node_modules/<pkg> symlinks then use absolute container paths, which work fine.
-        command:
-          "pnpm install --prefer-offline --frozen-lockfile" +
-          " --store-dir /home/agent/.local/share/pnpm/store" +
-          " --virtual-store-dir /home/agent/.pnpm-virtual-store",
-        timeoutMs: 600_000,
-      },
-      {
+        //
+        // playwright install:
         // Chromium 1.61.0 is baked into the image at PLAYWRIGHT_BROWSERS_PATH
-        // (/ms-playwright, native FS). This is a fast no-op when the repo's
+        // (/ms-playwright, native FS) — this is a ~2s no-op when the repo's
         // Playwright version matches the image; if the repo bumps Playwright it
         // downloads the new binary to the native path (rebuild the image to
         // make that permanent). Never use --with-deps here (needs sudo).
-        command: "pnpm exec playwright install chromium",
-        timeoutMs: 300_000,
+        command:
+          "pnpm install --prefer-offline --frozen-lockfile" +
+          " --store-dir /home/agent/.local/share/pnpm/store" +
+          " --virtual-store-dir /home/agent/.pnpm-virtual-store" +
+          " && pnpm exec playwright install chromium",
+        timeoutMs: 600_000,
       },
     ],
   },
