@@ -50,6 +50,9 @@ Implement the issue shown above. Follow the acceptance criteria exactly.
 
 # Done
 
-When the issue is implemented, verified, committed, and closed, output:
+When the issue is implemented, verified, committed, and closed, you MUST end your final
+message with the completion promise below (exactly as written, on its own line). If you
+omit it, the runner assumes the work is unfinished and burns a full extra iteration
+(sandbox setup + re-verification) just to re-discover that everything is already done.
 
 <promise>COMPLETE</promise>

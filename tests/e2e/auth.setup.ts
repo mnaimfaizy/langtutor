@@ -23,6 +23,11 @@ const WARMUP_ROUTES = [
 ];
 
 setup("authenticate as admin", async ({ page }) => {
+  // 300 s: on slow filesystems (sandcastle's 9P bind mount) every cold Turbopack
+  // compile takes 10-30 s and this setup visits ~15 routes, which blows the
+  // default 60 s budget. On a normal host it finishes well under a minute.
+  setup.setTimeout(300_000);
+
   const bootstrapped = await page.request.post("/api/auth/bootstrap", {
     data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
   });

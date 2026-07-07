@@ -51,23 +51,22 @@ Do not enter an edit → revert → reinstall → re-apply loop. One reinstall a
 ## Known issues
 
 - Filesystem I/O on the workspace is slow (Windows→Linux 9P bind mount). Prefer targeted
-  commands (single spec, single test file) over broad ones.
-- **(issue #57) `pnpm dev` / `pnpm exec playwright test` currently fail to boot in this
-  session**: Turbopack refuses to compile `./app` with `Error: Next.js inferred your
-workspace root, but it may not be correct. We couldn't find the Next.js package
-(next/package.json) from the project directory: /home/agent/workspace/app`. Root cause:
-  `node_modules/next` (and siblings) are symlinks into `/home/agent/.pnpm-virtual-store`,
-  which sits **outside** the `/home/agent/workspace` bind mount (done for 9P I/O
-  performance — see the Dockerfile's Chromium-path comment for the same rationale).
-  Turbopack resolves the symlink to its real path and refuses to compile because that
-  real path escapes the inferred/configured project root, even though `next.config.ts`
-  already pins `turbopack.root: process.cwd()` and Node's own `require.resolve` finds the
-  package fine. Reproduces on a clean `git stash` (pre-existing, not introduced by any
-  feature branch) and survives the one permitted anti-thrash reinstall (same
-  `--virtual-store-dir`, so the symlink target doesn't change). Until the virtual store is
-  moved back inside the workspace (or Turbopack gains a way to trust an out-of-tree
-  store), **validate e2e specs with `pnpm exec playwright test --list` only** — do not
-  spend time re-diagnosing this per-issue; `pnpm verify` (typecheck/lint/format/unit
-  tests) is unaffected and remains the real gate.
+  commands (single spec, single test file) over broad ones. Cold Turbopack compiles take
+  10–30 s per route; the e2e auth setup already has a 300 s budget to absorb this.
+- **(issue #57, RESOLVED) Turbopack "couldn't find the Next.js package" boot failure**:
+  the pnpm virtual store lives outside the workspace (native FS, for 9P performance), so
+  `node_modules` symlinks resolve to realpaths that escape the project root and Turbopack
+  refused to compile. Fixed: the image sets `LANGTUTOR_TURBOPACK_ROOT=/home/agent` and
+  `next.config.ts` widens `turbopack.root` accordingly. `pnpm dev` and
+  `pnpm exec playwright test <spec>` now work in this sandbox — verified end-to-end
+  (smoke suite green). Do not re-diagnose; if you see this error, the image is stale —
+  comment on the issue and stop.
+- **API routes 404 under `pnpm dev` after a `next.config.ts` change**: the Turbopack
+  dev cache in `.next/` can go stale when config changes between boots, making API
+  routes (e.g. `/api/auth/*`) return 404 while pages still render. Fix: `rm -rf .next`
+  and restart. A fresh worktree has no `.next`, so this only bites after you edit config.
+- `data/wordnet.json` and `data/words-cefr.json` are gitignored and copied into the
+  worktree by a host hook. If they are missing, lexicon API routes crash the dev server
+  (ECONNRESET) — do not chase this as a code bug; note it on the issue instead.
 - (Add new, verified environment findings here — with the run/issue number — so the next
   agent does not re-discover them.)

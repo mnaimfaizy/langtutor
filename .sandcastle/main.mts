@@ -99,9 +99,23 @@ ensureWindowsGitLongPaths();
 
 const HOOKS = {
   host: {
-    // Stub .env.local so tsc/build don't require real Mac services in the sandbox.
-    // Use "copy" (cmd.exe) since host hooks run on Windows, not in the container.
-    onWorktreeReady: [{ command: "copy .env.example .env.local" }],
+    // Host hooks run SEQUENTIALLY (unlike sandbox onSandboxReady hooks) with
+    // cwd = the worktree, via cmd.exe on Windows.
+    onWorktreeReady: [
+      // Stub .env.local so tsc/build don't require real Mac services in the sandbox.
+      { command: "copy .env.example .env.local" },
+      // Copy the gitignored lexicon datasets into the worktree. `git worktree add`
+      // only materialises tracked files, so without these the dev server's WordNet
+      // load crashes (ECONNRESET) during the e2e auth warm-up. Guard with `if exist`
+      // so a missing host file degrades to "e2e lexicon routes unavailable" instead
+      // of failing the run.
+      {
+        command: `if exist "${join(process.cwd(), "data", "wordnet.json")}" copy /Y "${join(process.cwd(), "data", "wordnet.json")}" data\\wordnet.json`,
+      },
+      {
+        command: `if exist "${join(process.cwd(), "data", "words-cefr.json")}" copy /Y "${join(process.cwd(), "data", "words-cefr.json")}" data\\words-cefr.json`,
+      },
+    ],
   },
   sandbox: {
     // pnpm install as a safety net for platform-specific binaries.

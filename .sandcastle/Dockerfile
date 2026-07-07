@@ -47,6 +47,14 @@ RUN apt-get update && apt-get install -y \
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN npx -y playwright@1.61.0 install chromium && chmod -R a+rwX /ms-playwright
 
+# Widen the Turbopack root to the common ancestor of the workspace
+# (/home/agent/workspace) and the pnpm virtual store (/home/agent/.pnpm-virtual-store).
+# The virtual store lives outside the workspace for 9P performance, so node_modules
+# symlinks resolve to realpaths that escape process.cwd(); Turbopack's native resolver
+# refuses to compile anything whose realpath is outside the root. next.config.ts reads
+# this variable and falls back to process.cwd() when unset (i.e. everywhere else).
+ENV LANGTUTOR_TURBOPACK_ROOT=/home/agent
+
 # Install GitHub CLI
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
   | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
