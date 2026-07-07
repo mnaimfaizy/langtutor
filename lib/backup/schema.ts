@@ -95,6 +95,24 @@ const LexiconCacheRowSchema = z.object({
   cachedAt: z.coerce.date(),
 });
 
+const UnitActivityRefSchema = z.object({
+  skill: SkillSchema,
+  contentId: z.number().optional(),
+});
+
+const UnitRowSchema = z.object({
+  id: z.number(),
+  index: z.number(),
+  title: z.string(),
+  teacherNote: z.string(),
+  targetGrammarIds: z.array(z.string()),
+  targetCefr: CefrSchema,
+  activities: z.array(UnitActivityRefSchema),
+  status: z.enum(["locked", "available", "in-progress", "completed"]),
+  bufferStatus: z.enum(["empty", "buffered"]),
+  createdAt: z.coerce.date(),
+});
+
 export const BackupSchema = z.object({
   version: z.literal(1),
   exportedAt: z.string(),
@@ -106,6 +124,8 @@ export const BackupSchema = z.object({
     weakness: z.array(WeaknessRowSchema),
     gamification: z.array(GamificationRowSchema),
     lexiconCache: z.array(LexiconCacheRowSchema),
+    // Optional: absent in backups exported before units existed (issue #57).
+    units: z.array(UnitRowSchema).optional(),
   }),
 });
 

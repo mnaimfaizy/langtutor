@@ -10,6 +10,7 @@ import type {
   NewCard,
   NewContent,
   NewErrorEvent,
+  NewUnit,
 } from "./content-repository";
 import type { DrizzleClient } from "./drizzle/client";
 import {
@@ -21,6 +22,7 @@ import {
   gamification as gamificationTable,
   lexiconCache as lexiconCacheTable,
   profiles as profilesTable,
+  units as unitsTable,
   weakness as weaknessTable,
 } from "./drizzle/schema";
 import type {
@@ -33,6 +35,8 @@ import type {
   LexiconCacheEntry,
   Profile,
   ProfileSettings,
+  Unit,
+  UnitActivityRef,
   Weakness,
 } from "./schema";
 
@@ -159,6 +163,35 @@ function rowToErrorEvent(row: ErrorEventRow): ErrorEventRecord {
     category: row.category,
     cefr: row.cefr,
     context: row.context,
+    createdAt: row.createdAt,
+  };
+}
+
+type UnitRow = {
+  id: number;
+  userId: string;
+  index: number;
+  title: string;
+  teacherNote: string;
+  targetGrammarIds: string;
+  targetCefr: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+  activities: string;
+  status: "locked" | "available" | "in-progress" | "completed";
+  bufferStatus: "empty" | "buffered";
+  createdAt: Date;
+};
+
+function rowToUnit(row: UnitRow): Unit {
+  return {
+    id: row.id,
+    index: row.index,
+    title: row.title,
+    teacherNote: row.teacherNote,
+    targetGrammarIds: JSON.parse(row.targetGrammarIds) as string[],
+    targetCefr: row.targetCefr,
+    activities: JSON.parse(row.activities) as UnitActivityRef[],
+    status: row.status,
+    bufferStatus: row.bufferStatus,
     createdAt: row.createdAt,
   };
 }
@@ -596,6 +629,68 @@ export class SqliteContentRepository implements ContentRepository {
       .run();
   }
 
+  // ─── learning path units ──────────────────────────────────────────────────
+
+  async addUnit(unit: NewUnit): Promise<number> {
+    const result = this.db
+      .insert(unitsTable)
+      .values({
+        userId: this.userId,
+        index: unit.index,
+        title: unit.title,
+        teacherNote: unit.teacherNote,
+        targetGrammarIds: JSON.stringify(unit.targetGrammarIds),
+        targetCefr: unit.targetCefr,
+        activities: JSON.stringify(unit.activities),
+        status: unit.status,
+        bufferStatus: unit.bufferStatus,
+        createdAt: unit.createdAt,
+      })
+      .run();
+    return Number(result.lastInsertRowid);
+  }
+
+  async getUnits(): Promise<Unit[]> {
+    const rows = this.db
+      .select()
+      .from(unitsTable)
+      .where(eq(unitsTable.userId, this.userId))
+      .orderBy(asc(unitsTable.index))
+      .all();
+    return rows.map(rowToUnit);
+  }
+
+  async updateUnit(id: number, changes: Partial<NewUnit>): Promise<void> {
+    type UnitUpdate = {
+      index?: number;
+      title?: string;
+      teacherNote?: string;
+      targetGrammarIds?: string;
+      targetCefr?: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+      activities?: string;
+      status?: "locked" | "available" | "in-progress" | "completed";
+      bufferStatus?: "empty" | "buffered";
+      createdAt?: Date;
+    };
+    const patch: UnitUpdate = {};
+    if (changes.index !== undefined) patch.index = changes.index;
+    if (changes.title !== undefined) patch.title = changes.title;
+    if (changes.teacherNote !== undefined) patch.teacherNote = changes.teacherNote;
+    if (changes.targetGrammarIds !== undefined)
+      patch.targetGrammarIds = JSON.stringify(changes.targetGrammarIds);
+    if (changes.targetCefr !== undefined) patch.targetCefr = changes.targetCefr;
+    if (changes.activities !== undefined) patch.activities = JSON.stringify(changes.activities);
+    if (changes.status !== undefined) patch.status = changes.status;
+    if (changes.bufferStatus !== undefined) patch.bufferStatus = changes.bufferStatus;
+    if (changes.createdAt !== undefined) patch.createdAt = changes.createdAt;
+
+    this.db
+      .update(unitsTable)
+      .set(patch)
+      .where(and(eq(unitsTable.id, id), eq(unitsTable.userId, this.userId)))
+      .run();
+  }
+
   // ─── maintenance ──────────────────────────────────────────────────────────
 
   async clear(): Promise<void> {
@@ -606,6 +701,7 @@ export class SqliteContentRepository implements ContentRepository {
     this.db.delete(weaknessTable).where(eq(weaknessTable.userId, this.userId)).run();
     this.db.delete(gamificationTable).where(eq(gamificationTable.userId, this.userId)).run();
     this.db.delete(lexiconCacheTable).run();
+    this.db.delete(unitsTable).where(eq(unitsTable.userId, this.userId)).run();
   }
 
   // ─── backup ───────────────────────────────────────────────────────────────
@@ -644,6 +740,12 @@ export class SqliteContentRepository implements ContentRepository {
       .all();
 
     const lexiconRows = this.db.select().from(lexiconCacheTable).all();
+
+    const unitRows = this.db
+      .select()
+      .from(unitsTable)
+      .where(eq(unitsTable.userId, this.userId))
+      .all();
 
     return {
       version: 1 as const,
@@ -707,6 +809,7 @@ export class SqliteContentRepository implements ContentRepository {
           data: JSON.parse(row.data) as unknown,
           cachedAt: row.cachedAt,
         })),
+        units: unitRows.map(rowToUnit),
       },
     };
   }
@@ -719,6 +822,7 @@ export class SqliteContentRepository implements ContentRepository {
     this.db.delete(errorEventsTable).where(eq(errorEventsTable.userId, this.userId)).run();
     this.db.delete(weaknessTable).where(eq(weaknessTable.userId, this.userId)).run();
     this.db.delete(gamificationTable).where(eq(gamificationTable.userId, this.userId)).run();
+    this.db.delete(unitsTable).where(eq(unitsTable.userId, this.userId)).run();
 
     for (const row of data.tables.profile) {
       this.db
@@ -839,6 +943,25 @@ export class SqliteContentRepository implements ContentRepository {
             data: JSON.stringify(lex.data),
             cachedAt: lex.cachedAt,
           },
+        })
+        .run();
+    }
+
+    // Old-format backups (pre-#57) have no `units` key — default to empty.
+    for (const u of data.tables.units ?? []) {
+      this.db
+        .insert(unitsTable)
+        .values({
+          userId: this.userId,
+          index: u.index,
+          title: u.title,
+          teacherNote: u.teacherNote,
+          targetGrammarIds: JSON.stringify(u.targetGrammarIds),
+          targetCefr: u.targetCefr,
+          activities: JSON.stringify(u.activities),
+          status: u.status,
+          bufferStatus: u.bufferStatus,
+          createdAt: u.createdAt,
         })
         .run();
     }

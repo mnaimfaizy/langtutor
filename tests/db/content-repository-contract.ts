@@ -7,6 +7,7 @@ import type {
   NewCard,
   NewContent,
   NewErrorEvent,
+  NewUnit,
   Profile,
   Skill,
 } from "@/lib/db";
@@ -46,6 +47,21 @@ function makeErrorEvent(
   context: string,
 ): NewErrorEvent {
   return { skill, category, cefr, context, createdAt: new Date(0) };
+}
+
+function makeUnit(index: number, overrides: Partial<NewUnit> = {}): NewUnit {
+  return {
+    index,
+    title: `Unit ${index + 1}: Simple present tense`,
+    teacherNote: "Base verb form for habitual actions, facts, and permanent states.",
+    targetGrammarIds: ["simple_present"],
+    targetCefr: "A1",
+    activities: [{ skill: "reading" }, { skill: "writing" }],
+    status: index === 0 ? "available" : "locked",
+    bufferStatus: "empty",
+    createdAt: new Date(0),
+    ...overrides,
+  };
 }
 
 /**
@@ -315,17 +331,77 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
     });
 
     // -------------------------------------------------------------------------
+    describe("units (learning path, ADR 0015)", () => {
+      it("returns an empty array before any unit is added", async () => {
+        expect(await repo.getUnits()).toEqual([]);
+      });
+
+      it("round-trips a unit and assigns a numeric id", async () => {
+        const newUnit = makeUnit(0);
+        const id = await repo.addUnit(newUnit);
+
+        expect(typeof id).toBe("number");
+        const units = await repo.getUnits();
+        expect(units).toEqual([{ ...newUnit, id }]);
+      });
+
+      it("returns units ordered by index ascending, regardless of insert order", async () => {
+        await repo.addUnit(makeUnit(2));
+        await repo.addUnit(makeUnit(0));
+        await repo.addUnit(makeUnit(1));
+
+        const units = await repo.getUnits();
+        expect(units.map((u) => u.index)).toEqual([0, 1, 2]);
+      });
+
+      it("defaults the first unit to available and later units to locked", async () => {
+        await repo.addUnit(makeUnit(0));
+        await repo.addUnit(makeUnit(1));
+
+        const units = await repo.getUnits();
+        expect(units.find((u) => u.index === 0)?.status).toBe("available");
+        expect(units.find((u) => u.index === 1)?.status).toBe("locked");
+      });
+
+      it("patches fields via updateUnit, e.g. a status transition", async () => {
+        const id = await repo.addUnit(makeUnit(0));
+
+        await repo.updateUnit(id, { status: "in-progress" });
+
+        const units = await repo.getUnits();
+        expect(units[0]?.status).toBe("in-progress");
+        expect(units[0]?.title).toBe(makeUnit(0).title);
+      });
+
+      it("preserves activity order and content", async () => {
+        const unit = makeUnit(0, {
+          activities: [{ skill: "reading" }, { skill: "writing" }, { skill: "listening" }],
+        });
+        await repo.addUnit(unit);
+
+        const units = await repo.getUnits();
+        expect(units[0]?.activities).toEqual([
+          { skill: "reading" },
+          { skill: "writing" },
+          { skill: "listening" },
+        ]);
+      });
+    });
+
+    // -------------------------------------------------------------------------
     describe("clear()", () => {
       it("wipes every table", async () => {
         await repo.saveProfile(makeProfile());
         await repo.addCard(makeCard("temp", "A1"));
         await repo.putContent(makeContent("passage", "A1", "x"));
+        await repo.addUnit(makeUnit(0));
 
         await repo.clear();
 
         expect(await repo.getProfile()).toBeUndefined();
         expect(await repo.getAllCards()).toEqual([]);
         expect(await repo.queryContent()).toEqual([]);
+        expect(await repo.getUnits()).toEqual([]);
       });
     });
 
@@ -343,12 +419,14 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
         expect(backup.tables.weakness).toHaveLength(0);
         expect(backup.tables.gamification).toHaveLength(0);
         expect(backup.tables.lexiconCache).toHaveLength(0);
+        expect(backup.tables.units).toHaveLength(0);
       });
 
       it("round-trips data through export and import", async () => {
         const profile = makeProfile();
         await repo.saveProfile(profile);
         await repo.addCard(makeCard("export-test", "B1"));
+        await repo.addUnit(makeUnit(0));
 
         const backup = await repo.exportBackup();
         await repo.clear();
@@ -361,6 +439,19 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
         const cards = await repo.getAllCards();
         expect(cards).toHaveLength(1);
         expect(cards[0].word).toBe("export-test");
+        const units = await repo.getUnits();
+        expect(units).toHaveLength(1);
+        expect(units[0]?.title).toBe(makeUnit(0).title);
+      });
+
+      it("importBackup defaults to an empty path for old-format backups without units", async () => {
+        const backup = await repo.exportBackup();
+        const { units: _units, ...tablesWithoutUnits } = backup.tables;
+        void _units;
+
+        await repo.importBackup({ ...backup, tables: tablesWithoutUnits });
+
+        expect(await repo.getUnits()).toEqual([]);
       });
     });
   });

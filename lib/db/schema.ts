@@ -169,3 +169,50 @@ export interface LexiconCacheEntry {
   data: unknown;
   cachedAt: Date;
 }
+
+/**
+ * Lifecycle of a {@link Unit} on the learning path (ADR 0015). `locked` units are visible
+ * but not yet startable; `available` is the next unit up; `in-progress`/`completed` track
+ * a unit the learner has started/finished. The backbone seeder (path-skeleton, issue #57)
+ * only ever produces `locked`/`available` — the other two are set once activities exist.
+ */
+export type UnitStatus = "locked" | "available" | "in-progress" | "completed";
+
+/**
+ * Whether a unit's activity content has been pre-generated for offline use (ADR 0015's
+ * "path buffer"). Backbone-seeded units are always `empty` — nothing to buffer yet since
+ * no LLM/content-pipeline call has happened.
+ */
+export type UnitBufferStatus = "empty" | "buffered";
+
+/**
+ * One ordered slot in a unit's activity list. `contentId` is undefined until the teacher
+ * plans and the content pipeline generates/caches the activity (future work) — the
+ * backbone seeder only reserves the slot and its skill.
+ */
+export interface UnitActivityRef {
+  skill: Skill;
+  contentId?: number;
+}
+
+/**
+ * One node on the learning path (ADR 0015, glossary "Unit"; PLAN §4 `units`).
+ *
+ * `index` orders units ascending on the path. Backbone seeding (issue #57) starts at 0;
+ * negative indices are reserved for a future pre-A1 tier (ADR 0016) that will be inserted
+ * before the first A1 unit — the seeder never produces one yet.
+ */
+export interface Unit {
+  id: number;
+  index: number;
+  title: string;
+  teacherNote: string;
+  /** Grammar-map construction ids (§`lib/content/grammar-map.ts`) this unit targets. */
+  targetGrammarIds: string[];
+  /** CEFR milestone this unit's vocabulary/grammar difficulty is anchored to. */
+  targetCefr: Cefr;
+  activities: UnitActivityRef[];
+  status: UnitStatus;
+  bufferStatus: UnitBufferStatus;
+  createdAt: Date;
+}

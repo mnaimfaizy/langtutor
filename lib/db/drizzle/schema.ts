@@ -18,6 +18,8 @@ export {
   EXPERIENCE_MODE_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
+  UNIT_BUFFER_STATUS_VALUES,
+  UNIT_STATUS_VALUES,
   USER_ROLE_VALUES,
 } from "./schema.shared";
 import {
@@ -29,6 +31,8 @@ import {
   EXPERIENCE_MODE_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
+  UNIT_BUFFER_STATUS_VALUES,
+  UNIT_STATUS_VALUES,
   USER_ROLE_VALUES,
 } from "./schema.shared";
 
@@ -181,4 +185,29 @@ export const gamification = sqliteTable(
     achievements: text("achievements").notNull().default("[]"),
   },
   (t) => [uniqueIndex("idx_gamification_user_id").on(t.userId)],
+);
+
+/**
+ * Learning path units (ADR 0015). `index` orders the path ascending; negative values are
+ * reserved for a future pre-A1 tier (ADR 0016). Backbone seeding (issue #57) writes
+ * `targetGrammarIds`/`activities` as JSON arrays, same convention as `examples`/`goals`.
+ */
+export const units = sqliteTable(
+  "units",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id").notNull(),
+    index: integer("unit_index").notNull(),
+    title: text("title").notNull(),
+    teacherNote: text("teacher_note").notNull(),
+    targetGrammarIds: text("target_grammar_ids").notNull().default("[]"),
+    targetCefr: text("target_cefr", { enum: CEFR_VALUES }).notNull(),
+    activities: text("activities").notNull().default("[]"),
+    status: text("status", { enum: UNIT_STATUS_VALUES }).notNull().default("locked"),
+    bufferStatus: text("buffer_status", { enum: UNIT_BUFFER_STATUS_VALUES })
+      .notNull()
+      .default("empty"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [uniqueIndex("idx_units_user_index").on(t.userId, t.index)],
 );

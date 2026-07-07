@@ -11,6 +11,7 @@ import type {
   Profile,
   ProfileSettings,
   Skill,
+  Unit,
   Weakness,
 } from "./schema";
 
@@ -18,6 +19,7 @@ import type {
 export type NewCard = Omit<Card, "id">;
 export type NewContent = Omit<Content, "id">;
 export type NewErrorEvent = Omit<ErrorEventRecord, "id">;
+export type NewUnit = Omit<Unit, "id">;
 
 /** Optional filters for {@link ContentRepository.queryContent}. */
 export interface ContentQuery {
@@ -88,6 +90,12 @@ export interface ContentRepository extends ContentSink {
   // lexicon cache (case-insensitive on `word`)
   getLexiconEntry(word: string): Promise<LexiconCacheEntry | undefined>;
   putLexiconEntry(entry: LexiconCacheEntry): Promise<void>;
+
+  // learning path units (ADR 0015, issue #57)
+  addUnit(unit: NewUnit): Promise<number>;
+  /** All units for the current user, ordered by `index` ascending. */
+  getUnits(): Promise<Unit[]>;
+  updateUnit(id: number, changes: Partial<NewUnit>): Promise<void>;
 
   /** Wipe every table. Used by import/restore (Phase 8.2) and tests. */
   clear(): Promise<void>;

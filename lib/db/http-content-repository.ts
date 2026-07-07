@@ -6,6 +6,7 @@ import type {
   NewCard,
   NewContent,
   NewErrorEvent,
+  NewUnit,
 } from "./content-repository";
 import type {
   Card,
@@ -15,11 +16,13 @@ import type {
   LexiconCacheEntry,
   Profile,
   ProfileSettings,
+  Unit,
   Weakness,
 } from "./schema";
 import {
   repoAddCard,
   repoAddErrorEvent,
+  repoAddUnit,
   repoClear,
   repoDeleteCard,
   repoExportBackup,
@@ -31,6 +34,7 @@ import {
   repoGetLexiconEntry,
   repoGetProfile,
   repoGetSettings,
+  repoGetUnits,
   repoGetWeaknesses,
   repoImportBackup,
   repoPutContent,
@@ -42,6 +46,7 @@ import {
   repoSaveProfile,
   repoSaveSettings,
   repoUpdateCard,
+  repoUpdateUnit,
 } from "./content-actions";
 
 export class HttpContentRepository implements ContentRepository {
@@ -107,6 +112,15 @@ export class HttpContentRepository implements ContentRepository {
   }
   putLexiconEntry(entry: LexiconCacheEntry): Promise<void> {
     return repoPutLexiconEntry(entry);
+  }
+  addUnit(unit: NewUnit): Promise<number> {
+    return repoAddUnit(unit);
+  }
+  getUnits(): Promise<Unit[]> {
+    return repoGetUnits();
+  }
+  updateUnit(id: number, changes: Partial<NewUnit>): Promise<void> {
+    return repoUpdateUnit(id, changes);
   }
   clear(): Promise<void> {
     return repoClear();

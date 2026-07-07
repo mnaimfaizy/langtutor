@@ -10,6 +10,7 @@ import {
   PencilIcon,
   RepeatIcon,
 } from "../icons";
+import { LearningPath } from "./learning-path";
 
 const skills = [
   { name: "Reading", blurb: "Level-appropriate passages with tap-to-define.", icon: BookIcon },
@@ -62,6 +63,8 @@ export default function Home() {
           A private, local-first English tutor. Reading, writing, listening, and speaking —
           adaptive, gamified, and fully offline-capable.
         </p>
+
+        <LearningPath />
 
         <div className="mt-8 flex flex-wrap gap-3">
           {primaryActions.map(({ href, label, testId, variant }) => (

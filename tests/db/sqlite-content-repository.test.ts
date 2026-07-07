@@ -77,5 +77,20 @@ describe("per-user isolation", () => {
     await repo1.putLexiconEntry({ word: "apple", data: {}, cachedAt: new Date() });
     expect(await repo1.getLexiconEntry("apple")).toBeDefined();
     expect(await repo2.getLexiconEntry("apple")).toBeDefined();
+
+    // Per-user: user1's learning path is invisible to user2
+    await repo1.addUnit({
+      index: 0,
+      title: "Unit 1: Simple present tense",
+      teacherNote: "Base verb form for habitual actions, facts, and permanent states.",
+      targetGrammarIds: ["simple_present"],
+      targetCefr: "A1",
+      activities: [{ skill: "reading" }],
+      status: "available",
+      bufferStatus: "empty",
+      createdAt: new Date(),
+    });
+    expect(await repo1.getUnits()).toHaveLength(1);
+    expect(await repo2.getUnits()).toHaveLength(0);
   });
 });
