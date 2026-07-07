@@ -41,8 +41,11 @@ RUN apt-get update && apt-get install -y \
 # The version MUST match the repo's @playwright/test (pnpm-lock.yaml); the
 # onSandboxReady hook `pnpm exec playwright install chromium` is a fast no-op
 # when they match and re-downloads to this native path if the repo bumps it.
+# The dir must be WRITABLE by the agent user: `playwright install` takes a
+# __dirlock and writes .links even when the browser is already present, and
+# silently retries for ~10 min on EACCES (observed as a hook timeout).
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN npx -y playwright@1.61.0 install chromium && chmod -R a+rX /ms-playwright
+RUN npx -y playwright@1.61.0 install chromium && chmod -R a+rwX /ms-playwright
 
 # Install GitHub CLI
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
