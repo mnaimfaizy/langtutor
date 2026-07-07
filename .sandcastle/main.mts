@@ -16,6 +16,8 @@ import { join } from "node:path";
 
 // Ensure the persistent pnpm store directory exists before docker() validates it.
 mkdirSync(".sandcastle/.pnpm-store", { recursive: true });
+// Persistent Playwright browser cache (Chromium binary, ~150 MB) across runs.
+mkdirSync(".sandcastle/.ms-playwright", { recursive: true });
 
 dotenv.config({ path: join(process.cwd(), ".sandcastle", ".env") });
 
@@ -28,6 +30,13 @@ const SANDBOX = docker({
     {
       hostPath: ".sandcastle/.pnpm-store",
       sandboxPath: "/home/agent/.local/share/pnpm/store",
+    },
+    {
+      // Playwright's default browsers path on Linux. The OS libs are baked into
+      // the image; the browser binary is installed once by the onSandboxReady
+      // hook and reused by every subsequent run via this mount.
+      hostPath: ".sandcastle/.ms-playwright",
+      sandboxPath: "/home/agent/.cache/ms-playwright",
     },
   ],
 });
@@ -118,6 +127,13 @@ const HOOKS = {
           " --store-dir /home/agent/.local/share/pnpm/store" +
           " --virtual-store-dir /home/agent/.pnpm-virtual-store",
         timeoutMs: 600_000,
+      },
+      {
+        // Install the Chromium binary matching the repo's Playwright version into the
+        // host-mounted browser cache. No-op (seconds) once the cache is populated.
+        // OS deps are baked into the image — never use --with-deps here (needs sudo).
+        command: "pnpm exec playwright install chromium",
+        timeoutMs: 300_000,
       },
     ],
   },
