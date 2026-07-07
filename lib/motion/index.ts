@@ -5,6 +5,7 @@ export {
   type EnterMotionPreset,
   type MotionPreset,
   type MotionPresetName,
+  type MotionUnsafeProp,
   type PathFillMotionPreset,
   type PressMotionPreset,
 } from "./types";

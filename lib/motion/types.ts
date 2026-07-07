@@ -31,3 +31,23 @@ export type MotionPreset =
   | PressMotionPreset
   | CelebrateMotionPreset
   | PathFillMotionPreset;
+
+/**
+ * Prop names where Base UI's `ComponentProps` and framer-motion's `HTMLMotionProps` disagree,
+ * so any `ui/` component that wraps a Base UI primitive with `motion.create()` and re-exports
+ * that primitive's `ComponentProps` must omit them — otherwise the two signatures fail to
+ * unify when spread onto the motion-wrapped element:
+ *
+ * - `onAnimationStart` / `onDrag` / `onDragStart` / `onDragEnd`: Base UI forwards these as
+ *   native (or `BaseUIEvent`-wrapped) DOM events; framer-motion redefines them to receive its
+ *   own gesture/animation types (`PanInfo`, `AnimationDefinition`) instead.
+ * - `style`: Base UI lets `style` be a function of internal render state (e.g.
+ *   `(state) => CSSProperties`); framer-motion's `MotionStyle` only accepts a plain object.
+ *   None of our `ui/` components currently need the function form, so it's dropped here.
+ */
+export type MotionUnsafeProp =
+  | "onAnimationStart"
+  | "onDrag"
+  | "onDragStart"
+  | "onDragEnd"
+  | "style";

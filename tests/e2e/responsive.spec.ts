@@ -6,6 +6,8 @@
 import { expect, test } from "@playwright/test";
 
 const PHONE_VIEWPORT = { width: 375, height: 812 };
+const TABLET_VIEWPORT = { width: 768, height: 1024 };
+const DESKTOP_VIEWPORT = { width: 1440, height: 900 };
 const MIN_TOUCH_TARGET_PX = 36;
 
 async function expectNoHorizontalScroll(page: import("@playwright/test").Page) {
@@ -94,6 +96,40 @@ test.describe("phone-width layout: auth screens", () => {
     const box = await emailInput.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET_PX);
   });
+
+  test("sign-up page renders without horizontal overflow", async ({ page }) => {
+    await page.goto("/sign-up");
+    await expect(page.getByRole("heading", { name: /create your account/i })).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+});
+
+/**
+ * Issue #56 — viewport-matrix sweep for the public funnel. Phone-width and
+ * desktop-width landing coverage (including the "CTA above the fold on phone"
+ * requirement) already lives in marketing-landing.spec.ts; this fills the
+ * remaining gap — tablet — and confirms sign-up holds up at every width in
+ * the matrix, not just phone (covered above) and desktop.
+ */
+test.describe("tablet-width layout: marketing landing page and sign-up", () => {
+  test.use({ viewport: TABLET_VIEWPORT, storageState: { cookies: [], origins: [] } });
+
+  test("landing page renders without horizontal overflow", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Lang-Tutor", level: 1 })).toBeVisible();
+    await expect(page.getByTestId("btn-marketing-sign-up")).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+
+  test("sign-up page renders without horizontal overflow", async ({ page }) => {
+    await page.goto("/sign-up");
+    await expect(page.getByRole("heading", { name: /create your account/i })).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+});
+
+test.describe("desktop-width layout: sign-up", () => {
+  test.use({ viewport: DESKTOP_VIEWPORT, storageState: { cookies: [], origins: [] } });
 
   test("sign-up page renders without horizontal overflow", async ({ page }) => {
     await page.goto("/sign-up");

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Tabs as BaseTabs } from "@base-ui/react/tabs";
 import { motion, useReducedMotion } from "framer-motion";
-import { resolveMotionPreset } from "@/lib/motion";
+import { resolveMotionPreset, type MotionUnsafeProp } from "@/lib/motion";
 import { cn } from "./cn";
 
 const MotionTabsTab = motion.create(BaseTabs.Tab);
@@ -33,7 +33,9 @@ export function TabsList({
 export function TabsTab({
   className,
   ...props
-}: Omit<React.ComponentProps<typeof BaseTabs.Tab>, "className"> & { className?: string }) {
+}: Omit<React.ComponentProps<typeof BaseTabs.Tab>, "className" | MotionUnsafeProp> & {
+  className?: string;
+}) {
   const reducedMotion = useReducedMotion() ?? false;
   const press = resolveMotionPreset("press", reducedMotion);
   return (

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Popover as BasePopover } from "@base-ui/react/popover";
 import { motion, useReducedMotion } from "framer-motion";
-import { resolveMotionPreset } from "@/lib/motion";
+import { resolveMotionPreset, type MotionUnsafeProp } from "@/lib/motion";
 import { cn } from "./cn";
 import { buttonClassName, type ButtonSize, type ButtonVariant } from "./button-styles";
 
@@ -15,7 +15,7 @@ export function Popover(props: React.ComponentProps<typeof BasePopover.Root>) {
 
 export type PopoverTriggerProps = Omit<
   React.ComponentProps<typeof BasePopover.Trigger>,
-  "className"
+  "className" | MotionUnsafeProp
 > & {
   className?: string;
   variant?: ButtonVariant;
@@ -42,7 +42,7 @@ export function PopoverTrigger({
 
 export type PopoverInlineTriggerProps = Omit<
   React.ComponentProps<typeof BasePopover.Trigger>,
-  "className"
+  "className" | MotionUnsafeProp
 > & { className?: string };
 
 /** Inline word-style trigger — no button chrome, highlights on hover. */

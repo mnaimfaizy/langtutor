@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { motion, useReducedMotion } from "framer-motion";
-import { resolveMotionPreset } from "@/lib/motion";
+import { resolveMotionPreset, type MotionUnsafeProp } from "@/lib/motion";
 import { cn } from "./cn";
 import { buttonClassName, type ButtonSize, type ButtonVariant } from "./button-styles";
 
@@ -16,7 +16,7 @@ export function Dialog(props: React.ComponentProps<typeof BaseDialog.Root>) {
 
 export type DialogTriggerProps = Omit<
   React.ComponentProps<typeof BaseDialog.Trigger>,
-  "className"
+  "className" | MotionUnsafeProp
 > & {
   className?: string;
   variant?: ButtonVariant;
@@ -91,7 +91,10 @@ export function DialogDescription({
   );
 }
 
-export type DialogCloseProps = Omit<React.ComponentProps<typeof BaseDialog.Close>, "className"> & {
+export type DialogCloseProps = Omit<
+  React.ComponentProps<typeof BaseDialog.Close>,
+  "className" | MotionUnsafeProp
+> & {
   className?: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
