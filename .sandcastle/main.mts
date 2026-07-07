@@ -9,7 +9,7 @@ import {
 } from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import dotenv from "dotenv";
-import { mkdirSync } from "node:fs";
+import { appendFileSync, mkdirSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { join } from "node:path";
 
@@ -78,8 +78,13 @@ function readEnvModel(key: string, fallback: string) {
 //
 // - Cursor CLI: the terminal `result` stream-json event carries an
 //   (undocumented) `usage` object — verified against cursor-agent
-//   2026.07.01: {inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens},
-//   where inputTokens is INCLUSIVE of the cache read/write counts.
+//   2026.07.01: {inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens}.
+//   These are CUMULATIVE across every API request in the session, not the
+//   final context window (issue #58 run: 225 tool calls → cacheReadTokens
+//   14.16M on a 300k-window model, because each request re-reads the whole
+//   cached prefix). Each context token is only *written* to the cache once
+//   in a linear session, so inputTokens + cacheWriteTokens ≈ the real final
+//   context size — that is what we report; cumulative reads go to console.
 // - Copilot CLI: stdout has no input-token data, but the session log
 //   ~/.copilot/session-state/<id>/events.jsonl ends with a compact-JSON
 //   `session.shutdown` event carrying tokenDetails + currentTokens (the live
@@ -91,6 +96,8 @@ function readEnvModel(key: string, fallback: string) {
 // ---------------------------------------------------------------------------
 
 type StreamEvents = ReturnType<AgentProvider["parseStreamLine"]>;
+
+const fmtTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
 
 function withCursorUsage(provider: AgentProvider): AgentProvider {
   return {
@@ -110,17 +117,24 @@ function withCursorUsage(provider: AgentProvider): AgentProvider {
         };
         if (obj.type === "result" && typeof obj.usage?.inputTokens === "number") {
           const u = obj.usage;
+          const input = u.inputTokens ?? 0;
           const cacheRead = u.cacheReadTokens ?? 0;
           const cacheWrite = u.cacheWriteTokens ?? 0;
+          const output = u.outputTokens ?? 0;
           const usage: IterationUsage = {
-            // Cursor's inputTokens includes the cached portions; split them out
-            // so input + cacheCreation + cacheRead === the real context size.
-            inputTokens: Math.max(0, u.inputTokens - cacheRead - cacheWrite),
+            // Cursor's numbers are session-cumulative. cacheRead re-counts the
+            // same prefix once per API request, so it must NOT contribute to
+            // the context estimate — input + cacheWrite ≈ real final context.
+            inputTokens: input,
             cacheCreationInputTokens: cacheWrite,
-            cacheReadInputTokens: cacheRead,
-            outputTokens: u.outputTokens ?? 0,
+            cacheReadInputTokens: 0,
+            outputTokens: output,
           };
           events.push({ type: "usage", usage });
+          console.log(
+            `[cursor] session totals — cache reads ${fmtTokens(cacheRead)} (cumulative across all requests),` +
+              ` cache writes ${fmtTokens(cacheWrite)}, output ${fmtTokens(output)}`,
+          );
         }
       } catch {
         // non-JSON line — ignore
@@ -273,8 +287,6 @@ const HOOKS = {
   },
 };
 
-const fmtTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
-
 /** Print a per-iteration token-usage summary to the console after a run. */
 function printTokenUsage(label: string, iterations: RunResult["iterations"]) {
   for (const [i, it] of iterations.entries()) {
@@ -292,11 +304,164 @@ function printTokenUsage(label: string, iterations: RunResult["iterations"]) {
   }
 }
 
-// Verbose container logging: append every raw stdout line the agent emits to
-// the run's log file (in addition to the parsed human-readable log). Includes
-// stream events the parser drops — invaluable for post-mortems. Set
-// SANDCASTLE_VERBOSE=0 to disable.
+// Verbose container logging: write a human-readable event log per run
+// (issue-N-<agent>-<stamp>-events.log) — one line per thinking block, tool
+// call, agent message, and the final result. Set SANDCASTLE_VERBOSE=0 to
+// disable. For raw stream-JSON dumps (deep post-mortems) additionally set
+// SANDCASTLE_RAW_LOGS=1, which appends every raw stdout line to the main log.
 const VERBOSE_LOGS = process.env.SANDCASTLE_VERBOSE !== "0";
+const RAW_LOGS = process.env.SANDCASTLE_RAW_LOGS === "1";
+
+// ---------------------------------------------------------------------------
+// Readable event log — formats the agent's stream-JSON stdout into terse,
+// timestamped, human-scannable lines. Targets the cursor/claude stream shapes;
+// unknown event types fall back to a truncated one-liner.
+// ---------------------------------------------------------------------------
+
+type JsonObj = Record<string, unknown>;
+
+const asObj = (v: unknown): JsonObj | undefined =>
+  v !== null && typeof v === "object" && !Array.isArray(v) ? (v as JsonObj) : undefined;
+const asStr = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined);
+const asNum = (v: unknown): number | undefined => (typeof v === "number" ? v : undefined);
+
+const squash = (s: string, max: number): string => {
+  const oneLine = s.replace(/\s+/g, " ").trim();
+  return oneLine.length > max
+    ? `${oneLine.slice(0, max)} … (+${oneLine.length - max} chars)`
+    : oneLine;
+};
+
+/** Flatten a claude/cursor message.content array into displayable text. */
+function messageText(message: JsonObj | undefined): string {
+  const content = message?.content;
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((part) => {
+      const p = asObj(part);
+      if (!p) return "";
+      if (p.type === "text") return asStr(p.text) ?? "";
+      if (p.type === "tool_use")
+        return `[tool_use ${asStr(p.name) ?? "?"} ${squash(JSON.stringify(p.input ?? {}), 120)}]`;
+      if (p.type === "tool_result") return "[tool_result]";
+      return `[${asStr(p.type) ?? "?"}]`;
+    })
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** "shellToolCall" → name "shell" + the most useful arg (command/path/pattern). */
+function describeToolCall(tc: JsonObj): { name: string; detail: string; result?: unknown } {
+  const key = Object.keys(tc).find((k) => k.endsWith("ToolCall"));
+  const call = key ? asObj(tc[key]) : undefined;
+  const name = key ? key.slice(0, -"ToolCall".length) : "unknown";
+  const args = asObj(call?.args) ?? {};
+  const detail =
+    asStr(args.command) ?? asStr(args.path) ?? asStr(args.pattern) ?? JSON.stringify(args);
+  return { name, detail: squash(detail, 160), result: call?.result };
+}
+
+function withReadableEventLog(provider: AgentProvider, logPath: string): AgentProvider {
+  let thinking = "";
+
+  const write = (text: string) => {
+    try {
+      appendFileSync(logPath, `[${new Date().toISOString().slice(11, 19)}] ${text}\n`);
+    } catch {
+      // Logging must never break the run.
+    }
+  };
+
+  const flushThinking = () => {
+    const text = thinking;
+    thinking = "";
+    if (text.trim()) write(`thinking · ${squash(text, 600)}`);
+  };
+
+  const format = (raw: string): void => {
+    let obj: JsonObj | undefined;
+    if (raw.startsWith("{")) {
+      try {
+        obj = asObj(JSON.parse(raw));
+      } catch {
+        // not JSON — fall through to plain-text handling
+      }
+    }
+    if (!obj) {
+      const text = raw.trim();
+      if (text) write(squash(text, 300));
+      return;
+    }
+
+    const type = asStr(obj.type) ?? "?";
+    if (type === "thinking") {
+      if (obj.subtype === "delta") thinking += asStr(obj.text) ?? "";
+      else if (obj.subtype === "completed") flushThinking();
+      return;
+    }
+    flushThinking();
+
+    switch (type) {
+      case "system": {
+        const model = asStr(obj.model);
+        write(`── session ${asStr(obj.subtype) ?? ""}${model ? ` — model: ${model}` : ""} ──`);
+        break;
+      }
+      case "user":
+        write(`prompt → ${squash(messageText(asObj(obj.message)), 200)}`);
+        break;
+      case "assistant": {
+        const text = messageText(asObj(obj.message));
+        if (text) write(`agent ▸ ${squash(text, 600)}`);
+        break;
+      }
+      case "tool_call": {
+        const tc = asObj(obj.tool_call);
+        if (!tc) break;
+        const { name, detail, result } = describeToolCall(tc);
+        if (obj.subtype === "started") {
+          write(`  tool → ${name}: ${detail}`);
+        } else if (obj.subtype === "completed") {
+          const res = asObj(result);
+          const success = res ? asObj(res.success) : undefined;
+          const failure = res ? (asObj(res.failure) ?? asObj(res.error)) : undefined;
+          if (success) {
+            const exit = asNum(success.exitCode);
+            write(`  tool ✓ ${name}${exit !== undefined ? ` (exit ${exit})` : ""}`);
+          } else if (failure) {
+            const exit = asNum(failure.exitCode);
+            const msg =
+              asStr(failure.errorMessage) ?? asStr(failure.stderr) ?? asStr(failure.stdout) ?? "";
+            write(
+              `  tool ✗ ${name}${exit !== undefined ? ` (exit ${exit})` : ""}` +
+                (msg ? `: ${squash(msg, 160)}` : ""),
+            );
+          } else {
+            write(`  tool ✗ ${name}: ${squash(JSON.stringify(res ?? {}), 200)}`);
+          }
+        }
+        break;
+      }
+      case "result": {
+        const mins = ((asNum(obj.duration_ms) ?? 0) / 60_000).toFixed(1);
+        const usage = obj.usage ? ` — usage ${JSON.stringify(obj.usage)}` : "";
+        write(`── result: ${asStr(obj.subtype) ?? "?"} in ${mins}m${usage} ──`);
+        break;
+      }
+      default:
+        write(`${type} · ${squash(raw, 300)}`);
+    }
+  };
+
+  return {
+    ...provider,
+    parseStreamLine(line: string): StreamEvents {
+      format(line);
+      return provider.parseStreamLine(line);
+    },
+  };
+}
 
 /** Run one issue in its own sandbox. In loop mode we merge-to-head so the next
  *  issue's worktree (branched from HEAD) sees the prior issue's committed work —
@@ -306,10 +471,16 @@ async function runIssue(
   branchStrategy: { type: "branch"; branch: string } | { type: "merge-to-head" },
 ) {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const logDir = join(process.cwd(), ".sandcastle", "logs");
+  mkdirSync(logDir, { recursive: true });
+  const base = `issue-${n}-${AGENT.name}-${stamp}`;
+  const agent = VERBOSE_LOGS
+    ? withReadableEventLog(AGENT, join(logDir, `${base}-events.log`))
+    : AGENT;
   const result = await run({
     name: `issue-${n}`,
     sandbox: SANDBOX,
-    agent: AGENT,
+    agent,
     promptFile: ".sandcastle/prompt-issue.md",
     promptArgs: { ISSUE_NUMBER: n },
     branchStrategy,
@@ -317,8 +488,8 @@ async function runIssue(
     hooks: HOOKS,
     logging: {
       type: "file",
-      path: join(process.cwd(), ".sandcastle", "logs", `issue-${n}-${AGENT.name}-${stamp}.log`),
-      verbose: VERBOSE_LOGS,
+      path: join(logDir, `${base}.log`),
+      verbose: RAW_LOGS,
     },
   });
   printTokenUsage(`issue-${n}`, result.iterations);
