@@ -4,18 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import type { ActivityKind, NewContent, Unit } from "@/lib/db";
-import { lookupConstruction } from "@/lib/content/grammar-map";
-import { PassageSchema } from "@/lib/content/passage";
-import { PromptSchema } from "@/lib/content/prompt";
-import { fetchSingleEmbedding } from "@/lib/content/client-embeddings";
+import type { ActivityKind, Unit } from "@/lib/db";
+import { generateActivityContent } from "@/lib/path/activity-content";
 import { firstPendingActivityIndex } from "@/lib/path/unit-progress";
 import { getContentRepository } from "@/lib/registry";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
 import { Badge, BackLink, Button, Card } from "@/ui";
 import { BookIcon, HeadphonesIcon, MicIcon, PencilIcon, RepeatIcon } from "../../icons";
 
-type Phase = "loading" | "ready" | "notFound" | "generating" | "error";
+type Phase = "loading" | "ready" | "notFound" | "generating" | "error" | "paused";
 
 const ACTIVITY_LABEL: Record<ActivityKind, string> = {
   review: "Vocabulary review",
@@ -33,73 +30,10 @@ const ACTIVITY_ICON: Record<ActivityKind, typeof BookIcon> = {
   speaking: MicIcon,
 };
 
-/** Topic for a unit's lazily-generated activity content: its grammar focus, or its title. */
-function unitTopicFor(unit: Unit): string {
-  const construction = lookupConstruction(unit.targetGrammarIds[0] ?? "");
-  return construction?.label ?? unit.title;
-}
-
-/** Activity kinds whose content is a `passage` — reading, listening, and speaking all read/
- * hear/say the same generated text, generated via the same reading pipeline (issue #60). */
-const PASSAGE_ACTIVITY_KINDS: ReadonlySet<ActivityKind> = new Set([
-  "reading",
-  "listening",
-  "speaking",
-]);
-
-/** Generates and caches this unit's passage content for a reading/listening/speaking slot. */
-async function generatePassageContent(topic: string, level: Unit["targetCefr"]): Promise<number> {
-  const res = await fetch("/api/reading/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ topic, level }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-  const data = (await res.json()) as { passage: unknown };
-  const passage = PassageSchema.parse(data.passage);
-  const embedding = await fetchSingleEmbedding(passage.body);
-
-  return getContentRepository().putContent({
-    type: "passage",
-    level,
-    topic,
-    payload: passage,
-    source: "generated",
-    validatedAt: new Date(),
-    embedding,
-  } satisfies NewContent);
-}
-
-/** Generates and caches this unit's writing prompt content for a writing slot. */
-async function generatePromptContent(topic: string, level: Unit["targetCefr"]): Promise<number> {
-  const res = await fetch("/api/writing/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ topic, level }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-  const data = (await res.json()) as { prompt: unknown };
-  const prompt = PromptSchema.parse(data.prompt);
-  const embedding = await fetchSingleEmbedding(prompt.instruction);
-
-  return getContentRepository().putContent({
-    type: "prompt",
-    level,
-    topic,
-    payload: prompt,
-    source: "generated",
-    validatedAt: new Date(),
-    embedding,
-  } satisfies NewContent);
-}
-
 export function UnitView({ id }: { id: number }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>(() => (isNaN(id) || id <= 0 ? "notFound" : "loading"));
   const [unit, setUnit] = useState<Unit | null>(null);
-  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     if (isNaN(id) || id <= 0) return;
@@ -132,7 +66,10 @@ export function UnitView({ id }: { id: number }) {
    * (a passage for reading/listening/speaking, a writing prompt for writing) the first time
    * it's opened, storing the resulting `contentId` back on the unit so re-entering resumes
    * the same content instead of regenerating it (issue #59, extended to all module types by
-   * issue #60).
+   * issue #60). A unit that the path-buffer replenishment pass already generated ahead of time
+   * (ADR 0015, issue #61) skips generation entirely via the `contentId !== undefined` branch —
+   * that's the whole point of the buffer. If generation is still needed and fails (unreachable
+   * provider), the unit view falls back to the graceful-pause state instead of an inline error.
    */
   async function startActivity(activityIndex: number) {
     if (!unit) return;
@@ -152,13 +89,9 @@ export function UnitView({ id }: { id: number }) {
     }
 
     setPhase("generating");
-    setErrorMsg("");
     try {
       const repo = getContentRepository();
-      const topic = unitTopicFor(unit);
-      const contentId = PASSAGE_ACTIVITY_KINDS.has(activity.skill)
-        ? await generatePassageContent(topic, unit.targetCefr)
-        : await generatePromptContent(topic, unit.targetCefr);
+      const contentId = await generateActivityContent(repo, unit, activity.skill);
 
       const activities = unit.activities.map((a, i) =>
         i === activityIndex ? { ...a, contentId } : a,
@@ -167,11 +100,15 @@ export function UnitView({ id }: { id: number }) {
 
       router.push(`/${activity.skill}/${contentId}${query}`);
     } catch {
-      setErrorMsg(
-        `Could not generate this unit's ${ACTIVITY_LABEL[activity.skill].toLowerCase()} content. Make sure the Mac is reachable.`,
-      );
-      setPhase("ready");
+      // The generation call itself is the authoritative reachability signal — a failure here
+      // always means the graceful-pause state (ADR 0015, issue #61), not just an inline error.
+      setPhase("paused");
     }
+  }
+
+  /** Returns from the graceful-pause state to the activity list, e.g. once back online. */
+  function retryFromPause() {
+    setPhase("ready");
   }
 
   if (phase === "loading") {
@@ -212,6 +149,43 @@ export function UnitView({ id }: { id: number }) {
     );
   }
 
+  if (phase === "paused") {
+    return (
+      <div
+        data-testid="path-paused"
+        className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center"
+      >
+        <p className="text-foreground text-base font-semibold">You&apos;re all caught up for now</p>
+        <p className="text-muted mt-2 max-w-sm text-sm">
+          This unit&apos;s next activity needs the Mac, and it isn&apos;t reachable right now. Your
+          progress is saved — in the meantime, you can still review your vocabulary or read
+          something you&apos;ve already downloaded.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Link href="/review">
+            <Button data-testid="btn-review-instead" variant="gradient" size="lg">
+              Review vocabulary
+            </Button>
+          </Link>
+          <Link href="/reading">
+            <Button data-testid="btn-browse-cached" variant="secondary" size="lg">
+              Browse cached reading
+            </Button>
+          </Link>
+        </div>
+        <Button
+          data-testid="btn-retry-unit"
+          variant="ghost"
+          size="sm"
+          className="mt-6"
+          onClick={retryFromPause}
+        >
+          Back to this unit
+        </Button>
+      </div>
+    );
+  }
+
   const nextIndex = firstPendingActivityIndex(unit);
 
   return (
@@ -241,7 +215,6 @@ export function UnitView({ id }: { id: number }) {
         {phase === "error" && (
           <p className="text-danger mt-4 text-sm">Could not load this unit. Try again.</p>
         )}
-        {errorMsg && <p className="text-danger mt-4 text-sm">{errorMsg}</p>}
 
         <ol data-testid="unit-activities" className="mt-8 flex flex-col gap-2">
           {unit.activities.map((activity, i) => {
