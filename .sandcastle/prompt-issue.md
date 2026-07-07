@@ -45,6 +45,10 @@ Implement the issue shown above. Follow the acceptance criteria exactly.
 - If you are blocked, leave a comment on the issue explaining the blocker — do not close it.
 - Anti-thrash: if errors appear in files you did not touch, follow the anti-thrash rule in
   `.sandcastle/ENVIRONMENT.md` — at most one reinstall attempt, then report and stop.
+- Do not use broad process-kill patterns (`pkill -f` / `killall`) against generic runtime names
+  such as `playwright`, `node`, `npm`, `tsx`, `cursor`, or `copilot`; these can kill the tool
+  supervisor and abort the run. If cleanup is needed before e2e retry, only use:
+  `pkill -f "next dev" 2>/dev/null || true` and `pkill -f "next-server" 2>/dev/null || true`.
 - If you verify a **new** environment fact the contract doesn't cover, add it to the
   "Known issues" section of `.sandcastle/ENVIRONMENT.md` in the same commit.
 

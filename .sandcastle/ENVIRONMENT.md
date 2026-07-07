@@ -24,6 +24,18 @@
   `pnpm exec playwright install chromium` (no `--with-deps`) is safe — it installs to the
   container-native `/ms-playwright` path, never to a bind mount.
 - **Wiping `node_modules` / the pnpm store more than once.** See anti-thrash rule below.
+- **Broad process-kill patterns (`pkill -f` / `killall`) that can match the agent toolchain**
+  (especially `playwright`, `cursor`, `copilot`, `tsx`, `node`, or `npm`). These can kill the
+  command supervisor and abort the whole run with exit 137.
+
+## Safe process cleanup
+
+If you must clean stale dev servers before a Playwright retry, only target Next.js processes:
+
+- `pkill -f "next dev" 2>/dev/null || true`
+- `pkill -f "next-server" 2>/dev/null || true`
+
+Never target `playwright` (or other broad runtime names) with `pkill -f` in this sandbox.
 
 ## Anti-thrash rule
 
@@ -107,5 +119,9 @@ langtutor-e2e.db*` and retry once in a single consolidated invocation.
   _first_ Playwright invocation of a session, before any other spec runs have started and
   stopped `pnpm dev` — do not chain multiple `playwright test` invocations for the same
   feature in one sitting.
+- **(issue #62) `pkill -9 -f "playwright"` can terminate the command runner itself and abort
+  the iteration with exit 137** because the pattern can match a supervising process command line.
+  Treat `playwright` as a banned kill pattern in this environment. If cleanup is required,
+  kill only `next dev` and `next-server`, then clear `.next`/e2e db as needed.
 - (Add new, verified environment findings here — with the run/issue number — so the next
   agent does not re-discover them.)
