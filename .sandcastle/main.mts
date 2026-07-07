@@ -474,9 +474,13 @@ async function runIssue(
   const logDir = join(process.cwd(), ".sandcastle", "logs");
   mkdirSync(logDir, { recursive: true });
   const base = `issue-${n}-${AGENT.name}-${stamp}`;
-  const agent = VERBOSE_LOGS
-    ? withReadableEventLog(AGENT, join(logDir, `${base}-events.log`))
-    : AGENT;
+  const eventsPath = join(logDir, `${base}-events.log`);
+  console.log(
+    VERBOSE_LOGS
+      ? `[issue-${n}] readable event log → ${eventsPath}`
+      : `[issue-${n}] readable event log disabled (SANDCASTLE_VERBOSE=0)`,
+  );
+  const agent = VERBOSE_LOGS ? withReadableEventLog(AGENT, eventsPath) : AGENT;
   const result = await run({
     name: `issue-${n}`,
     sandbox: SANDBOX,
