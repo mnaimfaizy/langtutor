@@ -3,12 +3,15 @@ import { z } from "zod";
 
 import { SESSION_COOKIE } from "@/lib/auth/constants";
 import { getAuthProvider } from "@/lib/auth/server";
+import { signUpWithExperienceMode } from "@/lib/auth/sign-up-with-mode";
+import { getContentRepositoryForUserId } from "@/lib/db/server";
 
 export const dynamic = "force-dynamic";
 
 const SignUpRequest = z.object({
   email: z.string().email(),
   password: z.string().min(8),
+  experienceMode: z.enum(["adult", "kid"]),
 });
 
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
@@ -30,7 +33,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { sessionId } = await getAuthProvider().signUp(parsed.data.email, parsed.data.password);
+    const { sessionId } = await signUpWithExperienceMode(
+      parsed.data,
+      getAuthProvider(),
+      getContentRepositoryForUserId,
+    );
 
     const response = NextResponse.json({ ok: true });
     response.cookies.set({

@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { Profile } from "@/lib/db";
+import { DEFAULT_EXPERIENCE_MODE, type ExperienceMode, type Profile } from "@/lib/db";
+import { getOnboardingCopy } from "@/lib/onboarding/copy";
 import { CEFR_ORDER, buildQuizBatch, scoreQuiz, shouldAdvance } from "@/lib/placement/quiz-engine";
 import type { QuizAnswer, QuizItem, QuizResult } from "@/lib/placement/quiz-engine";
 import { getContentRepository } from "@/lib/registry";
+import { applyPalette } from "@/lib/theme";
 import { Button } from "@/ui/button";
 import { Progress } from "@/ui/progress";
 
@@ -29,12 +31,20 @@ export function PlacementQuiz() {
   const [batchIdx, setBatchIdx] = useState(0);
   const [allAnswers, setAllAnswers] = useState<QuizAnswer[]>([]);
   const [result, setResult] = useState<QuizResult | null>(null);
+  const [experienceMode, setExperienceMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
   const answeringRef = useRef(false);
+  const copy = getOnboardingCopy(experienceMode);
 
   useEffect(() => {
     void getContentRepository()
       .getProfile()
       .then((profile) => {
+        const mode = profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE;
+        setExperienceMode(mode);
+        // Defensive re-apply: the sign-up step already sets this, but this guards
+        // direct/back-button navigation to /onboarding from ever showing the wrong theme.
+        applyPalette(mode);
+
         if (profile?.cefrLevel) {
           router.replace(profile.goals.length > 0 ? "/home" : "/onboarding/goals");
           return;
@@ -99,6 +109,7 @@ export function PlacementQuiz() {
         goals: existing?.goals ?? [],
         createdAt: existing?.createdAt ?? new Date(),
         settings: existing?.settings ?? {},
+        experienceMode: existing?.experienceMode,
       };
       await repo.saveProfile(profile);
       router.replace("/onboarding/goals");
@@ -127,20 +138,16 @@ export function PlacementQuiz() {
       >
         <div className="w-full max-w-sm text-center">
           <h1 className="text-foreground text-3xl font-semibold tracking-tight">
-            Discover your level
+            {copy.quizIntroHeading}
           </h1>
-          <p className="text-muted mt-4 text-base leading-7">
-            We&apos;ll show you words one at a time. Tap &ldquo;Know it&rdquo; if you know the word,
-            or &ldquo;Don&apos;t know&rdquo; if you don&apos;t. Be honest — the quiz works better
-            that way.
-          </p>
+          <p className="text-muted mt-4 text-base leading-7">{copy.quizIntroBody}</p>
           <Button
             data-testid="quiz-start-btn"
             size="lg"
             className="mt-8 w-full"
             onClick={startQuiz}
           >
-            Start quiz
+            {copy.quizStartButton}
           </Button>
         </div>
       </div>
@@ -186,7 +193,7 @@ export function PlacementQuiz() {
               className="w-full"
               onClick={() => handleAnswer(false)}
             >
-              Don&apos;t know
+              {copy.quizUnknownButton}
             </Button>
             <Button
               data-testid="btn-known"
@@ -194,7 +201,7 @@ export function PlacementQuiz() {
               className="w-full"
               onClick={() => handleAnswer(true)}
             >
-              Know it
+              {copy.quizKnownButton}
             </Button>
           </div>
         </div>
@@ -213,7 +220,7 @@ export function PlacementQuiz() {
     >
       <div className="w-full max-w-sm text-center">
         <p className="text-muted text-sm font-medium tracking-widest uppercase">
-          Your estimated level
+          {copy.quizResultEyebrow}
         </p>
         <p
           data-testid="quiz-result-level"
@@ -226,9 +233,7 @@ export function PlacementQuiz() {
         </p>
 
         {result?.confidence === "low" && (
-          <p className="text-warning mt-4 text-sm">
-            Some answers seemed inconsistent — your actual level may differ.
-          </p>
+          <p className="text-warning mt-4 text-sm">{copy.quizLowConfidenceHint}</p>
         )}
 
         <Button
@@ -238,7 +243,7 @@ export function PlacementQuiz() {
           disabled={isSaving}
           onClick={() => void handleSave()}
         >
-          {isSaving ? "Saving…" : `Start learning at ${result?.estimatedLevel ?? ""}`}
+          {isSaving ? "Saving…" : copy.quizSaveButton(result?.estimatedLevel ?? "")}
         </Button>
       </div>
     </div>

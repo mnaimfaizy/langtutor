@@ -130,3 +130,25 @@ export function SparklesIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** Used to represent the "adult" experience mode — sign-up chooser (issue #55). */
+export function GraduationCapIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 3 2 8l10 5 10-5-10-5Z" />
+      <path d="M6 10v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
+      <path d="M22 8v6" />
+    </svg>
+  );
+}
+
+/** Used to represent the "kid" experience mode — sign-up chooser (issue #55). */
+export function SmileIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 10h.01M16 10h.01" />
+      <path d="M8 14.5a4.5 4.5 0 0 0 8 0" />
+    </svg>
+  );
+}

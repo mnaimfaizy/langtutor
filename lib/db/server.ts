@@ -33,6 +33,17 @@ export async function getServerContentRepository(): Promise<ContentRepository> {
 }
 
 /**
+ * Resolves a {@link ContentRepository} scoped to an explicit, already-verified user id,
+ * bypassing session/cookie lookup. Needed for the sign-up flow (issue #55): the new
+ * user's profile (carrying `experienceMode`) must be written in the same request that
+ * creates the account, before the session cookie exists on any subsequent request.
+ * Never call with an id that hasn't just come back from an `AuthProvider` operation.
+ */
+export async function getContentRepositoryForUserId(userId: string): Promise<ContentRepository> {
+  return repositoryForUserId(userId);
+}
+
+/**
  * Resolves the signed-in user's stored {@link ExperienceMode} without redirecting when
  * signed out (unlike {@link getServerContentRepository}). Used by the root layout to seed
  * the palette-bootstrap inline script server-side so first paint already reflects the

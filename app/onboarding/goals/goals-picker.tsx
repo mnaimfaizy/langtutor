@@ -3,8 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { LearnerGoal, Profile } from "@/lib/db";
+import {
+  DEFAULT_EXPERIENCE_MODE,
+  type ExperienceMode,
+  type LearnerGoal,
+  type Profile,
+} from "@/lib/db";
+import { getOnboardingCopy } from "@/lib/onboarding/copy";
 import { getContentRepository } from "@/lib/registry";
+import { applyPalette } from "@/lib/theme";
 import { Button } from "@/ui/button";
 import { cn } from "@/ui/cn";
 
@@ -20,11 +27,17 @@ export function GoalsPicker() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<LearnerGoal>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [experienceMode, setExperienceMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
+  const copy = getOnboardingCopy(experienceMode);
 
   useEffect(() => {
     void getContentRepository()
       .getProfile()
       .then((profile) => {
+        const mode = profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE;
+        setExperienceMode(mode);
+        applyPalette(mode);
+
         if (!profile?.cefrLevel) {
           router.replace("/onboarding");
           return;
@@ -80,11 +93,9 @@ export function GoalsPicker() {
     >
       <div className="w-full max-w-sm">
         <h1 className="text-foreground text-center text-3xl font-semibold tracking-tight">
-          What&apos;s your goal?
+          {copy.goalsHeading}
         </h1>
-        <p className="text-muted mt-4 text-center text-base leading-7">
-          Pick one or more — you can change this later in Settings.
-        </p>
+        <p className="text-muted mt-4 text-center text-base leading-7">{copy.goalsBody}</p>
 
         <div className="mt-8 grid grid-cols-2 gap-3">
           {GOAL_OPTIONS.map(({ value, label, description }) => {
@@ -116,7 +127,7 @@ export function GoalsPicker() {
           disabled={selected.size === 0 || saving}
           onClick={() => void handleSave()}
         >
-          {saving ? "Saving…" : "Start learning"}
+          {saving ? "Saving…" : copy.goalsButton}
         </Button>
       </div>
     </div>
