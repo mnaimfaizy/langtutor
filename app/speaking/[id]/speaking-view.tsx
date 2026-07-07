@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import type { Content } from "@/lib/db";
 import { PassageSchema } from "@/lib/content/passage";
@@ -9,17 +10,21 @@ import { createSpeakingErrorEvents } from "@/lib/diagnostics/speaking";
 import { computeWer } from "@/lib/diagnostics/wer";
 import type { WerResult } from "@/lib/diagnostics/wer";
 import { useRecorder } from "@/lib/audio/use-recorder";
+import { completeUnitActivity } from "@/lib/path/unit-player";
 import { getContentRepository } from "@/lib/registry";
 import { TranscribeResponseSchema } from "../transcribe-schema";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
 import { Badge, BackLink, Button, Card } from "@/ui";
 import { TtsButton } from "@/ui/tts-button";
 import { WerDisplay } from "@/ui/wer-display";
+import { EmbeddedUnitBanner, useEmbeddedActivity } from "@/app/path/embedded";
 
 type LoadPhase = "loading" | "ready" | "notFound" | "error";
 type TranscribeState = "idle" | "loading" | "done" | "mac-unavailable" | "error";
 
 export function SpeakingView({ id }: { id: number }) {
+  const router = useRouter();
+  const embedded = useEmbeddedActivity();
   const [phase, setPhase] = useState<LoadPhase>(() =>
     isNaN(id) || id <= 0 ? "notFound" : "loading",
   );
@@ -27,7 +32,9 @@ export function SpeakingView({ id }: { id: number }) {
   const [passage, setPassage] = useState<{ title: string; body: string } | null>(null);
   const [transcribeState, setTranscribeState] = useState<TranscribeState>("idle");
   const [werResult, setWerResult] = useState<WerResult | null>(null);
+  const [completing, setCompleting] = useState(false);
   const transcribeInFlight = useRef(false);
+  const completedRef = useRef(false);
 
   const { state: micState, blob, start, stop } = useRecorder();
   const isRecording = micState === "recording";
@@ -112,6 +119,24 @@ export function SpeakingView({ id }: { id: number }) {
     }
   }
 
+  /**
+   * Speaking is "done" once the attempt is transcribed and scored (`transcribeState ===
+   * "done"`) — the module's natural completion moment (issue #60). Awaits the write before
+   * navigating so the unit view never reads stale (not-yet-persisted) state.
+   */
+  async function handleCompleteSpeaking() {
+    if (!embedded || completedRef.current) return;
+    completedRef.current = true;
+    setCompleting(true);
+    try {
+      const repo = getContentRepository();
+      const units = await repo.getUnits();
+      await completeUnitActivity(repo, units, embedded.unitId, embedded.activityIndex);
+    } finally {
+      router.push(`/path/${embedded.unitId}`);
+    }
+  }
+
   if (phase === "loading") {
     return (
       <div className="flex flex-1 items-center justify-center px-6 py-16">
@@ -153,6 +178,8 @@ export function SpeakingView({ id }: { id: number }) {
   return (
     <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl space-y-8">
+        {embedded && <EmbeddedUnitBanner unitId={embedded.unitId} />}
+
         {/* Header */}
         <div>
           <BackLink href="/speaking" label="Speaking" className="mb-1" />
@@ -260,6 +287,18 @@ export function SpeakingView({ id }: { id: number }) {
 
         {/* WER result */}
         {werResult && <WerDisplay result={werResult} scoreLabel="Pronunciation score" />}
+
+        {embedded && (
+          <Button
+            data-testid="btn-complete-speaking"
+            variant="gradient"
+            size="md"
+            disabled={transcribeState !== "done" || completing}
+            onClick={() => void handleCompleteSpeaking()}
+          >
+            {completing ? "Saving…" : "Mark as complete"}
+          </Button>
+        )}
       </div>
     </div>
   );

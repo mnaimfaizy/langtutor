@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import type { ActivityKind, NewContent, Unit } from "@/lib/db";
 import { lookupConstruction } from "@/lib/content/grammar-map";
 import { PassageSchema } from "@/lib/content/passage";
+import { PromptSchema } from "@/lib/content/prompt";
 import { fetchSingleEmbedding } from "@/lib/content/client-embeddings";
 import { firstPendingActivityIndex } from "@/lib/path/unit-progress";
 import { getContentRepository } from "@/lib/registry";
@@ -32,10 +33,66 @@ const ACTIVITY_ICON: Record<ActivityKind, typeof BookIcon> = {
   speaking: MicIcon,
 };
 
-/** Reading topic for a unit's lazily-generated passage: its grammar focus, or its title. */
-function readingTopicFor(unit: Unit): string {
+/** Topic for a unit's lazily-generated activity content: its grammar focus, or its title. */
+function unitTopicFor(unit: Unit): string {
   const construction = lookupConstruction(unit.targetGrammarIds[0] ?? "");
   return construction?.label ?? unit.title;
+}
+
+/** Activity kinds whose content is a `passage` — reading, listening, and speaking all read/
+ * hear/say the same generated text, generated via the same reading pipeline (issue #60). */
+const PASSAGE_ACTIVITY_KINDS: ReadonlySet<ActivityKind> = new Set([
+  "reading",
+  "listening",
+  "speaking",
+]);
+
+/** Generates and caches this unit's passage content for a reading/listening/speaking slot. */
+async function generatePassageContent(topic: string, level: Unit["targetCefr"]): Promise<number> {
+  const res = await fetch("/api/reading/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ topic, level }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const data = (await res.json()) as { passage: unknown };
+  const passage = PassageSchema.parse(data.passage);
+  const embedding = await fetchSingleEmbedding(passage.body);
+
+  return getContentRepository().putContent({
+    type: "passage",
+    level,
+    topic,
+    payload: passage,
+    source: "generated",
+    validatedAt: new Date(),
+    embedding,
+  } satisfies NewContent);
+}
+
+/** Generates and caches this unit's writing prompt content for a writing slot. */
+async function generatePromptContent(topic: string, level: Unit["targetCefr"]): Promise<number> {
+  const res = await fetch("/api/writing/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ topic, level }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const data = (await res.json()) as { prompt: unknown };
+  const prompt = PromptSchema.parse(data.prompt);
+  const embedding = await fetchSingleEmbedding(prompt.instruction);
+
+  return getContentRepository().putContent({
+    type: "prompt",
+    level,
+    topic,
+    payload: prompt,
+    source: "generated",
+    validatedAt: new Date(),
+    embedding,
+  } satisfies NewContent);
 }
 
 export function UnitView({ id }: { id: number }) {
@@ -71,9 +128,11 @@ export function UnitView({ id }: { id: number }) {
 
   /**
    * Starts the review activity directly (it needs no unit-specific content — it operates on
-   * the learner's global SRS deck) or lazily generates-then-caches the reading passage the
-   * first time the activity is opened, storing the resulting `contentId` back on the unit so
-   * re-entering resumes the same passage instead of regenerating it.
+   * the learner's global SRS deck) or lazily generates-then-caches this activity's content
+   * (a passage for reading/listening/speaking, a writing prompt for writing) the first time
+   * it's opened, storing the resulting `contentId` back on the unit so re-entering resumes
+   * the same content instead of regenerating it (issue #59, extended to all module types by
+   * issue #60).
    */
   async function startActivity(activityIndex: number) {
     if (!unit) return;
@@ -87,55 +146,32 @@ export function UnitView({ id }: { id: number }) {
       return;
     }
 
-    if (activity.skill === "reading") {
-      if (activity.contentId !== undefined) {
-        router.push(`/reading/${activity.contentId}${query}`);
-        return;
-      }
-
-      setPhase("generating");
-      setErrorMsg("");
-      try {
-        const repo = getContentRepository();
-        const topic = readingTopicFor(unit);
-        const res = await fetch("/api/reading/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ topic, level: unit.targetCefr }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        const data = (await res.json()) as { passage: unknown };
-        const passage = PassageSchema.parse(data.passage);
-        const embedding = await fetchSingleEmbedding(passage.body);
-
-        const contentId = await repo.putContent({
-          type: "passage",
-          level: unit.targetCefr,
-          topic,
-          payload: passage,
-          source: "generated",
-          validatedAt: new Date(),
-          embedding,
-        } satisfies NewContent);
-
-        const activities = unit.activities.map((a, i) =>
-          i === activityIndex ? { ...a, contentId } : a,
-        );
-        await repo.updateUnit(unit.id, { activities });
-
-        router.push(`/reading/${contentId}${query}`);
-      } catch {
-        setErrorMsg(
-          "Could not generate this unit's reading passage. Make sure the Mac is reachable.",
-        );
-        setPhase("ready");
-      }
+    if (activity.contentId !== undefined) {
+      router.push(`/${activity.skill}/${activity.contentId}${query}`);
       return;
     }
 
-    // Remaining activity kinds (writing, listening, speaking) gain the embedded presentation
-    // in issue #60 — nothing to deep-link into yet.
+    setPhase("generating");
+    setErrorMsg("");
+    try {
+      const repo = getContentRepository();
+      const topic = unitTopicFor(unit);
+      const contentId = PASSAGE_ACTIVITY_KINDS.has(activity.skill)
+        ? await generatePassageContent(topic, unit.targetCefr)
+        : await generatePromptContent(topic, unit.targetCefr);
+
+      const activities = unit.activities.map((a, i) =>
+        i === activityIndex ? { ...a, contentId } : a,
+      );
+      await repo.updateUnit(unit.id, { activities });
+
+      router.push(`/${activity.skill}/${contentId}${query}`);
+    } catch {
+      setErrorMsg(
+        `Could not generate this unit's ${ACTIVITY_LABEL[activity.skill].toLowerCase()} content. Make sure the Mac is reachable.`,
+      );
+      setPhase("ready");
+    }
   }
 
   if (phase === "loading") {
@@ -212,8 +248,7 @@ export function UnitView({ id }: { id: number }) {
             const Icon = ACTIVITY_ICON[activity.skill];
             const isNext = i === nextIndex;
             const isDone = Boolean(activity.done);
-            const isDisabled =
-              i > nextIndex || (activity.skill !== "review" && activity.skill !== "reading");
+            const isDisabled = i > nextIndex;
 
             return (
               <li key={i}>

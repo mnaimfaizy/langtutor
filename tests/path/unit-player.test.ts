@@ -107,6 +107,19 @@ describe("completeUnitActivity", () => {
     expect((await repo.getUnits())[0]?.status).toBe("available");
   });
 
+  it.each(["review", "reading", "listening", "writing", "speaking"] as const)(
+    "marks a %s activity done regardless of module type (issue #60 — full activity coverage)",
+    async (skill) => {
+      const repo = makeFakeRepo([unit({ activities: [{ skill }] })]);
+
+      await completeUnitActivity(repo, repo.units, 1, 0);
+
+      const [saved] = await repo.getUnits();
+      expect(saved?.activities[0]).toEqual({ skill, done: true });
+      expect(saved?.status).toBe("completed");
+    },
+  );
+
   it("does not unlock the next unit when it's already unlocked", async () => {
     const first = unit({
       id: 1,

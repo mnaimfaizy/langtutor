@@ -10,12 +10,18 @@ import { GRAMMAR_MAP, type GrammarMap } from "@/lib/content/grammar-map";
 import type { ActivityKind, Cefr, NewUnit, UnitActivityRef } from "@/lib/db";
 
 /**
- * Fixed, deterministic ordering for the placeholder activity slots in a backbone unit.
- * Only `review` and `reading` are wired end-to-end (unit player, issue #59); the
- * remaining module types (`writing`, `listening`, `speaking`) join the backbone once
- * they gain the embedded-in-unit presentation (issue #60).
+ * Fixed, deterministic ordering for the placeholder activity slots in a backbone unit. All
+ * five module types are wired end-to-end (unit player, issue #59; full coverage, issue #60):
+ * a quick vocabulary review, then listening and reading input, then writing and speaking
+ * output — the composed session the LLM teacher (#58) builds a unit plan around.
  */
-const ACTIVITY_KIND_ORDER: readonly ActivityKind[] = ["review", "reading"];
+const ACTIVITY_KIND_ORDER: readonly ActivityKind[] = [
+  "review",
+  "listening",
+  "reading",
+  "writing",
+  "speaking",
+];
 
 function backboneActivities(): UnitActivityRef[] {
   return ACTIVITY_KIND_ORDER.map((skill) => ({ skill }));

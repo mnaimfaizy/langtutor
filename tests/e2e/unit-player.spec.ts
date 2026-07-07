@@ -1,9 +1,12 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-// Issue #59 — unit player tracer. A fresh account's first (backbone-seeded) unit contains a
-// review activity then a reading activity (the two wired end-to-end so far — see
-// lib/path/backbone-planner.ts). Completing both completes the unit and unlocks the next one.
+// Issue #59 — unit player tracer (review + reading wired end-to-end); issue #60 widens the
+// backbone to all five module types (see lib/path/backbone-planner.ts) and gives listening,
+// writing, and speaking the same embedded-in-unit presentation. Speaking's completion (real
+// microphone capture + Whisper transcription) isn't exercised here — no standalone e2e spec
+// covers that recorder flow either — so this spec completes review, listening, reading, and
+// writing, matching the issue's e2e acceptance criterion.
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword — see onboarding.spec.ts
 
 const MOCK_PASSAGE = {
@@ -11,21 +14,46 @@ const MOCK_PASSAGE = {
   body: "Every day, Sam wakes up early and drinks a cup of tea. He walks to work because the office is close to his house. At lunch, he eats a sandwich with his friends. In the evening, he reads a book before he goes to sleep. Sam likes his simple daily routine because it helps him feel calm and ready for each new day.",
 };
 
+const MOCK_PROMPT = {
+  title: "Your Daily Routine",
+  instruction: "Write a few sentences describing your typical morning routine.",
+};
+
+const MOCK_FEEDBACK = {
+  overallScore: 8,
+  structuralGrade: "Good",
+  corrections: [],
+};
+
 test.beforeEach(async ({ request, page }) => {
-  // Both /path/[id] and (within this spec, run in isolation) /reading/[id] are dynamic
-  // routes not pre-warmed by tests/e2e/auth.setup.ts, so this spec pays two cold Turbopack
-  // compiles (10-30 s each, see .sandcastle/ENVIRONMENT.md) on top of the review/reading
-  // flow itself — give it more headroom than the 60 s default.
-  test.setTimeout(150_000);
+  // /path/[id], /reading/[id], /listening/[id], and /writing/[id] are dynamic routes not
+  // pre-warmed by tests/e2e/auth.setup.ts, so this spec pays several cold Turbopack compiles
+  // (10-30 s each, see .sandcastle/ENVIRONMENT.md) on top of the activity flows themselves —
+  // give it more headroom than the 60 s default.
+  test.setTimeout(180_000);
   await request.post("/api/test/reset");
-  // The unit's reading activity is generated on first open via the same endpoint the
-  // standalone reading module uses — mock it so no Mac is required (same pattern as
-  // tests/e2e/reading.spec.ts).
+  // Each embedded activity generates its content lazily via the same endpoints the standalone
+  // modules use — mock them so no Mac is required (same pattern as tests/e2e/reading.spec.ts
+  // and tests/e2e/dictation.spec.ts).
   await page.route("**/api/reading/generate", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ passage: MOCK_PASSAGE }),
+    });
+  });
+  await page.route("**/api/writing/generate", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ prompt: MOCK_PROMPT }),
+    });
+  });
+  await page.route("**/api/writing/feedback", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ feedback: MOCK_FEEDBACK }),
     });
   });
 });
@@ -73,7 +101,7 @@ async function rateAllDueCardsGood(page: Page): Promise<void> {
   }
 }
 
-test("open first unit, complete review then reading, unit completes and unlocks the next", async ({
+test("open first unit, complete review, listening, reading, and writing activities embedded in the unit", async ({
   page,
 }) => {
   await setupWithSeed(page);
@@ -86,9 +114,12 @@ test("open first unit, complete review then reading, unit completes and unlocks 
   await firstUnit.click();
   await page.waitForURL(`/path/${unitId}`);
 
-  // ── Ordered activity list: review first, reading second ──────────────────
+  // ── Ordered activity list: review, listening, reading, writing, speaking ─────
   await expect(page.getByTestId("unit-activity-0")).toContainText("Vocabulary review");
-  await expect(page.getByTestId("unit-activity-1")).toContainText("Reading");
+  await expect(page.getByTestId("unit-activity-1")).toContainText("Listening");
+  await expect(page.getByTestId("unit-activity-2")).toContainText("Reading");
+  await expect(page.getByTestId("unit-activity-3")).toContainText("Writing");
+  await expect(page.getByTestId("unit-activity-4")).toContainText("Speaking");
   await expect(page.getByTestId("unit-activity-0")).toContainText("Up next");
   await expect(page.getByTestId("btn-start-activity-0")).toHaveText("Start");
 
@@ -102,27 +133,60 @@ test("open first unit, complete review then reading, unit completes and unlocks 
   await page.getByTestId("btn-back-to-unit-or-home").click();
   await page.waitForURL(`/path/${unitId}`);
 
-  // ── Back on the unit: review is done, reading is now next ────────────────
+  // ── Back on the unit: review is done, listening is now next ──────────────
   await expect(page.getByTestId("unit-activity-0")).toContainText("Done");
   await expect(page.getByTestId("unit-activity-1")).toContainText("Up next");
 
-  // ── Activity 2: reading, generated + embedded in the unit ────────────────
+  // ── Activity 2: listening, generated + embedded in the unit ──────────────
   await page.getByTestId("btn-start-activity-1").click();
-  await page.waitForURL(/\/reading\/\d+\?unit=\d+&activity=1$/);
+  await page.waitForURL(/\/listening\/\d+\?unit=\d+&activity=1$/);
+  await expect(page.getByTestId("embedded-unit-banner")).toBeVisible();
+  await expect(page.getByTestId("passage-title")).toHaveText(MOCK_PASSAGE.title);
+
+  const completeDictation = page.getByTestId("btn-complete-dictation");
+  await expect(completeDictation).toBeDisabled();
+  await page.getByTestId("transcript-input").fill(MOCK_PASSAGE.body);
+  await page.getByTestId("btn-check").click();
+  await expect(completeDictation).toBeEnabled();
+  await completeDictation.click();
+  await page.waitForURL(`/path/${unitId}`);
+
+  // ── Back on the unit: listening is done, reading is now next ─────────────
+  await expect(page.getByTestId("unit-activity-1")).toContainText("Done");
+  await expect(page.getByTestId("unit-activity-2")).toContainText("Up next");
+
+  // ── Activity 3: reading, generated + embedded in the unit ────────────────
+  await page.getByTestId("btn-start-activity-2").click();
+  await page.waitForURL(/\/reading\/\d+\?unit=\d+&activity=2$/);
   await expect(page.getByTestId("embedded-unit-banner")).toBeVisible();
   await expect(page.getByTestId("passage-title")).toHaveText(MOCK_PASSAGE.title);
 
   await page.getByTestId("btn-complete-reading").click();
   await page.waitForURL(`/path/${unitId}`);
 
-  // ── Unit complete ──────────────────────────────────────────────────────
-  await expect(page.getByTestId("unit-complete-message")).toBeVisible();
-  await expect(page.getByTestId("unit-activity-1")).toContainText("Done");
+  // ── Back on the unit: reading is done, writing is now next ───────────────
+  await expect(page.getByTestId("unit-activity-2")).toContainText("Done");
+  await expect(page.getByTestId("unit-activity-3")).toContainText("Up next");
 
-  // ── Next unit unlocks on home ─────────────────────────────────────────────
-  await page.goto("/home");
-  await expect(page.getByTestId("unit-0")).toHaveAttribute("data-status", "completed");
-  await expect(page.getByTestId("unit-1")).toHaveAttribute("data-status", "available");
+  // ── Activity 4: writing, generated + embedded in the unit ────────────────
+  await page.getByTestId("btn-start-activity-3").click();
+  await page.waitForURL(/\/writing\/\d+\?unit=\d+&activity=3$/);
+  await expect(page.getByTestId("embedded-unit-banner")).toBeVisible();
+  await expect(page.getByTestId("prompt-title")).toHaveText(MOCK_PROMPT.title);
+
+  const completeWriting = page.getByTestId("btn-complete-writing");
+  await expect(completeWriting).toBeDisabled();
+  await page.locator("#draft").fill("This morning I woke up, drank tea, and read a book.");
+  await page.getByTestId("btn-submit").click();
+  await expect(page.getByTestId("feedback-panel")).toBeVisible();
+  await expect(completeWriting).toBeEnabled();
+  await completeWriting.click();
+  await page.waitForURL(`/path/${unitId}`);
+
+  // ── Back on the unit: writing is done, speaking remains — unit not complete yet ──
+  await expect(page.getByTestId("unit-activity-3")).toContainText("Done");
+  await expect(page.getByTestId("unit-activity-4")).toContainText("Up next");
+  await expect(page.getByTestId("unit-complete-message")).not.toBeVisible();
 });
 
 test("re-entering a partially-done unit resumes at the first pending activity", async ({
@@ -142,7 +206,7 @@ test("re-entering a partially-done unit resumes at the first pending activity", 
   await page.getByTestId("btn-back-to-unit-or-home").click();
   await page.waitForURL(`/path/${unitId}`);
 
-  // Leave the unit entirely (home) then come back — resume should land on the reading
+  // Leave the unit entirely (home) then come back — resume should land on the listening
   // activity, not restart from review.
   await page.goto("/home");
   await page.getByTestId(`unit-${0}`).click();

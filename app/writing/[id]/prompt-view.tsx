@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 
 import type { Content } from "@/lib/db";
@@ -9,12 +10,14 @@ import { FeedbackSchema } from "@/lib/content/feedback";
 import type { Correction, FeedbackPayload } from "@/lib/content/feedback";
 import { createWritingErrorEvents } from "@/lib/diagnostics";
 import { PromptSchema } from "@/lib/content/prompt";
+import { completeUnitActivity } from "@/lib/path/unit-player";
 import { getContentRepository } from "@/lib/registry";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
 import { resolveMotionPreset } from "@/lib/motion";
 import { Badge, BackLink, Button, Card } from "@/ui";
 import { cn } from "@/ui/cn";
 import { TtsButton } from "@/ui/tts-button";
+import { EmbeddedUnitBanner, useEmbeddedActivity } from "@/app/path/embedded";
 
 type Phase = "loading" | "ready" | "notFound" | "error";
 type SubmitPhase = "idle" | "submitting" | "done" | "error";
@@ -102,12 +105,16 @@ function FeedbackPanel({
 }
 
 export function PromptView({ id }: { id: number }) {
+  const router = useRouter();
+  const embedded = useEmbeddedActivity();
   const [phase, setPhase] = useState<Phase>(() => (isNaN(id) || id <= 0 ? "notFound" : "loading"));
   const [content, setContent] = useState<Content | null>(null);
   const [draft, setDraft] = useState("");
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>("idle");
   const [feedback, setFeedback] = useState<FeedbackPayload | null>(null);
+  const [completing, setCompleting] = useState(false);
   const inFlight = useRef(false);
+  const completedRef = useRef(false);
 
   useEffect(() => {
     if (isNaN(id) || id <= 0) return;
@@ -169,6 +176,24 @@ export function PromptView({ id }: { id: number }) {
     setSubmitPhase("idle");
   }
 
+  /**
+   * Writing is "done" once feedback is received (the module's natural completion moment,
+   * issue #60). Awaits the write before navigating so the unit view never reads stale
+   * (not-yet-persisted) state.
+   */
+  async function handleCompleteWriting() {
+    if (!embedded || completedRef.current) return;
+    completedRef.current = true;
+    setCompleting(true);
+    try {
+      const repo = getContentRepository();
+      const units = await repo.getUnits();
+      await completeUnitActivity(repo, units, embedded.unitId, embedded.activityIndex);
+    } finally {
+      router.push(`/path/${embedded.unitId}`);
+    }
+  }
+
   if (phase === "loading") {
     return (
       <div className="flex flex-1 items-center justify-center px-6 py-16">
@@ -213,6 +238,8 @@ export function PromptView({ id }: { id: number }) {
     <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
         <BackLink href="/writing" label="Writing" className="mb-6" />
+
+        {embedded && <EmbeddedUnitBanner unitId={embedded.unitId} />}
 
         {/* Prompt card */}
         <article data-testid="prompt-article" className="mt-2">
@@ -282,11 +309,23 @@ export function PromptView({ id }: { id: number }) {
         )}
 
         <div className="mt-8">
-          <Link href="/writing">
-            <Button variant="secondary" size="md">
-              Back to Writing
+          {embedded ? (
+            <Button
+              data-testid="btn-complete-writing"
+              variant="gradient"
+              size="md"
+              disabled={submitPhase !== "done" || completing}
+              onClick={() => void handleCompleteWriting()}
+            >
+              {completing ? "Saving…" : "Mark as complete"}
             </Button>
-          </Link>
+          ) : (
+            <Link href="/writing">
+              <Button variant="secondary" size="md">
+                Back to Writing
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </div>

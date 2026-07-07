@@ -81,7 +81,7 @@ Do not enter an edit → revert → reinstall → re-apply loop. One reinstall a
   `rm -rf .next` rather than assuming the next `pnpm dev`/Playwright run will self-heal.
 - **(issue #59) Running several separate `pnpm exec playwright test <spec>` invocations
   back-to-back can leave the next invocation's `auth.setup.ts` hanging** — `page.waitForURL
-  ("/home")` after sign-in blows the full 300 s setup timeout with no server-side error,
+("/home")` after sign-in blows the full 300 s setup timeout with no server-side error,
   even though no process is holding the SQLite file (checked: no live, non-zombie `node`
   process). Each separate invocation starts and then SIGTERMs its own `pnpm dev` (Playwright's
   `webServer` lifecycle) when `reuseExistingServer` doesn't find one listening — repeating
@@ -91,6 +91,21 @@ Do not enter an edit → revert → reinstall → re-apply loop. One reinstall a
   Fix: prefer one Playwright invocation listing every spec file you need
   (`pnpm exec playwright test tests/e2e/a.spec.ts tests/e2e/b.spec.ts ...`) instead of N
   separate commands; if a run does hang like this, `rm -rf .next && rm -f
-  langtutor-e2e.db*` and retry once in a single consolidated invocation.
+langtutor-e2e.db*` and retry once in a single consolidated invocation.
+- **(issue #60) The degradation from repeated back-to-back `pnpm exec playwright test <spec>`
+  invocations isn't limited to `auth.setup.ts` sign-in** — after several consecutive
+  invocations in one session (each starting/stopping its own `pnpm dev`), auth setup itself
+  can start passing again but a _later_ client-side navigation (e.g. clicking into an
+  embedded activity from `/path/[id]` to `/review?unit=...&activity=...`) intermittently
+  fails to render the destination page's content even though `page.waitForURL` resolves —
+  the same class of instability as the auth-setup hang, just surfacing one step later.
+  Full process cleanup (`pkill -9 -f "next dev"`, `pkill -9 -f "next-server"`, `rm -rf .next`,
+  `rm -f langtutor-e2e.db*`) plus a idle pause before retrying reduces but does not
+  eliminate it. Confirmed the app code itself is not at fault: the identical
+  review-activity flow passed cleanly on the first invocation of a fresh session, and
+  `pnpm verify` (typecheck/lint/format/unit tests) is unaffected. Fix: run e2e specs in the
+  _first_ Playwright invocation of a session, before any other spec runs have started and
+  stopped `pnpm dev` — do not chain multiple `playwright test` invocations for the same
+  feature in one sitting.
 - (Add new, verified environment findings here — with the run/issue number — so the next
   agent does not re-discover them.)

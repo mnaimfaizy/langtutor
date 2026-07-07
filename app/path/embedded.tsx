@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 // Shared "embedded in a unit" plumbing for the module experiences the unit player deep-links
-// into (review, reading — issue #59; more module types join in issue #60). Standalone module
-// routes never carry `unit`/`activity` search params, so `useEmbeddedActivity` returns null
-// and every embedded-only affordance in those modules stays hidden — standalone behavior is
-// unchanged (issue #59 acceptance criteria).
+// into (review, reading — issue #59; listening, writing, speaking — issue #60). Standalone
+// module routes never carry `unit`/`activity` search params, so `useEmbeddedActivity` returns
+// null and every embedded-only affordance in those modules stays hidden — standalone behavior
+// is unchanged (issue #59/#60 acceptance criteria).
 
 export interface EmbeddedActivity {
   unitId: number;

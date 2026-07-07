@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import type { Content } from "@/lib/db";
 import { PassageSchema } from "@/lib/content/passage";
 import { createListeningErrorEvents } from "@/lib/diagnostics";
 import { computeWer } from "@/lib/diagnostics/wer";
 import type { WerResult } from "@/lib/diagnostics/wer";
+import { completeUnitActivity } from "@/lib/path/unit-player";
 import { getContentRepository } from "@/lib/registry";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
 import { Badge, BackLink, Button } from "@/ui";
@@ -15,15 +17,20 @@ import { TtsButton } from "@/ui/tts-button";
 import { WerDisplay } from "@/ui/wer-display";
 
 import { ComprehensionQuiz } from "@/app/comprehension-quiz";
+import { EmbeddedUnitBanner, useEmbeddedActivity } from "@/app/path/embedded";
 
 type Phase = "loading" | "ready" | "notFound" | "error";
 
 export function DictationView({ id }: { id: number }) {
+  const router = useRouter();
+  const embedded = useEmbeddedActivity();
   const [phase, setPhase] = useState<Phase>(() => (isNaN(id) || id <= 0 ? "notFound" : "loading"));
   const [content, setContent] = useState<Content | null>(null);
   const [transcript, setTranscript] = useState("");
   const [werResult, setWerResult] = useState<WerResult | null>(null);
+  const [completing, setCompleting] = useState(false);
   const checkInFlight = useRef(false);
+  const completedRef = useRef(false);
 
   useEffect(() => {
     if (isNaN(id) || id <= 0) return;
@@ -72,6 +79,24 @@ export function DictationView({ id }: { id: number }) {
     }
   }
 
+  /**
+   * Dictation is "done" once it's scored (a `werResult` exists) — the module's natural
+   * completion moment (issue #60). Awaits the write before navigating so the unit view never
+   * reads stale (not-yet-persisted) state.
+   */
+  async function handleCompleteDictation() {
+    if (!embedded || completedRef.current) return;
+    completedRef.current = true;
+    setCompleting(true);
+    try {
+      const repo = getContentRepository();
+      const units = await repo.getUnits();
+      await completeUnitActivity(repo, units, embedded.unitId, embedded.activityIndex);
+    } finally {
+      router.push(`/path/${embedded.unitId}`);
+    }
+  }
+
   if (phase === "loading") {
     return (
       <div className="flex flex-1 items-center justify-center px-6 py-16">
@@ -115,6 +140,8 @@ export function DictationView({ id }: { id: number }) {
     <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
         <BackLink href="/listening" label="Listening" className="mb-6" />
+
+        {embedded && <EmbeddedUnitBanner unitId={embedded.unitId} />}
 
         <article data-testid="dictation-article" className="mt-2">
           <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -187,11 +214,23 @@ export function DictationView({ id }: { id: number }) {
         </div>
 
         <div className="mt-10">
-          <Link href="/listening">
-            <Button variant="secondary" size="md">
-              Back to Listening
+          {embedded ? (
+            <Button
+              data-testid="btn-complete-dictation"
+              variant="gradient"
+              size="md"
+              disabled={!werResult || completing}
+              onClick={() => void handleCompleteDictation()}
+            >
+              {completing ? "Saving…" : "Mark as complete"}
             </Button>
-          </Link>
+          ) : (
+            <Link href="/listening">
+              <Button variant="secondary" size="md">
+                Back to Listening
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </div>

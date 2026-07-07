@@ -84,10 +84,16 @@ describe("seedBackbonePath", () => {
     expect(units.every((u) => u.targetVocab.length === 0)).toBe(true);
   });
 
-  it("reserves an ordered activity slot per wired activity kind (review, then reading)", () => {
+  it("reserves an ordered activity slot per wired activity kind (review, listen, read, write, speak)", () => {
     const units = seedBackbonePath("A1", FIXTURE_MAP);
 
-    expect(units[0]?.activities).toEqual([{ skill: "review" }, { skill: "reading" }]);
+    expect(units[0]?.activities).toEqual([
+      { skill: "review" },
+      { skill: "listening" },
+      { skill: "reading" },
+      { skill: "writing" },
+      { skill: "speaking" },
+    ]);
   });
 
   it("defaults to the real 39-entry grammar map when none is supplied", () => {
