@@ -7,6 +7,8 @@ export const CHAT_PROVIDER_VALUES = ["mac", "groq"] as const;
 export const STT_PROVIDER_VALUES = ["mac", "groq"] as const;
 export const EMBEDDINGS_PROVIDER_VALUES = ["mac", "mistral"] as const;
 export const EXPERIENCE_MODE_VALUES = ["adult", "kid"] as const;
+export const UNIT_STATUS_VALUES = ["locked", "available", "in-progress", "completed"] as const;
+export const UNIT_BUFFER_STATUS_VALUES = ["empty", "buffered"] as const;
 
 export type ChatProvider = (typeof CHAT_PROVIDER_VALUES)[number];
 export type SttProvider = (typeof STT_PROVIDER_VALUES)[number];

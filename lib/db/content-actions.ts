@@ -7,6 +7,7 @@ import type {
   NewCard,
   NewContent,
   NewErrorEvent,
+  NewUnit,
 } from "@/lib/db/content-repository";
 import type {
   Card,
@@ -16,6 +17,7 @@ import type {
   LexiconCacheEntry,
   Profile,
   ProfileSettings,
+  Unit,
   Weakness,
 } from "@/lib/db/schema";
 
@@ -103,6 +105,18 @@ export async function repoGetLexiconEntry(word: string): Promise<LexiconCacheEnt
 
 export async function repoPutLexiconEntry(entry: LexiconCacheEntry): Promise<void> {
   return (await getServerContentRepository()).putLexiconEntry(entry);
+}
+
+export async function repoAddUnit(unit: NewUnit): Promise<number> {
+  return (await getServerContentRepository()).addUnit(unit);
+}
+
+export async function repoGetUnits(): Promise<Unit[]> {
+  return (await getServerContentRepository()).getUnits();
+}
+
+export async function repoUpdateUnit(id: number, changes: Partial<NewUnit>): Promise<void> {
+  return (await getServerContentRepository()).updateUnit(id, changes);
 }
 
 export async function repoClear(): Promise<void> {

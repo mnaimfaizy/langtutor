@@ -7,6 +7,7 @@ import type {
   NewCard,
   NewContent,
   NewErrorEvent,
+  NewUnit,
 } from "./content-repository";
 import type {
   Card,
@@ -16,6 +17,7 @@ import type {
   LexiconCacheEntry,
   Profile,
   ProfileSettings,
+  Unit,
   Weakness,
 } from "./schema";
 
@@ -158,6 +160,19 @@ export class DexieContentRepository implements ContentRepository {
     await this.db.lexiconCache.put({ ...entry, word: entry.word.toLowerCase() });
   }
 
+  // learning path units -------------------------------------------------------
+  addUnit(unit: NewUnit): Promise<number> {
+    return this.db.units.add(unit);
+  }
+
+  async getUnits(): Promise<Unit[]> {
+    return this.db.units.orderBy("index").toArray();
+  }
+
+  async updateUnit(id: number, changes: Partial<NewUnit>): Promise<void> {
+    await this.db.units.update(id, changes);
+  }
+
   // maintenance -------------------------------------------------------------
   async clear(): Promise<void> {
     await Promise.all(this.db.tables.map((table) => table.clear()));
@@ -165,7 +180,7 @@ export class DexieContentRepository implements ContentRepository {
 
   // backup ------------------------------------------------------------------
   async exportBackup(): Promise<BackupData> {
-    const [profile, cards, content, errorEvents, weakness, gamification, lexiconCache] =
+    const [profile, cards, content, errorEvents, weakness, gamification, lexiconCache, units] =
       await Promise.all([
         this.db.profile.toArray(),
         this.db.cards.toArray(),
@@ -174,11 +189,21 @@ export class DexieContentRepository implements ContentRepository {
         this.db.weakness.toArray(),
         this.db.gamification.toArray(),
         this.db.lexiconCache.toArray(),
+        this.db.units.toArray(),
       ]);
     return {
       version: 1 as const,
       exportedAt: new Date().toISOString(),
-      tables: { profile, cards, content, errorEvents, weakness, gamification, lexiconCache },
+      tables: {
+        profile,
+        cards,
+        content,
+        errorEvents,
+        weakness,
+        gamification,
+        lexiconCache,
+        units,
+      },
     } as BackupData;
   }
 
@@ -201,6 +226,8 @@ export class DexieContentRepository implements ContentRepository {
         data.tables.gamification as unknown as Singleton<GamificationState>[],
       ),
       this.db.lexiconCache.bulkPut(data.tables.lexiconCache as unknown as LexiconCacheEntry[]),
+      // Old-format backups (pre-#57) have no `units` key — default to empty.
+      this.db.units.bulkPut((data.tables.units ?? []) as unknown as Omit<Unit, "id">[]),
     ]);
   }
 }

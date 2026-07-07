@@ -20,6 +20,10 @@ export type {
   Profile,
   ProfileSettings,
   Skill,
+  Unit,
+  UnitActivityRef,
+  UnitBufferStatus,
+  UnitStatus,
   Weakness,
 } from "./schema";
 export { DEFAULT_EXPERIENCE_MODE } from "./schema";
@@ -34,4 +38,5 @@ export type {
   NewCard,
   NewContent,
   NewErrorEvent,
+  NewUnit,
 } from "./content-repository";

@@ -52,5 +52,22 @@ Do not enter an edit → revert → reinstall → re-apply loop. One reinstall a
 
 - Filesystem I/O on the workspace is slow (Windows→Linux 9P bind mount). Prefer targeted
   commands (single spec, single test file) over broad ones.
+- **(issue #57) `pnpm dev` / `pnpm exec playwright test` currently fail to boot in this
+  session**: Turbopack refuses to compile `./app` with `Error: Next.js inferred your
+workspace root, but it may not be correct. We couldn't find the Next.js package
+(next/package.json) from the project directory: /home/agent/workspace/app`. Root cause:
+  `node_modules/next` (and siblings) are symlinks into `/home/agent/.pnpm-virtual-store`,
+  which sits **outside** the `/home/agent/workspace` bind mount (done for 9P I/O
+  performance — see the Dockerfile's Chromium-path comment for the same rationale).
+  Turbopack resolves the symlink to its real path and refuses to compile because that
+  real path escapes the inferred/configured project root, even though `next.config.ts`
+  already pins `turbopack.root: process.cwd()` and Node's own `require.resolve` finds the
+  package fine. Reproduces on a clean `git stash` (pre-existing, not introduced by any
+  feature branch) and survives the one permitted anti-thrash reinstall (same
+  `--virtual-store-dir`, so the symlink target doesn't change). Until the virtual store is
+  moved back inside the workspace (or Turbopack gains a way to trust an out-of-tree
+  store), **validate e2e specs with `pnpm exec playwright test --list` only** — do not
+  spend time re-diagnosing this per-issue; `pnpm verify` (typecheck/lint/format/unit
+  tests) is unaffected and remains the real gate.
 - (Add new, verified environment findings here — with the run/issue number — so the next
   agent does not re-discover them.)

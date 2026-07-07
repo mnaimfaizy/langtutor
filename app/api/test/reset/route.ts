@@ -8,6 +8,7 @@ import {
   gamification,
   lexiconCache,
   profiles,
+  units,
   weakness,
 } from "@/lib/db/drizzle/schema";
 import {
@@ -17,6 +18,7 @@ import {
   gamification as postgresGamification,
   lexiconCache as postgresLexiconCache,
   profiles as postgresProfiles,
+  units as postgresUnits,
   weakness as postgresWeakness,
 } from "@/lib/db/drizzle/schema.postgres";
 import { getPostgresDrizzleClient } from "@/lib/db/drizzle/postgres-client";
@@ -63,6 +65,7 @@ export async function POST() {
     await db.delete(postgresWeakness);
     await db.delete(postgresLexiconCache);
     await db.delete(postgresContent);
+    await db.delete(postgresUnits);
   } else {
     const db = getDrizzleClient();
 
@@ -73,6 +76,7 @@ export async function POST() {
     db.delete(weakness).run();
     db.delete(lexiconCache).run();
     db.delete(content).run();
+    db.delete(units).run();
   }
 
   // Restore the canonical seed (passages, prompts, cards). Synchronous under

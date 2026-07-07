@@ -8,6 +8,7 @@ import type {
   LexiconCacheEntry,
   Profile,
   Skill,
+  Unit,
   Weakness,
 } from "./schema";
 
@@ -34,6 +35,7 @@ export class LangTutorDB extends Dexie {
   cards!: EntityTable<Card, "id">;
   content!: EntityTable<Content, "id">;
   errorEvents!: EntityTable<ErrorEventRecord, "id">;
+  units!: EntityTable<Unit, "id">;
 
   // Inbound (caller-provided) keys.
   profile!: Table<Singleton<Profile>, number>;
@@ -56,6 +58,12 @@ export class LangTutorDB extends Dexie {
     this.version(2).stores({
       content: "++id, type, level, [type+level], topic, source",
       errorEvents: "++id, skill, category, cefr, [skill+cefr], createdAt",
+    });
+    // v3: learning path units (ADR 0015, issue #57). Old (pre-multi-user) Dexie
+    // installs never had a path; this store starts empty and is only exercised by
+    // the migration-round-trip test harness, not real user data.
+    this.version(3).stores({
+      units: "++id, index, status",
     });
   }
 }

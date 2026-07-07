@@ -12,6 +12,7 @@ import type {
   NewCard,
   NewContent,
   NewErrorEvent,
+  NewUnit,
 } from "./content-repository";
 import type { PostgresDrizzleClient } from "./drizzle/postgres-client";
 import { withUserRlsScope, type PostgresDrizzleScope } from "./drizzle/postgres-rls-scope";
@@ -24,6 +25,7 @@ import {
   gamification as gamificationTable,
   lexiconCache as lexiconCacheTable,
   profiles as profilesTable,
+  units as unitsTable,
   weakness as weaknessTable,
 } from "./drizzle/schema.postgres";
 import type {
@@ -36,6 +38,8 @@ import type {
   LexiconCacheEntry,
   Profile,
   ProfileSettings,
+  Unit,
+  UnitActivityRef,
   Weakness,
 } from "./schema";
 
@@ -162,6 +166,35 @@ function rowToErrorEvent(row: ErrorEventRow): ErrorEventRecord {
     category: row.category,
     cefr: row.cefr,
     context: row.context,
+    createdAt: row.createdAt,
+  };
+}
+
+type UnitRow = {
+  id: number;
+  userId: string;
+  index: number;
+  title: string;
+  teacherNote: string;
+  targetGrammarIds: string;
+  targetCefr: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+  activities: string;
+  status: "locked" | "available" | "in-progress" | "completed";
+  bufferStatus: "empty" | "buffered";
+  createdAt: Date;
+};
+
+function rowToUnit(row: UnitRow): Unit {
+  return {
+    id: row.id,
+    index: row.index,
+    title: row.title,
+    teacherNote: row.teacherNote,
+    targetGrammarIds: JSON.parse(row.targetGrammarIds) as string[],
+    targetCefr: row.targetCefr,
+    activities: JSON.parse(row.activities) as UnitActivityRef[],
+    status: row.status,
+    bufferStatus: row.bufferStatus,
     createdAt: row.createdAt,
   };
 }
@@ -631,6 +664,72 @@ export class SupabaseContentRepository implements ContentRepository {
     });
   }
 
+  // ─── learning path units ──────────────────────────────────────────────────
+
+  async addUnit(unit: NewUnit): Promise<number> {
+    return this.scoped(async (db) => {
+      const inserted = await db
+        .insert(unitsTable)
+        .values({
+          userId: this.userId,
+          index: unit.index,
+          title: unit.title,
+          teacherNote: unit.teacherNote,
+          targetGrammarIds: JSON.stringify(unit.targetGrammarIds),
+          targetCefr: unit.targetCefr,
+          activities: JSON.stringify(unit.activities),
+          status: unit.status,
+          bufferStatus: unit.bufferStatus,
+          createdAt: unit.createdAt,
+        })
+        .returning({ id: unitsTable.id });
+      return inserted[0]!.id;
+    });
+  }
+
+  async getUnits(): Promise<Unit[]> {
+    return this.scoped(async (db) => {
+      const rows = await db
+        .select()
+        .from(unitsTable)
+        .where(eq(unitsTable.userId, this.userId))
+        .orderBy(asc(unitsTable.index));
+      return rows.map(rowToUnit);
+    });
+  }
+
+  async updateUnit(id: number, changes: Partial<NewUnit>): Promise<void> {
+    await this.scoped(async (db) => {
+      type UnitUpdate = {
+        index?: number;
+        title?: string;
+        teacherNote?: string;
+        targetGrammarIds?: string;
+        targetCefr?: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+        activities?: string;
+        status?: "locked" | "available" | "in-progress" | "completed";
+        bufferStatus?: "empty" | "buffered";
+        createdAt?: Date;
+      };
+      const patch: UnitUpdate = {};
+      if (changes.index !== undefined) patch.index = changes.index;
+      if (changes.title !== undefined) patch.title = changes.title;
+      if (changes.teacherNote !== undefined) patch.teacherNote = changes.teacherNote;
+      if (changes.targetGrammarIds !== undefined)
+        patch.targetGrammarIds = JSON.stringify(changes.targetGrammarIds);
+      if (changes.targetCefr !== undefined) patch.targetCefr = changes.targetCefr;
+      if (changes.activities !== undefined) patch.activities = JSON.stringify(changes.activities);
+      if (changes.status !== undefined) patch.status = changes.status;
+      if (changes.bufferStatus !== undefined) patch.bufferStatus = changes.bufferStatus;
+      if (changes.createdAt !== undefined) patch.createdAt = changes.createdAt;
+
+      await db
+        .update(unitsTable)
+        .set(patch)
+        .where(and(eq(unitsTable.id, id), eq(unitsTable.userId, this.userId)));
+    });
+  }
+
   // ─── maintenance ──────────────────────────────────────────────────────────
 
   async clear(): Promise<void> {
@@ -642,6 +741,7 @@ export class SupabaseContentRepository implements ContentRepository {
       await db.delete(weaknessTable).where(eq(weaknessTable.userId, this.userId));
       await db.delete(gamificationTable).where(eq(gamificationTable.userId, this.userId));
       await db.delete(lexiconCacheTable);
+      await db.delete(unitsTable).where(eq(unitsTable.userId, this.userId));
     });
   }
 
@@ -674,6 +774,8 @@ export class SupabaseContentRepository implements ContentRepository {
         .where(eq(gamificationTable.userId, this.userId));
 
       const lexiconRows = await db.select().from(lexiconCacheTable);
+
+      const unitRows = await db.select().from(unitsTable).where(eq(unitsTable.userId, this.userId));
 
       return {
         version: 1 as const,
@@ -737,6 +839,7 @@ export class SupabaseContentRepository implements ContentRepository {
             data: JSON.parse(row.data) as unknown,
             cachedAt: row.cachedAt,
           })),
+          units: unitRows.map(rowToUnit),
         },
       };
     });
@@ -749,6 +852,7 @@ export class SupabaseContentRepository implements ContentRepository {
       await db.delete(errorEventsTable).where(eq(errorEventsTable.userId, this.userId));
       await db.delete(weaknessTable).where(eq(weaknessTable.userId, this.userId));
       await db.delete(gamificationTable).where(eq(gamificationTable.userId, this.userId));
+      await db.delete(unitsTable).where(eq(unitsTable.userId, this.userId));
 
       for (const row of data.tables.profile) {
         await db.insert(profilesTable).values({
@@ -852,6 +956,22 @@ export class SupabaseContentRepository implements ContentRepository {
               cachedAt: lex.cachedAt,
             },
           });
+      }
+
+      // Old-format backups (pre-#57) have no `units` key — default to empty.
+      for (const u of data.tables.units ?? []) {
+        await db.insert(unitsTable).values({
+          userId: this.userId,
+          index: u.index,
+          title: u.title,
+          teacherNote: u.teacherNote,
+          targetGrammarIds: JSON.stringify(u.targetGrammarIds),
+          targetCefr: u.targetCefr,
+          activities: JSON.stringify(u.activities),
+          status: u.status,
+          bufferStatus: u.bufferStatus,
+          createdAt: u.createdAt,
+        });
       }
     });
   }

@@ -7,6 +7,7 @@ import type {
   NewCard,
   NewContent,
   NewErrorEvent,
+  NewUnit,
   Profile,
   Weakness,
 } from "@/lib/db";
@@ -37,6 +38,9 @@ const mockRepo = vi.hoisted(() => ({
   saveGamification: vi.fn().mockResolvedValue(undefined),
   getLexiconEntry: vi.fn().mockResolvedValue(undefined),
   putLexiconEntry: vi.fn().mockResolvedValue(undefined),
+  addUnit: vi.fn().mockResolvedValue(1),
+  getUnits: vi.fn().mockResolvedValue([]),
+  updateUnit: vi.fn().mockResolvedValue(undefined),
   clear: vi.fn().mockResolvedValue(undefined),
   exportBackup: vi.fn().mockResolvedValue({}),
   importBackup: vi.fn().mockResolvedValue(undefined),
@@ -91,10 +95,13 @@ describe("content actions — identity routing", () => {
     await actions.repoSaveGamification({} as GamificationState);
     await actions.repoGetLexiconEntry("hello");
     await actions.repoPutLexiconEntry({} as LexiconCacheEntry);
+    await actions.repoAddUnit({} as NewUnit);
+    await actions.repoGetUnits();
+    await actions.repoUpdateUnit(1, {});
     await actions.repoClear();
     await actions.repoExportBackup();
     await actions.repoImportBackup({} as BackupData);
 
-    expect(mockResolveCurrentUser).toHaveBeenCalledTimes(24);
+    expect(mockResolveCurrentUser).toHaveBeenCalledTimes(27);
   });
 });
