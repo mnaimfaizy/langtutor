@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 
 // Served at /manifest.webmanifest; Next auto-injects the <link rel="manifest">. Icons are
 // placeholder marks (see scripts/generate-icons.mjs) — real artwork lands in Phase 8.4.
+// background_color/theme_color match the adult-light --background/--accent tokens
+// (app/globals.css, ADR 0017) so the install/splash experience matches the refreshed brand.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Lang-Tutor",
@@ -10,8 +12,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "A private, local-first English tutor — reading, writing, listening, and speaking.",
     start_url: "/",
     display: "standalone",
-    background_color: "#fafaf9",
-    theme_color: "#4f46e5",
+    background_color: "#faf9fc",
+    theme_color: "#5b3df0",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },

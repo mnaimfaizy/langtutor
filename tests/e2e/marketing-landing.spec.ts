@@ -70,6 +70,40 @@ test.describe("marketing landing page: phone viewport", () => {
   });
 });
 
+test.describe("marketing landing page: SEO & share metadata (issue #54)", () => {
+  test("raw HTML response (no JS) carries title, description, canonical, and og/twitter tags", async ({
+    page,
+  }) => {
+    // `page.request` issues a plain HTTP GET — no browser JS execution — so this proves the
+    // tags (and the landing content below) are present in the server-rendered response itself,
+    // not injected client-side.
+    const response = await page.request.get("/");
+    expect(response.status()).toBe(200);
+    const html = await response.text();
+
+    expect(html).toContain("<title>Lang-Tutor — your private AI English tutor</title>");
+    expect(html).toMatch(
+      /<meta name="description" content="Reading, writing, listening, and speaking[^"]*"\/>/,
+    );
+    expect(html).toMatch(/<link rel="canonical" href="[^"]*"\/>/);
+
+    expect(html).toMatch(/<meta property="og:title" content="Lang-Tutor[^"]*"\/>/);
+    expect(html).toMatch(/<meta property="og:description" content="Reading, writing[^"]*"\/>/);
+    expect(html).toContain('<meta property="og:type" content="website"/>');
+    expect(html).toMatch(/<meta property="og:image" content="[^"]*opengraph-image[^"]*"\/>/);
+
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image"/>');
+    expect(html).toMatch(/<meta name="twitter:title" content="Lang-Tutor[^"]*"\/>/);
+
+    // Full landing content is server-rendered, not injected by client JS.
+    expect(html).toContain("Lang-Tutor — your private AI English tutor");
+    expect(html).toContain("Four skills, one adaptive tutor");
+    expect(html).toContain("Practice that remembers what you forget");
+    expect(html).toContain("Private by design, not by promise");
+    expect(html).toContain("Built for grown-ups. Ready for kids too.");
+  });
+});
+
 test.describe("marketing landing page: desktop viewport", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 

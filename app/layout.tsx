@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SerwistProvider } from "@serwist/turbopack/react";
 import { getCurrentExperienceMode } from "@/lib/db/server";
+import { SITE_URL } from "@/lib/config/site";
 import { paletteBootstrapScript } from "@/lib/theme";
 import "./globals.css";
 import { MotionProvider } from "./motion-provider";
@@ -21,14 +22,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Lang-Tutor",
   description: "A private, local-first English tutor — reading, writing, listening, and speaking.",
   applicationName: "Lang-Tutor",
   appleWebApp: { capable: true, title: "Lang-Tutor", statusBarStyle: "default" },
 };
 
+// Matches the premium-dark brand's --accent token (ADR 0017): adult-light indigo,
+// adult-dark periwinkle. Kept in sync with app/globals.css by hand — both are tiny,
+// stable brand constants rather than a shared source of truth worth extracting.
 export const viewport: Viewport = {
-  themeColor: "#4f46e5",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#5b3df0" },
+    { media: "(prefers-color-scheme: dark)", color: "#8b7bff" },
+  ],
 };
 
 export default async function RootLayout({
