@@ -5,15 +5,14 @@
 
 ## What works (verified)
 
-| Command                            | Notes                                                               |
-| ---------------------------------- | ------------------------------------------------------------------- |
-| `pnpm verify`                      | The required CI gate. Typecheck + lint + format:check + unit tests. |
-| `pnpm test` / `pnpm test:watch`    | Vitest, node env + fake-indexeddb. No browser needed.               |
-| `pnpm dev` / `pnpm build`          | Turbopack root is pinned in `next.config.ts` — boots normally.      |
-| `pnpm exec playwright test <spec>` | Chromium OS deps are baked into the image; the browser binary is    |
-|                                    | installed by a sandbox-ready hook into a persistent host-mounted    |
-|                                    | cache (`~/.cache/ms-playwright`).                                   |
-| `gh` (GitHub CLI)                  | Authenticated; used for issue view/close.                           |
+| Command                            | Notes                                                                |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| `pnpm verify`                      | The required CI gate. Typecheck + lint + format:check + unit tests.  |
+| `pnpm test` / `pnpm test:watch`    | Vitest, node env + fake-indexeddb. No browser needed.                |
+| `pnpm dev` / `pnpm build`          | Turbopack root is pinned in `next.config.ts` — boots normally.       |
+| `pnpm exec playwright test <spec>` | Chromium (OS deps + browser binary) is baked into the image at       |
+|                                    | `/ms-playwright` (`PLAYWRIGHT_BROWSERS_PATH`). Works out of the box. |
+| `gh` (GitHub CLI)                  | Authenticated; used for issue view/close.                            |
 
 ## Hard bans — never run these
 
@@ -22,7 +21,8 @@
   comment on the issue and stop.
 - **`playwright install --with-deps`** — tries to call apt via sudo and hangs silently
   (~10 min observed). The deps are already installed. If the browser binary is missing,
-  `pnpm exec playwright install chromium` (no `--with-deps`) is safe and hits the mounted cache.
+  `pnpm exec playwright install chromium` (no `--with-deps`) is safe — it installs to the
+  container-native `/ms-playwright` path, never to a bind mount.
 - **Wiping `node_modules` / the pnpm store more than once.** See anti-thrash rule below.
 
 ## Anti-thrash rule

@@ -2,4 +2,3 @@
 logs/
 worktrees/
 .pnpm-store/
-.ms-playwright/

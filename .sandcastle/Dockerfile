@@ -9,8 +9,7 @@ RUN apt-get update && apt-get install -y \
 
 # Playwright Chromium OS dependencies (headless). Installed at build time as root —
 # the agent user has no sudo, so `playwright install --with-deps` must NEVER be run
-# in the sandbox (see .sandcastle/ENVIRONMENT.md). The browser binary itself is
-# installed by the onSandboxReady hook into a host-mounted cache.
+# in the sandbox (see .sandcastle/ENVIRONMENT.md).
 RUN apt-get update && apt-get install -y \
   libasound2 \
   libatk-bridge2.0-0 \
@@ -35,6 +34,15 @@ RUN apt-get update && apt-get install -y \
   libxrandr2 \
   fonts-liberation \
   && rm -rf /var/lib/apt/lists/*
+
+# Bake the Chromium browser binary into the image on the container's NATIVE
+# filesystem. Downloading/extracting ~150 MB through the Windows 9P bind mount
+# times out (>5 min observed) — the same lesson as the pnpm virtual store.
+# The version MUST match the repo's @playwright/test (pnpm-lock.yaml); the
+# onSandboxReady hook `pnpm exec playwright install chromium` is a fast no-op
+# when they match and re-downloads to this native path if the repo bumps it.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx -y playwright@1.61.0 install chromium && chmod -R a+rX /ms-playwright
 
 # Install GitHub CLI
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
