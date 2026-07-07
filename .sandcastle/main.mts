@@ -1,4 +1,12 @@
-import { run, claudeCode, cursor, copilot } from "@ai-hero/sandcastle";
+import {
+  run,
+  claudeCode,
+  cursor,
+  copilot,
+  type AgentProvider,
+  type IterationUsage,
+  type RunResult,
+} from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import dotenv from "dotenv";
 import { mkdirSync } from "node:fs";
@@ -60,6 +68,116 @@ function readEnvModel(key: string, fallback: string) {
   return trimmed;
 }
 
+// ---------------------------------------------------------------------------
+// Token-usage wrappers.
+//
+// Sandcastle prints "Context window: Nk" per iteration whenever the provider
+// surfaces an IterationUsage — but out of the box only Claude Code (session
+// JSONL parse) and Codex (stream event) do. Cursor and Copilot never populate
+// usage, so their runs show nothing. Both CLIs *do* expose the numbers:
+//
+// - Cursor CLI: the terminal `result` stream-json event carries an
+//   (undocumented) `usage` object — verified against cursor-agent
+//   2026.07.01: {inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens},
+//   where inputTokens is INCLUSIVE of the cache read/write counts.
+// - Copilot CLI: stdout has no input-token data, but the session log
+//   ~/.copilot/session-state/<id>/events.jsonl ends with a compact-JSON
+//   `session.shutdown` event carrying tokenDetails + currentTokens (the live
+//   context-window size). We surface that line onto stdout after the CLI
+//   exits and parse it here. Verified against Copilot CLI 1.0.68.
+//
+// Each wrapper extends parseStreamLine to emit a `usage` event; sandcastle's
+// existing machinery does the rest (per-iteration display + RunResult).
+// ---------------------------------------------------------------------------
+
+type StreamEvents = ReturnType<AgentProvider["parseStreamLine"]>;
+
+function withCursorUsage(provider: AgentProvider): AgentProvider {
+  return {
+    ...provider,
+    parseStreamLine(line: string): StreamEvents {
+      const events = [...provider.parseStreamLine(line)];
+      if (!line.startsWith("{")) return events;
+      try {
+        const obj = JSON.parse(line) as {
+          type?: string;
+          usage?: {
+            inputTokens?: number;
+            outputTokens?: number;
+            cacheReadTokens?: number;
+            cacheWriteTokens?: number;
+          };
+        };
+        if (obj.type === "result" && typeof obj.usage?.inputTokens === "number") {
+          const u = obj.usage;
+          const cacheRead = u.cacheReadTokens ?? 0;
+          const cacheWrite = u.cacheWriteTokens ?? 0;
+          const usage: IterationUsage = {
+            // Cursor's inputTokens includes the cached portions; split them out
+            // so input + cacheCreation + cacheRead === the real context size.
+            inputTokens: Math.max(0, u.inputTokens - cacheRead - cacheWrite),
+            cacheCreationInputTokens: cacheWrite,
+            cacheReadInputTokens: cacheRead,
+            outputTokens: u.outputTokens ?? 0,
+          };
+          events.push({ type: "usage", usage });
+        }
+      } catch {
+        // non-JSON line — ignore
+      }
+      return events;
+    },
+  };
+}
+
+function withCopilotUsage(provider: AgentProvider): AgentProvider {
+  return {
+    ...provider,
+    buildPrintCommand(options) {
+      const base = provider.buildPrintCommand(options);
+      // After copilot exits, echo the newest session's `session.shutdown` line
+      // (the only place Copilot CLI records input-token counts) to stdout so
+      // parseStreamLine below can pick it up. Preserve copilot's exit code.
+      const command =
+        `${base.command}; __rc=$?; ` +
+        `__f=$(ls -t "$HOME"/.copilot/session-state/*/events.jsonl 2>/dev/null | head -n 1); ` +
+        `if [ -n "$__f" ]; then grep '"type":"session.shutdown"' "$__f" | tail -n 1; fi; ` +
+        `exit $__rc`;
+      return { ...base, command };
+    },
+    parseStreamLine(line: string): StreamEvents {
+      const events = [...provider.parseStreamLine(line)];
+      if (!line.startsWith("{")) return events;
+      try {
+        const obj = JSON.parse(line) as {
+          type?: string;
+          data?: {
+            currentTokens?: number;
+            tokenDetails?: Record<string, { tokenCount?: number }>;
+          };
+        };
+        if (obj.type === "session.shutdown" && obj.data) {
+          const td = obj.data.tokenDetails;
+          const usage: IterationUsage = {
+            // currentTokens is the live context-window size at shutdown —
+            // the copilot analog of Claude's last-message input total. The
+            // tokenDetails input/cache counts aggregate across ALL turns, so
+            // summing them would wildly overstate the context window.
+            inputTokens: obj.data.currentTokens ?? td?.input?.tokenCount ?? 0,
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            outputTokens: td?.output?.tokenCount ?? 0,
+          };
+          events.push({ type: "usage", usage });
+        }
+      } catch {
+        // non-JSON line — ignore
+      }
+      return events;
+    },
+  };
+}
+
 function getAgent() {
   const agentFlag = process.argv.indexOf("--agent");
   const agentStr =
@@ -68,11 +186,11 @@ function getAgent() {
   switch (agentStr) {
     case "cursor": {
       const model = readEnvModel("SANDCASTLE_CURSOR_MODEL", DEFAULT_MODELS.cursor);
-      return cursor(model);
+      return withCursorUsage(cursor(model));
     }
     case "copilot": {
       const model = readEnvModel("SANDCASTLE_COPILOT_MODEL", DEFAULT_MODELS.copilot);
-      return copilot(model);
+      return withCopilotUsage(copilot(model));
     }
     case "claude":
     default: {
@@ -155,6 +273,31 @@ const HOOKS = {
   },
 };
 
+const fmtTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+
+/** Print a per-iteration token-usage summary to the console after a run. */
+function printTokenUsage(label: string, iterations: RunResult["iterations"]) {
+  for (const [i, it] of iterations.entries()) {
+    const u = it.usage;
+    if (!u) {
+      console.log(`[${label}] iteration ${i + 1}: token usage unavailable`);
+      continue;
+    }
+    const context = u.inputTokens + u.cacheCreationInputTokens + u.cacheReadInputTokens;
+    console.log(
+      `[${label}] iteration ${i + 1}: context ${fmtTokens(context)} tokens` +
+        ` (input ${fmtTokens(u.inputTokens)}, cache write ${fmtTokens(u.cacheCreationInputTokens)},` +
+        ` cache read ${fmtTokens(u.cacheReadInputTokens)}), output ${fmtTokens(u.outputTokens)}`,
+    );
+  }
+}
+
+// Verbose container logging: append every raw stdout line the agent emits to
+// the run's log file (in addition to the parsed human-readable log). Includes
+// stream events the parser drops — invaluable for post-mortems. Set
+// SANDCASTLE_VERBOSE=0 to disable.
+const VERBOSE_LOGS = process.env.SANDCASTLE_VERBOSE !== "0";
+
 /** Run one issue in its own sandbox. In loop mode we merge-to-head so the next
  *  issue's worktree (branched from HEAD) sees the prior issue's committed work —
  *  this is what makes the dependency ordering actually compose. */
@@ -162,7 +305,8 @@ async function runIssue(
   n: string,
   branchStrategy: { type: "branch"; branch: string } | { type: "merge-to-head" },
 ) {
-  return run({
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const result = await run({
     name: `issue-${n}`,
     sandbox: SANDBOX,
     agent: AGENT,
@@ -171,7 +315,14 @@ async function runIssue(
     branchStrategy,
     maxIterations: 5,
     hooks: HOOKS,
+    logging: {
+      type: "file",
+      path: join(process.cwd(), ".sandcastle", "logs", `issue-${n}-${AGENT.name}-${stamp}.log`),
+      verbose: VERBOSE_LOGS,
+    },
   });
+  printTokenUsage(`issue-${n}`, result.iterations);
+  return result;
 }
 
 // ---------------------------------------------------------------------------
