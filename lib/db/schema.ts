@@ -186,13 +186,23 @@ export type UnitStatus = "locked" | "available" | "in-progress" | "completed";
 export type UnitBufferStatus = "empty" | "buffered";
 
 /**
+ * Which module a unit's activity slot deep-links into: one of the four trainable skills,
+ * or `"review"` (vocabulary SRS review — not a diagnosed skill, so it lives outside
+ * {@link Skill} rather than widening that diagnostics-dimension type).
+ */
+export type ActivityKind = Skill | "review";
+
+/**
  * One ordered slot in a unit's activity list. `contentId` is undefined until the teacher
- * plans and the content pipeline generates/caches the activity (future work) — the
- * backbone seeder only reserves the slot and its skill.
+ * plans and the content pipeline generates/caches the activity, or (issue #59) until the
+ * unit player lazily generates it on first open — the backbone seeder only reserves the
+ * slot and its kind. `done` is set by the unit player's completion state machine
+ * (issue #59); undefined/false means pending.
  */
 export interface UnitActivityRef {
-  skill: Skill;
+  skill: ActivityKind;
   contentId?: number;
+  done?: boolean;
 }
 
 /**

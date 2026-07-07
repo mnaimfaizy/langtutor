@@ -95,9 +95,13 @@ const LexiconCacheRowSchema = z.object({
   cachedAt: z.coerce.date(),
 });
 
+const ActivityKindSchema = z.union([SkillSchema, z.literal("review")]);
+
 const UnitActivityRefSchema = z.object({
-  skill: SkillSchema,
+  skill: ActivityKindSchema,
   contentId: z.number().optional(),
+  // Default handles backups exported before the unit player (issue #59) existed.
+  done: z.boolean().optional(),
 });
 
 const UnitRowSchema = z.object({

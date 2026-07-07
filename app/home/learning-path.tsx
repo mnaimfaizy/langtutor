@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 import type { ContentRepository, Unit, UnitStatus } from "@/lib/db";
 import { loadPathIfEmpty } from "@/lib/path/seed";
@@ -85,13 +86,18 @@ export function LearningPath() {
     <section data-testid="learning-path" className="mt-10 w-full">
       <h2 className="text-foreground text-lg font-semibold tracking-tight">Your learning path</h2>
       <ol className="mt-4 flex flex-col gap-2">
-        {units.map((unit) => (
-          <li key={unit.id}>
+        {units.map((unit) => {
+          const locked = unit.status === "locked";
+          const card = (
             <Card
               data-testid={`unit-${unit.index}`}
               data-status={unit.status}
               data-unit-id={unit.id}
-              className={unit.status === "locked" ? "opacity-60" : undefined}
+              className={
+                locked
+                  ? "opacity-60"
+                  : "hover:border-accent/40 hover:shadow-glow transition-[colors,box-shadow]"
+              }
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -103,8 +109,23 @@ export function LearningPath() {
                 </Badge>
               </div>
             </Card>
-          </li>
-        ))}
+          );
+
+          return (
+            <li key={unit.id}>
+              {locked ? (
+                card
+              ) : (
+                <Link
+                  href={`/path/${unit.id}`}
+                  className="focus-visible:ring-accent focus-visible:ring-offset-background block rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                >
+                  {card}
+                </Link>
+              )}
+            </li>
+          );
+        })}
       </ol>
     </section>
   );

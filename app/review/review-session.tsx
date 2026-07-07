@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import type { Achievement, Card as CardRow } from "@/lib/db";
 import { ACHIEVEMENT_DEFS, applyReview, localDateString } from "@/lib/gamification";
+import { completeUnitActivity } from "@/lib/path/unit-player";
 import { getContentRepository } from "@/lib/registry";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
 import { resolveMotionPreset } from "@/lib/motion";
@@ -13,6 +15,7 @@ import { scheduleCard } from "@/lib/srs";
 import type { SrsRating } from "@/lib/srs";
 import { Badge, Button, Card, Progress, Skeleton } from "@/ui";
 import { cn } from "@/ui/cn";
+import { EmbeddedUnitBanner, useEmbeddedActivity } from "@/app/path/embedded";
 
 type Phase = "loading" | "empty" | "reviewing" | "summary" | "error";
 
@@ -54,9 +57,11 @@ const achievementVariants = {
 };
 
 export function ReviewSession() {
+  const router = useRouter();
   const reducedMotion = useReducedMotion() ?? false;
   const enter = resolveMotionPreset("enter", reducedMotion);
   const celebrate = resolveMotionPreset("celebrate", reducedMotion);
+  const embedded = useEmbeddedActivity();
 
   const achievementItem = {
     hidden: { opacity: 0, y: 10 },
@@ -69,6 +74,7 @@ export function ReviewSession() {
   const [revealed, setRevealed] = useState(false);
   const [counts, setCounts] = useState<RatingCounts>({ again: 0, hard: 0, good: 0, easy: 0 });
   const [result, setResult] = useState<SessionResult | null>(null);
+  const [returning, setReturning] = useState(false);
   const ratingInFlight = useRef(false);
 
   useEffect(() => {
@@ -91,6 +97,24 @@ export function ReviewSession() {
       active = false;
     };
   }, []);
+
+  /**
+   * Reports the activity done back into path state before returning to the unit — whether
+   * the learner actually had cards to review ("summary") or the deck was already caught up
+   * ("empty"), either way they engaged with the review activity (ADR 0015, issue #59). Awaits
+   * the write before navigating so the unit view never reads stale (not-yet-persisted) state.
+   */
+  async function completeAndReturnToUnit() {
+    if (!embedded) return;
+    setReturning(true);
+    try {
+      const repo = getContentRepository();
+      const units = await repo.getUnits();
+      await completeUnitActivity(repo, units, embedded.unitId, embedded.activityIndex);
+    } finally {
+      router.push(`/path/${embedded.unitId}`);
+    }
+  }
 
   async function handleRate(rating: SrsRating) {
     if (ratingInFlight.current) return;
@@ -158,15 +182,29 @@ export function ReviewSession() {
         className="flex flex-1 flex-col items-center justify-center px-6 py-16"
       >
         <div data-testid="review-empty" className="w-full max-w-sm text-center">
+          {embedded && <EmbeddedUnitBanner unitId={embedded.unitId} />}
           <h1 className="text-foreground text-2xl font-semibold">All caught up!</h1>
           <p className="text-muted mt-3 text-base leading-7">
             No cards are due right now. Check back later.
           </p>
-          <Link href="/home" className="mt-8 inline-block">
-            <Button variant="secondary" size="lg">
-              Back to home
+          {embedded ? (
+            <Button
+              data-testid="btn-back-to-unit-or-home"
+              variant="secondary"
+              size="lg"
+              className="mt-8"
+              disabled={returning}
+              onClick={() => void completeAndReturnToUnit()}
+            >
+              {returning ? "Saving…" : "Back to unit"}
             </Button>
-          </Link>
+          ) : (
+            <Link href="/home" className="mt-8 inline-block">
+              <Button data-testid="btn-back-to-unit-or-home" variant="secondary" size="lg">
+                Back to home
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     );
@@ -186,6 +224,7 @@ export function ReviewSession() {
           animate={celebrate.animate}
           transition={celebrate.transition}
         >
+          {embedded && <EmbeddedUnitBanner unitId={embedded.unitId} />}
           <h1 className="text-foreground text-center text-3xl font-semibold">Session complete</h1>
           <p className="text-muted mt-2 text-center text-base">{total} cards reviewed</p>
 
@@ -248,11 +287,29 @@ export function ReviewSession() {
             ))}
           </div>
 
-          <Link href="/home" className="mt-8 block">
-            <Button variant="gradient" size="lg" className="w-full">
-              Back to home
+          {embedded ? (
+            <Button
+              data-testid="btn-back-to-unit-or-home"
+              variant="gradient"
+              size="lg"
+              className="mt-8 w-full"
+              disabled={returning}
+              onClick={() => void completeAndReturnToUnit()}
+            >
+              {returning ? "Saving…" : "Back to unit"}
             </Button>
-          </Link>
+          ) : (
+            <Link href="/home" className="mt-8 block">
+              <Button
+                data-testid="btn-back-to-unit-or-home"
+                variant="gradient"
+                size="lg"
+                className="w-full"
+              >
+                Back to home
+              </Button>
+            </Link>
+          )}
         </motion.div>
       </div>
     );
@@ -294,6 +351,7 @@ export function ReviewSession() {
       className="flex flex-1 flex-col items-center justify-center px-6 py-16"
     >
       <div className="w-full max-w-sm">
+        {embedded && <EmbeddedUnitBanner unitId={embedded.unitId} />}
         <div className="text-muted mb-3 flex items-center justify-between text-sm">
           <span data-testid="review-progress">
             {currentIndex + 1} / {total}

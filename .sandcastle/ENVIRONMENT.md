@@ -79,5 +79,18 @@ Do not enter an edit → revert → reinstall → re-apply loop. One reinstall a
   clean slate) before the next Playwright run — Playwright/Next will regenerate both from
   scratch. If you kill a dev server manually in this sandbox, always follow up with
   `rm -rf .next` rather than assuming the next `pnpm dev`/Playwright run will self-heal.
+- **(issue #59) Running several separate `pnpm exec playwright test <spec>` invocations
+  back-to-back can leave the next invocation's `auth.setup.ts` hanging** — `page.waitForURL
+  ("/home")` after sign-in blows the full 300 s setup timeout with no server-side error,
+  even though no process is holding the SQLite file (checked: no live, non-zombie `node`
+  process). Each separate invocation starts and then SIGTERMs its own `pnpm dev` (Playwright's
+  `webServer` lifecycle) when `reuseExistingServer` doesn't find one listening — repeating
+  that start/stop cycle several times in a row appears to be able to wedge the next server's
+  auth/session flow the same way a manually-killed dev server corrupts `.next` (see the
+  entry above). Symptom is specific to sign-**in** (bootstrap of a fresh DB is unaffected).
+  Fix: prefer one Playwright invocation listing every spec file you need
+  (`pnpm exec playwright test tests/e2e/a.spec.ts tests/e2e/b.spec.ts ...`) instead of N
+  separate commands; if a run does hang like this, `rm -rf .next && rm -f
+  langtutor-e2e.db*` and retry once in a single consolidated invocation.
 - (Add new, verified environment findings here — with the run/issue number — so the next
   agent does not re-discover them.)

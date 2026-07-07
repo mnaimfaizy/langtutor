@@ -7,13 +7,18 @@
  * issue #58) fills in richer titles/notes/vocab and adapts the plan once wired up.
  */
 import { GRAMMAR_MAP, type GrammarMap } from "@/lib/content/grammar-map";
-import type { Cefr, NewUnit, Skill, UnitActivityRef } from "@/lib/db";
+import type { ActivityKind, Cefr, NewUnit, UnitActivityRef } from "@/lib/db";
 
-/** Fixed, deterministic ordering for the placeholder activity slots in a backbone unit. */
-const ACTIVITY_SKILL_ORDER: readonly Skill[] = ["reading", "writing", "listening", "speaking"];
+/**
+ * Fixed, deterministic ordering for the placeholder activity slots in a backbone unit.
+ * Only `review` and `reading` are wired end-to-end (unit player, issue #59); the
+ * remaining module types (`writing`, `listening`, `speaking`) join the backbone once
+ * they gain the embedded-in-unit presentation (issue #60).
+ */
+const ACTIVITY_KIND_ORDER: readonly ActivityKind[] = ["review", "reading"];
 
 function backboneActivities(): UnitActivityRef[] {
-  return ACTIVITY_SKILL_ORDER.map((skill) => ({ skill }));
+  return ACTIVITY_KIND_ORDER.map((skill) => ({ skill }));
 }
 
 /**

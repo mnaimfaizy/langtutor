@@ -6,6 +6,7 @@
  */
 export type {
   Achievement,
+  ActivityKind,
   Card,
   Cefr,
   Content,

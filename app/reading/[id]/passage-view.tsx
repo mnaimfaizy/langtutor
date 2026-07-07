@@ -1,22 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import type { Content } from "@/lib/db";
 import { PassageSchema } from "@/lib/content/passage";
+import { completeUnitActivity } from "@/lib/path/unit-player";
 import { getContentRepository } from "@/lib/registry";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
 import { Badge, BackLink, Button, Card } from "@/ui";
 import { TtsButton } from "@/ui/tts-button";
 import { ComprehensionQuiz } from "@/app/comprehension-quiz";
+import { EmbeddedUnitBanner, useEmbeddedActivity } from "@/app/path/embedded";
 import { WordPopover } from "./word-popover";
 
 type Phase = "loading" | "ready" | "notFound" | "error";
 
 export function PassageView({ id }: { id: number }) {
+  const router = useRouter();
+  const embedded = useEmbeddedActivity();
   const [phase, setPhase] = useState<Phase>(() => (isNaN(id) || id <= 0 ? "notFound" : "loading"));
   const [content, setContent] = useState<Content | null>(null);
+  const [completing, setCompleting] = useState(false);
+  const completedRef = useRef(false);
 
   useEffect(() => {
     if (isNaN(id) || id <= 0) return;
@@ -41,6 +48,19 @@ export function PassageView({ id }: { id: number }) {
       active = false;
     };
   }, [id]);
+
+  async function handleCompleteReading() {
+    if (!embedded || completedRef.current) return;
+    completedRef.current = true;
+    setCompleting(true);
+    try {
+      const repo = getContentRepository();
+      const units = await repo.getUnits();
+      await completeUnitActivity(repo, units, embedded.unitId, embedded.activityIndex);
+    } finally {
+      router.push(`/path/${embedded.unitId}`);
+    }
+  }
 
   if (phase === "loading") {
     return (
@@ -86,6 +106,8 @@ export function PassageView({ id }: { id: number }) {
       <div className="mx-auto w-full max-w-2xl">
         <BackLink href="/reading" label="Reading" className="mb-6" />
 
+        {embedded && <EmbeddedUnitBanner unitId={embedded.unitId} />}
+
         {/* Passage */}
         <article data-testid="passage-article" className="mt-2">
           <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -124,12 +146,24 @@ export function PassageView({ id }: { id: number }) {
           <ComprehensionQuiz skill="reading" title={title} body={body} level={content.level} />
         )}
 
-        <div className="mt-10">
-          <Link href="/reading">
-            <Button variant="secondary" size="md">
-              Back to Reading
+        <div className="mt-10 flex flex-wrap gap-3">
+          {embedded ? (
+            <Button
+              data-testid="btn-complete-reading"
+              variant="gradient"
+              size="md"
+              disabled={completing}
+              onClick={() => void handleCompleteReading()}
+            >
+              {completing ? "Saving…" : "Mark as complete"}
             </Button>
-          </Link>
+          ) : (
+            <Link href="/reading">
+              <Button variant="secondary" size="md">
+                Back to Reading
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </div>
