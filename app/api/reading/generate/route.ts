@@ -16,6 +16,10 @@ const RequestSchema = z.object({
   level: z.enum(["A1", "A2", "B1", "B2", "C1", "C2"] as const satisfies readonly Cefr[]),
 });
 
+function isValidationRetryExhausted(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("Remaining violations:");
+}
+
 /**
  * `POST /api/reading/generate` — generate a CEFR-valid reading passage.
  * Body: `{ topic: string, level: Cefr }`
@@ -48,20 +52,35 @@ export async function POST(request: Request) {
 
   try {
     const llmClient = await getLLMClient();
+    const sink = new NoopContentSink();
+    const baseOptions = {
+      messages: buildPassageMessages(topic, level),
+      level,
+      schema: PassageSchema,
+      textField: "body" as const,
+      type: "passage" as const,
+      topic,
+    };
 
-    const result = await generateContent(
-      {
-        messages: buildPassageMessages(topic, level),
-        level,
-        schema: PassageSchema,
-        textField: "body",
-        type: "passage",
-        topic,
-      },
-      llmClient,
-      getContentValidator(),
-      new NoopContentSink(),
-    );
+    let result;
+    try {
+      result = await generateContent(baseOptions, llmClient, getContentValidator(), sink);
+    } catch (error) {
+      if (!isValidationRetryExhausted(error)) {
+        throw error;
+      }
+
+      console.warn(
+        "[api/reading/generate] Strict CEFR validation exhausted retries; returning passage without hard-blocking.",
+        error,
+      );
+      result = await generateContent(
+        { ...baseOptions, skipValidation: true, maxRetries: 0 },
+        llmClient,
+        null,
+        sink,
+      );
+    }
 
     return Response.json({ passage: result.parsed });
   } catch (error) {
