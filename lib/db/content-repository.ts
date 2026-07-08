@@ -102,6 +102,7 @@ export interface ContentRepository extends ContentSink {
   /** All units for the current user, ordered by `index` ascending. */
   getUnits(): Promise<Unit[]>;
   updateUnit(id: number, changes: Partial<NewUnit>): Promise<void>;
+  deleteUnit(id: number): Promise<void>;
 
   /** Wipe every table. Used by import/restore (Phase 8.2) and tests. */
   clear(): Promise<void>;

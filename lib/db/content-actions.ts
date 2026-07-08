@@ -140,6 +140,10 @@ export async function repoUpdateUnit(id: number, changes: Partial<NewUnit>): Pro
   return (await getServerContentRepository()).updateUnit(id, changes);
 }
 
+export async function repoDeleteUnit(id: number): Promise<void> {
+  return (await getServerContentRepository()).deleteUnit(id);
+}
+
 export async function repoClear(): Promise<void> {
   return (await getServerContentRepository()).clear();
 }

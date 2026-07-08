@@ -9,25 +9,28 @@
  * {@link PathChapter.isComplete} into the chapter-complete moment on the path (finishing a
  * level milestone, e.g. all A1 units, so A1 → A2 feels like an achievement).
  */
-import type { Cefr, Unit } from "@/lib/db";
+import type { Unit } from "@/lib/db";
+
+import { type PathTier, unitTier } from "./pre-a1";
 
 export interface PathChapter {
-  cefr: Cefr;
+  tier: PathTier;
   units: Unit[];
   /** True once every unit in this chapter is `completed`. A chapter with no units is never complete. */
   isComplete: boolean;
 }
 
-/** Groups @units into consecutive-by-`targetCefr` chapters, preserving their given order. */
+/** Groups @units into consecutive-by-tier chapters, preserving their given order. */
 export function groupUnitsByChapter(units: readonly Unit[]): PathChapter[] {
   const chapters: PathChapter[] = [];
 
   for (const unit of units) {
+    const tier = unitTier(unit);
     const current = chapters[chapters.length - 1];
-    if (current && current.cefr === unit.targetCefr) {
+    if (current && current.tier === tier) {
       current.units.push(unit);
     } else {
-      chapters.push({ cefr: unit.targetCefr, units: [unit], isComplete: false });
+      chapters.push({ tier, units: [unit], isComplete: false });
     }
   }
 

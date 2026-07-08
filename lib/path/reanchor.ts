@@ -81,6 +81,7 @@ export function reanchorFutureUnits(
   const patches: UnitReanchor[] = [];
 
   for (const unit of futureUnits(units)) {
+    if (unit.index < 0) continue; // pre-A1 tier is outside the grammar-map backbone (ADR 0016)
     const construction = constructionAtIndex(grammarMap, newLevel, unit.index);
     if (!construction) continue; // past the end of the curriculum — nothing to re-anchor to
     if (unit.targetGrammarIds[0] === construction.id) continue; // already correct — no-op

@@ -21,7 +21,7 @@ type AdminConfig = Pick<
   | "macSttUrl"
 >;
 
-type TtsPrefs = Pick<ProfileSettings, "ttsRate" | "ttsVoiceUri" | "ttsLang">;
+type TtsPrefs = Pick<ProfileSettings, "ttsRate" | "ttsVoiceUri" | "ttsLang" | "enablePreA1">;
 
 const ADMIN_KEYS: Array<keyof AdminConfig> = [
   "chatProvider",

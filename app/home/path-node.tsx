@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import type { ExperienceMode, Unit, UnitStatus } from "@/lib/db";
 import { firstPendingActivityIndex } from "@/lib/path/unit-progress";
+import { isPreA1Unit } from "@/lib/path/pre-a1";
 import { Badge, Card, ProgressRing, cn } from "@/ui";
 import { ACTIVITY_ICON } from "../path/activity-display";
 import { CheckIcon, FlagIcon, LockIcon } from "../icons";
@@ -57,9 +58,16 @@ export function PathNode({
       <NodeMarker unit={unit} kid={kid} testId={`unit-${unit.index}-marker`} />
 
       <div className="min-w-0 flex-1">
-        <p className={cn("text-foreground font-semibold", kid ? "text-base" : "text-sm")}>
-          {unit.title}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {isPreA1Unit(unit) && (
+            <Badge variant="neutral" size="sm" className="shrink-0">
+              Pre-A1
+            </Badge>
+          )}
+          <p className={cn("text-foreground font-semibold", kid ? "text-base" : "text-sm")}>
+            {unit.title}
+          </p>
+        </div>
         <p className={cn("text-muted mt-1 leading-5", kid ? "text-sm" : "text-xs")}>
           {unit.teacherNote}
         </p>

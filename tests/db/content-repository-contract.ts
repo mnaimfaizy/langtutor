@@ -403,6 +403,17 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
           { skill: "listening" },
         ]);
       });
+
+      it("deletes a unit by id", async () => {
+        const id = await repo.addUnit(makeUnit(-1));
+        await repo.addUnit(makeUnit(0));
+
+        await repo.deleteUnit(id);
+
+        const units = await repo.getUnits();
+        expect(units).toHaveLength(1);
+        expect(units[0]?.index).toBe(0);
+      });
     });
 
     // -------------------------------------------------------------------------

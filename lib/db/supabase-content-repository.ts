@@ -800,6 +800,14 @@ export class SupabaseContentRepository implements ContentRepository {
     });
   }
 
+  async deleteUnit(id: number): Promise<void> {
+    await this.scoped(async (db) => {
+      await db
+        .delete(unitsTable)
+        .where(and(eq(unitsTable.id, id), eq(unitsTable.userId, this.userId)));
+    });
+  }
+
   // ─── maintenance ──────────────────────────────────────────────────────────
 
   async clear(): Promise<void> {

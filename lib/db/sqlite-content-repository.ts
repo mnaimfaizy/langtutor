@@ -756,6 +756,13 @@ export class SqliteContentRepository implements ContentRepository {
       .run();
   }
 
+  async deleteUnit(id: number): Promise<void> {
+    this.db
+      .delete(unitsTable)
+      .where(and(eq(unitsTable.id, id), eq(unitsTable.userId, this.userId)))
+      .run();
+  }
+
   // ─── maintenance ──────────────────────────────────────────────────────────
 
   async clear(): Promise<void> {

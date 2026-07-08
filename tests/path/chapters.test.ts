@@ -35,9 +35,9 @@ describe("groupUnitsByChapter", () => {
     const chapters = groupUnitsByChapter(units);
 
     expect(chapters).toHaveLength(2);
-    expect(chapters[0]?.cefr).toBe("A1");
+    expect(chapters[0]?.tier).toBe("A1");
     expect(chapters[0]?.units.map((u) => u.id)).toEqual([1, 2]);
-    expect(chapters[1]?.cefr).toBe("A2");
+    expect(chapters[1]?.tier).toBe("A2");
     expect(chapters[1]?.units.map((u) => u.id)).toEqual([3]);
   });
 
@@ -51,7 +51,7 @@ describe("groupUnitsByChapter", () => {
 
     const chapters = groupUnitsByChapter(units);
 
-    expect(chapters.map((c) => c.cefr)).toEqual(["B1", "A1"]);
+    expect(chapters.map((c) => c.tier)).toEqual(["B1", "A1"]);
   });
 
   it("marks a chapter complete only once every one of its units is completed", () => {
@@ -74,5 +74,18 @@ describe("groupUnitsByChapter", () => {
 
     expect(chapters[0]?.isComplete).toBe(true);
     expect(chapters[1]?.isComplete).toBe(false);
+  });
+
+  it("groups negative-index pre-A1 units into their own chapter", () => {
+    const units = [
+      unit({ id: 1, index: -2, targetCefr: "A1", status: "available" }),
+      unit({ id: 2, index: -1, targetCefr: "A1", status: "locked" }),
+      unit({ id: 3, index: 0, targetCefr: "A1", status: "locked" }),
+    ];
+
+    const chapters = groupUnitsByChapter(units);
+
+    expect(chapters.map((c) => c.tier)).toEqual(["pre-A1", "A1"]);
+    expect(chapters[0]?.units.map((u) => u.id)).toEqual([1, 2]);
   });
 });

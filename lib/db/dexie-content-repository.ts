@@ -191,6 +191,10 @@ export class DexieContentRepository implements ContentRepository {
     await this.db.units.update(id, changes);
   }
 
+  async deleteUnit(id: number): Promise<void> {
+    await this.db.units.delete(id);
+  }
+
   // maintenance -------------------------------------------------------------
   async clear(): Promise<void> {
     await Promise.all(this.db.tables.map((table) => table.clear()));

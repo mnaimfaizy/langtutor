@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { DEFAULT_EXPERIENCE_MODE, type ExperienceMode, type Unit } from "@/lib/db";
 import { groupUnitsByChapter } from "@/lib/path/chapters";
 import { replenishPathBuffer } from "@/lib/path/replenish";
-import { loadPathIfEmpty } from "@/lib/path/seed";
+import { ensurePath } from "@/lib/path/seed";
 import { currentUnit } from "@/lib/path/unit-progress";
 import { getContentRepository } from "@/lib/registry";
 import { PathChapterMilestone } from "./path-chapter-milestone";
@@ -41,10 +41,15 @@ export function LearningPath() {
 
     void (async () => {
       const profile = await repo.getProfile();
-      const anchorLevel = profile?.cefrLevel ?? "A1";
       if (active) setMode(profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE);
 
-      await loadPathIfEmpty(repo, anchorLevel);
+      await ensurePath(repo, {
+        cefrLevel: profile?.cefrLevel,
+        goals: profile?.goals ?? [],
+        createdAt: profile?.createdAt ?? new Date(),
+        settings: profile?.settings ?? {},
+        experienceMode: profile?.experienceMode,
+      });
       const loaded = await repo.getUnits();
       if (active) setUnits(loaded);
 
@@ -74,7 +79,7 @@ export function LearningPath() {
 
       <ol className="mt-4 flex flex-col gap-2">
         {chapters.map((chapter, chapterIndex) => (
-          <li key={chapter.cefr}>
+          <li key={chapter.tier}>
             <ol className="flex flex-col gap-2">
               {chapter.units.map((unit) => (
                 <li key={unit.id}>
@@ -85,8 +90,8 @@ export function LearningPath() {
             {chapter.isComplete && (
               <div className="mt-2">
                 <PathChapterMilestone
-                  cefr={chapter.cefr}
-                  nextCefr={chapters[chapterIndex + 1]?.cefr}
+                  tier={chapter.tier}
+                  nextTier={chapters[chapterIndex + 1]?.tier}
                   mode={mode}
                 />
               </div>

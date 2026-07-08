@@ -18,6 +18,7 @@ const ProfileRowSchema = z.object({
     ttsRate: z.number().optional(),
     ttsVoiceUri: z.string().optional(),
     ttsLang: z.string().optional(),
+    enablePreA1: z.boolean().optional(),
   }),
 });
 

@@ -51,6 +51,7 @@ import {
   repoSaveSettings,
   repoUpdateCard,
   repoUpdateUnit,
+  repoDeleteUnit,
 } from "./content-actions";
 
 export class HttpContentRepository implements ContentRepository {
@@ -131,6 +132,9 @@ export class HttpContentRepository implements ContentRepository {
   }
   updateUnit(id: number, changes: Partial<NewUnit>): Promise<void> {
     return repoUpdateUnit(id, changes);
+  }
+  deleteUnit(id: number): Promise<void> {
+    return repoDeleteUnit(id);
   }
   clear(): Promise<void> {
     return repoClear();

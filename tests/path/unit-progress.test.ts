@@ -121,6 +121,12 @@ describe("nextUnitToUnlock", () => {
     const next = unit({ id: 2, index: 1, status: "available" });
     expect(nextUnitToUnlock([completed, next], completed)).toBeNull();
   });
+
+  it("unlocks unit 0 after the last pre-A1 unit completes", () => {
+    const completed = unit({ id: 4, index: -1, status: "completed" });
+    const next = unit({ id: 5, index: 0, status: "locked" });
+    expect(nextUnitToUnlock([completed, next], completed)).toBe(next);
+  });
 });
 
 describe("currentUnit", () => {

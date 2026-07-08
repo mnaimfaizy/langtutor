@@ -14,6 +14,7 @@ import {
 } from "@/lib/db";
 import { HealthResponseSchema } from "@/lib/llm/settings";
 import { getContentRepository } from "@/lib/registry";
+import { syncPreA1Units } from "@/lib/path/seed";
 import { applyPalette } from "@/lib/theme";
 import {
   Button,
@@ -93,6 +94,11 @@ export default function SettingsPage() {
   const [experienceModeBusy, setExperienceModeBusy] = useState(false);
   const [experienceModeBanner, setExperienceModeBanner] = useState<Banner>(null);
 
+  // Adult pre-A1 opt-in (ADR 0016, issue #66)
+  const [enablePreA1, setEnablePreA1] = useState(false);
+  const [preA1Busy, setPreA1Busy] = useState(false);
+  const [preA1Banner, setPreA1Banner] = useState<Banner>(null);
+
   // TTS state
   const [ttsRate, setTtsRate] = useState(1);
   const [ttsVoiceUri, setTtsVoiceUri] = useState("");
@@ -120,6 +126,7 @@ export default function SettingsPage() {
         setProfileLevel(profile?.cefrLevel);
         setProfileGoals(profile?.goals ?? []);
         setExperienceMode(profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE);
+        setEnablePreA1(s.enablePreA1 ?? false);
         setTtsRate(s.ttsRate ?? 1);
         setTtsVoiceUri(s.ttsVoiceUri ?? "");
         setTtsLang(s.ttsLang ?? "");
@@ -287,6 +294,7 @@ export default function SettingsPage() {
         experienceMode,
       };
       await repo.saveProfile(profile);
+      await syncPreA1Units(repo, profile);
       setExperienceModeBanner({ tone: "ok", text: "Appearance saved." });
     } catch (error) {
       setExperienceModeBanner({
@@ -295,6 +303,33 @@ export default function SettingsPage() {
       });
     } finally {
       setExperienceModeBusy(false);
+    }
+  }
+
+  async function handleSavePreA1() {
+    setPreA1Busy(true);
+    setPreA1Banner(null);
+    try {
+      const repo = getContentRepository();
+      const existing = await repo.getProfile();
+      const settings = { ...(existing?.settings ?? {}), enablePreA1 };
+      await saveUserPrefs({ enablePreA1 });
+      const profile: Profile = {
+        cefrLevel: existing?.cefrLevel,
+        goals: existing?.goals ?? [],
+        createdAt: existing?.createdAt ?? new Date(),
+        settings,
+        experienceMode: existing?.experienceMode,
+      };
+      await syncPreA1Units(repo, profile);
+      setPreA1Banner({ tone: "ok", text: "Beginner path updated." });
+    } catch (error) {
+      setPreA1Banner({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Save failed",
+      });
+    } finally {
+      setPreA1Busy(false);
     }
   }
 
@@ -368,6 +403,51 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {experienceMode === "adult" && (
+        <Card className="mt-6" data-testid="pre-a1-settings-section">
+          <CardTitle>Beginner path</CardTitle>
+          <CardDescription>
+            True-zero adults can opt into Pre-A1 placeholder units (alphabet, phonics, and
+            picture-word basics) ahead of A1 on the learning path.
+          </CardDescription>
+          <CardContent className="space-y-4">
+            <label className="text-foreground flex cursor-pointer items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                data-testid="enable-pre-a1-checkbox"
+                checked={enablePreA1}
+                disabled={!loaded || preA1Busy}
+                onChange={(e) => setEnablePreA1(e.target.checked)}
+                className="border-border accent-accent mt-0.5 size-4 shrink-0 rounded"
+              />
+              <span>Include Pre-A1 beginner units on my learning path</span>
+            </label>
+
+            <div className="pt-1">
+              <Button
+                data-testid="btn-save-pre-a1"
+                onClick={() => void handleSavePreA1()}
+                disabled={!loaded || preA1Busy}
+              >
+                Save beginner path
+              </Button>
+            </div>
+
+            {preA1Banner && (
+              <p
+                className={cn(
+                  "text-sm",
+                  preA1Banner.tone === "ok" ? "text-success" : "text-danger",
+                )}
+                role="status"
+              >
+                {preA1Banner.text}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {isAdmin && (
         <Card className="mt-6">

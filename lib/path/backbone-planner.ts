@@ -34,9 +34,9 @@ export function backboneActivities(): UnitActivityRef[] {
  * C2, in map order. Only the first unit unlocks (`available`); every later unit starts
  * `locked` (workstream 3 — the LLM teacher — will adapt unlock timing later).
  *
- * The pre-A1 tier (ADR 0016) is designed into {@link NewUnit.index}: negative indices are
- * reserved for it and are never produced here (workstream 4, not yet built) — backbone
- * units always start at index 0.
+ * The pre-A1 tier (ADR 0016) uses negative indices ahead of unit 0 — see
+ * `lib/path/pre-a1.ts` for that seeding. This function only produces A1+ backbone units
+ * starting at index 0.
  *
  * @param anchorLevel the learner's current CEFR level (from onboarding/placement).
  * @param grammarMap injectable for tests; defaults to the real 39-entry map.

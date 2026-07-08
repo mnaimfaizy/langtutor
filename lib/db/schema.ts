@@ -50,6 +50,8 @@ export interface ProfileSettings {
   ttsRate?: number;
   ttsVoiceUri?: string;
   ttsLang?: string;
+  /** Adult-mode opt-in for pre-A1 placeholder units on the path (ADR 0016, issue #66). */
+  enablePreA1?: boolean;
 }
 
 /**
@@ -229,9 +231,8 @@ export interface UnitActivityRef {
 /**
  * One node on the learning path (ADR 0015, glossary "Unit"; PLAN §4 `units`).
  *
- * `index` orders units ascending on the path. Backbone seeding (issue #57) starts at 0;
- * negative indices are reserved for a future pre-A1 tier (ADR 0016) that will be inserted
- * before the first A1 unit — the seeder never produces one yet.
+ * `index` orders units ascending on the path. A1+ backbone seeding (issue #57) starts at 0;
+ * negative indices hold the pre-A1 tier (ADR 0016, issue #66) inserted before unit 0.
  */
 export interface Unit {
   id: number;
