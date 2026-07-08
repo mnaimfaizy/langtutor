@@ -7,6 +7,10 @@ import postgres from "postgres";
 
 import { env } from "@/lib/config/env";
 
+import { seedIllustrationPackIfEmpty } from "@/lib/content/illustration-pack";
+import { BOOTSTRAP_ADMIN_ID } from "./schema.shared";
+import { SupabaseContentRepository } from "../supabase-content-repository";
+
 import { seedPostgresAppConfig } from "./seed.postgres";
 import * as schema from "./schema.postgres";
 
@@ -83,6 +87,7 @@ async function connectAndMigrate(): Promise<PostgresDrizzleClient> {
 
   try {
     await seedPostgresAppConfig(_client);
+    await seedIllustrationPackIfEmpty(new SupabaseContentRepository(_client, BOOTSTRAP_ADMIN_ID));
   } catch (error) {
     throw new Error(
       "[LangTutor] Cloud database is not initialized. " +

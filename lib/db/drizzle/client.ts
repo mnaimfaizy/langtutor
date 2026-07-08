@@ -8,6 +8,7 @@ import path from "node:path";
 import { env } from "@/lib/config/env";
 
 import { seedAppConfig } from "./seed";
+import { seedIllustrationPackSync } from "./seed-illustration-pack";
 import * as schema from "./schema";
 
 export type DrizzleClient = ReturnType<typeof drizzle<typeof schema>>;
@@ -36,6 +37,7 @@ export function getDrizzleClient(): DrizzleClient {
   });
 
   seedAppConfig(_client);
+  seedIllustrationPackSync(_client);
 
   return _client;
 }

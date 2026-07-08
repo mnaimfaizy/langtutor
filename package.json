@@ -19,6 +19,7 @@
     "db:migrate:postgres": "tsx scripts/migrate-postgres.mts",
     "data:build-wordnet": "node scripts/build-wordnet.mjs",
     "data:build-words-cefr": "node scripts/build-words-cefr.mjs",
+    "data:build-illustration-pack": "node scripts/build-illustration-pack.mjs",
     "sandcastle": "pnpm exec tsx .sandcastle/main.mts",
     "sandcastle:build": "npx sandcastle docker build-image",
     "sandcastle:issue": "pnpm exec tsx .sandcastle/main.mts --issue"
