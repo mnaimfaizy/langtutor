@@ -42,9 +42,16 @@ export async function completeUnitActivity(
   const { activities, status } = completeActivity(unit, activityIndex);
   await repo.updateUnit(unitId, { activities, status });
 
+  const completedAt = new Date();
+  await recordCelebration(repo, {
+    kind: "activity-complete",
+    unitId: unit.id,
+    activityIndex,
+    at: completedAt,
+  });
+
   if (status !== "completed") return;
 
-  const completedAt = new Date();
   emitUnitCompleted({ unitId: unit.id, unitIndex: unit.index, completedAt });
 
   await recordCelebration(repo, {

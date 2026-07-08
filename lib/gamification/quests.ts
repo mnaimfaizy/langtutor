@@ -171,7 +171,7 @@ export function rolloverWeeklyQuests(state: QuestState, today: string): QuestSta
 }
 
 function eventQualifiesForActiveDay(event: CelebrationEvent): boolean {
-  if (event.kind === "unit-complete") return true;
+  if (event.kind === "activity-complete" || event.kind === "unit-complete") return true;
   return event.kind === "review-complete" && event.cardCount > 0;
 }
 

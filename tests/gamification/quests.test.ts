@@ -280,6 +280,50 @@ describe("applyCelebrationToQuests", () => {
     expect(current.entries.find((e) => e.questId === "daily-review-10")?.progress).toBe(10);
   });
 
+  it("accumulates active days from activity-complete events", () => {
+    const base = rollForToday(undefined);
+    const updated = applyCelebrationToQuests(base, {
+      kind: "activity-complete",
+      unitId: 1,
+      activityIndex: 0,
+      at: NOW,
+    });
+    expect(updated.entries.find((e) => e.questId === "weekly-active-days")?.progress).toBe(1);
+  });
+
+  it("does not double-count active days when activity-complete and unit-complete fire together", () => {
+    let current = rollForToday(undefined);
+    current = applyCelebrationToQuests(current, {
+      kind: "activity-complete",
+      unitId: 1,
+      activityIndex: 1,
+      at: NOW,
+    });
+    current = applyCelebrationToQuests(current, {
+      kind: "unit-complete",
+      unitId: 1,
+      unitIndex: 0,
+      at: NOW,
+    });
+    expect(current.entries.find((e) => e.questId === "weekly-active-days")?.progress).toBe(1);
+    const finishUnit = current.entries.find((e) => e.questId === "daily-finish-unit");
+    const weeklyUnits = current.entries.find((e) => e.questId === "weekly-units-2");
+    expect(finishUnit?.progress).toBe(1);
+    expect(weeklyUnits?.progress).toBe(1);
+  });
+
+  it("does not count unit-finish quests from activity-complete alone", () => {
+    const base = rollForToday(undefined);
+    const updated = applyCelebrationToQuests(base, {
+      kind: "activity-complete",
+      unitId: 1,
+      activityIndex: 0,
+      at: NOW,
+    });
+    expect(updated.entries.find((e) => e.questId === "daily-finish-unit")?.progress).toBe(0);
+    expect(updated.entries.find((e) => e.questId === "weekly-units-2")?.progress).toBe(0);
+  });
+
   it("counts at most one active day per calendar day for weekly consistency quests", () => {
     let current = rollForToday(undefined);
     current = applyCelebrationToQuests(current, {

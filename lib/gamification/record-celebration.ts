@@ -8,7 +8,7 @@ type QuestRepo = Pick<ContentRepository, "getQuestState" | "saveQuestState">;
 
 /**
  * Rolls daily quests if needed, applies the celebration event, and persists quest state.
- * Called from review-session completion and unit completion orchestration.
+ * Called from review-session completion and unit-player activity/unit completion.
  */
 export async function recordCelebration(repo: QuestRepo, event: CelebrationEvent): Promise<void> {
   const today = localDateString(event.at);

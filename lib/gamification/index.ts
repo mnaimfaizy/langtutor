@@ -9,6 +9,7 @@ export type { CollectibleDef } from "./collectibles";
 export { applyReview } from "./apply-review";
 export type { ApplyReviewResult, ReviewSummary } from "./apply-review";
 export type {
+  ActivityCompleteCelebration,
   CelebrationEvent,
   LevelUpCelebration,
   ReviewCompleteCelebration,

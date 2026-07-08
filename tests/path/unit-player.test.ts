@@ -66,6 +66,16 @@ describe("completeUnitActivity", () => {
     expect(saved?.status).toBe("in-progress");
   });
 
+  it("records active-day quest progress on a partial activity completion", async () => {
+    const repo = makeFakeRepo([unit()]);
+
+    await completeUnitActivity(repo, repo.units, 1, 0, noopReplenish);
+
+    const questState = await repo.getQuestState();
+    expect(questState?.entries.find((e) => e.questId === "weekly-active-days")?.progress).toBe(1);
+    expect(questState?.entries.find((e) => e.questId === "daily-finish-unit")?.progress).toBe(0);
+  });
+
   it("completes the unit and unlocks the next locked unit on the final activity", async () => {
     const first = unit({
       id: 1,
@@ -94,6 +104,18 @@ describe("completeUnitActivity", () => {
 
     await completeUnitActivity(repo, repo.units, 1, 1, noopReplenish);
     expect(events).toEqual([1]);
+  });
+
+  it("records unit-finish quest progress when the final activity completes the unit", async () => {
+    const repo = makeFakeRepo([unit()]);
+
+    await completeUnitActivity(repo, repo.units, 1, 0, noopReplenish);
+    await completeUnitActivity(repo, repo.units, 1, 1, noopReplenish);
+
+    const questState = await repo.getQuestState();
+    expect(questState?.entries.find((e) => e.questId === "daily-finish-unit")?.progress).toBe(1);
+    expect(questState?.entries.find((e) => e.questId === "weekly-units-2")?.progress).toBe(1);
+    expect(questState?.entries.find((e) => e.questId === "weekly-active-days")?.progress).toBe(1);
   });
 
   it("is a no-op when the activity is already done (idempotent)", async () => {
