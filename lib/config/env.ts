@@ -21,6 +21,8 @@ const macConfigFields = {
   MISTRAL_API_KEY: z.string().min(1).optional(),
   /** Optional env-first default Mistral embeddings model. */
   MISTRAL_EMBED_MODEL: z.string().min(1).optional(),
+  /** NVIDIA NIM API key — server-only; required for pre-A1 image generation (ADR 0016). */
+  NVIDIA_NIM_API_KEY: z.string().min(1).optional(),
 };
 
 const localConfigSchema = z.object({

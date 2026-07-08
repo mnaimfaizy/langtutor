@@ -6,8 +6,8 @@
 
 Workstream order: **1)** design-system refresh (premium-dark tokens + bright kid palette) →
 **2)** marketing landing page → **3)** guided learning path (LLM teacher + buffer) →
-**4)** pre-A1 kid tier + media asset store (needs image-gen provider research spike — NVIDIA NIM
-first candidate; Groq/Mistral do **not** offer image gen) → **5)** gamification revamp →
+**4)** pre-A1 kid tier + media asset store (image-gen provider chosen — see spike below) →
+**5)** gamification revamp →
 **6)** deck overhaul (browser, stats dashboard, collections, picture cards, card management).
 
 > **⚠️ 2026-06 — locked decision #1 is being reversed.** The app is moving to **multi-user, with
@@ -61,6 +61,21 @@ The enrichment agent stores **structured facts** (definitions, CEFR, POS), not c
 - **Async serverless/DB-trigger gamification** → local instant (locked decision #14)
 - **SM2/DolphinSR** → FSRS (locked decision #10)
 - **Dedicated-exam-first diagnostics** → continuous error events from day one
+
+## Image-gen provider spike (ADR 0016, issue #67)
+
+Evaluated two free-tier candidates for pre-A1 kid vocabulary illustrations. Groq and Mistral
+do **not** offer image generation.
+
+| Candidate                                   | Endpoint                                                                       | Rate limits                                            | Licensing                                                | Kid-vocab quality                                                                       | Verdict                                                                            |
+| ------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **NVIDIA NIM (FLUX.1-schnell)**             | `https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell`          | Free developer tier: ~1 000 inference credits, ~40 RPM | FLUX.1-schnell is Apache 2.0 — outputs usable in the app | Fast, clean illustrations; prompt template tuned for simple objects on white background | **Chosen** — wired as `NvidiaNimImageGenerator`                                    |
+| **Hugging Face Inference (FLUX.1-schnell)** | `https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell` | ~300 req/hr on free accounts                           | Model Apache 2.0; HF ToS applies                         | Comparable model/quality                                                                | Runner-up — viable swap behind the `ImageGenerator` seam if NVIDIA credits exhaust |
+
+**Notes:** Older hosted SDXL models on `integrate.api.nvidia.com` return 404 / are deprecated
+(June 2026 forum reports). The cloud GenAI endpoint above (`ai.api.nvidia.com/v1/genai/…`) is
+the correct hosted path for FLUX.1-schnell. Payload is strictly `{ prompt, seed, width, height }`;
+response is `{ artifacts: [{ base64 }] }` (JPEG). API key is server-only (`NVIDIA_NIM_API_KEY`).
 
 ## Open roadmap items
 
