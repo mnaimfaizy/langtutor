@@ -6,19 +6,21 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import type { Achievement, Card as CardRow } from "@/lib/db";
+import { DEFAULT_EXPERIENCE_MODE, type ExperienceMode } from "@/lib/db";
 import {
   ACHIEVEMENT_DEFS,
   applyReview,
   localDateString,
   recordCelebration,
 } from "@/lib/gamification";
+import type { ReviewCompleteCelebration } from "@/lib/gamification/celebration-event";
 import { completeUnitActivity } from "@/lib/path/unit-player";
 import { getContentRepository } from "@/lib/registry";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
 import { resolveMotionPreset } from "@/lib/motion";
 import { scheduleCard } from "@/lib/srs";
 import type { SrsRating } from "@/lib/srs";
-import { Badge, Button, Card, Progress, Skeleton } from "@/ui";
+import { Badge, Button, Card, CelebrationOverlayHost, Progress, Skeleton } from "@/ui";
 import { cn } from "@/ui/cn";
 import { EmbeddedUnitBanner, useEmbeddedActivity } from "@/app/path/embedded";
 
@@ -79,8 +81,27 @@ export function ReviewSession() {
   const [revealed, setRevealed] = useState(false);
   const [counts, setCounts] = useState<RatingCounts>({ again: 0, hard: 0, good: 0, easy: 0 });
   const [result, setResult] = useState<SessionResult | null>(null);
+  const [celebration, setCelebration] = useState<{
+    event: ReviewCompleteCelebration;
+    streakCount: number;
+  } | null>(null);
+  const [celebrationOpen, setCelebrationOpen] = useState(false);
+  const [experienceMode, setExperienceMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
   const [returning, setReturning] = useState(false);
   const ratingInFlight = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+    void getContentRepository()
+      .getProfile()
+      .then((profile) => {
+        if (!active) return;
+        setExperienceMode(profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -150,14 +171,17 @@ export function ReviewSession() {
           today,
           now,
         });
-        await repo.saveGamification(newState);
-        await recordCelebration(repo, {
+        const celebrationEvent: ReviewCompleteCelebration = {
           kind: "review-complete",
           cardCount: total,
           xpEarned,
           leveledUp,
           at: now,
-        });
+        };
+        await repo.saveGamification(newState);
+        await recordCelebration(repo, celebrationEvent);
+        setCelebration({ event: celebrationEvent, streakCount: newState.streakCount });
+        setCelebrationOpen(true);
         setResult({ xpEarned, leveledUp, newLevel: newState.level, newAchievements });
         setPhase("summary");
       } else {
@@ -225,105 +249,116 @@ export function ReviewSession() {
   if (phase === "summary") {
     const total = counts.again + counts.hard + counts.good + counts.easy;
     return (
-      <div
-        data-testid="review-session"
-        className="flex flex-1 flex-col items-center justify-center px-6 py-16"
-      >
-        <motion.div
-          data-testid="review-summary"
-          className="w-full max-w-sm"
-          initial={celebrate.initial}
-          animate={celebrate.animate}
-          transition={celebrate.transition}
+      <>
+        {celebration && (
+          <CelebrationOverlayHost
+            open={celebrationOpen}
+            event={celebration.event}
+            streakCount={celebration.streakCount}
+            register={experienceMode}
+            onComplete={() => setCelebrationOpen(false)}
+          />
+        )}
+        <div
+          data-testid="review-session"
+          className="flex flex-1 flex-col items-center justify-center px-6 py-16"
         >
-          {embedded && <EmbeddedUnitBanner unitId={embedded.unitId} />}
-          <h1 className="text-foreground text-center text-3xl font-semibold">Session complete</h1>
-          <p className="text-muted mt-2 text-center text-base">{total} cards reviewed</p>
+          <motion.div
+            data-testid="review-summary"
+            className="w-full max-w-sm"
+            initial={celebrate.initial}
+            animate={celebrate.animate}
+            transition={celebrate.transition}
+          >
+            {embedded && <EmbeddedUnitBanner unitId={embedded.unitId} />}
+            <h1 className="text-foreground text-center text-3xl font-semibold">Session complete</h1>
+            <p className="text-muted mt-2 text-center text-base">{total} cards reviewed</p>
 
-          {result && (
-            <div className="mt-4 text-center">
-              <motion.p
-                data-testid="summary-xp"
-                className="text-accent text-lg font-semibold"
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 14, delay: 0.15 }}
-              >
-                +{result.xpEarned} XP
-              </motion.p>
-
-              {result.leveledUp && (
+            {result && (
+              <div className="mt-4 text-center">
                 <motion.p
-                  className="text-success mt-1 text-sm font-semibold"
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.3 }}
+                  data-testid="summary-xp"
+                  className="text-accent text-lg font-semibold"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 14, delay: 0.15 }}
                 >
-                  ★ Level up! Now level {result.newLevel}
+                  +{result.xpEarned} XP
                 </motion.p>
-              )}
 
-              {result.newAchievements.length > 0 && (
-                <motion.ul
-                  className="mt-2 space-y-1"
-                  variants={achievementVariants}
-                  initial="hidden"
-                  animate="show"
-                >
-                  {result.newAchievements.map((a) => (
-                    <motion.li
-                      key={a.id}
-                      data-testid="summary-new-achievement"
-                      className="text-warning text-sm"
-                      variants={achievementItem}
-                    >
-                      {(() => {
-                        const def = ACH_DEF_MAP.get(a.id);
-                        return def
-                          ? `${def.icon} ${def.label} unlocked!`
-                          : `Achievement unlocked: ${a.id.replace(/_/g, " ")}`;
-                      })()}
-                    </motion.li>
-                  ))}
-                </motion.ul>
-              )}
+                {result.leveledUp && (
+                  <motion.p
+                    className="text-success mt-1 text-sm font-semibold"
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.3 }}
+                  >
+                    ★ Level up! Now level {result.newLevel}
+                  </motion.p>
+                )}
+
+                {result.newAchievements.length > 0 && (
+                  <motion.ul
+                    className="mt-2 space-y-1"
+                    variants={achievementVariants}
+                    initial="hidden"
+                    animate="show"
+                  >
+                    {result.newAchievements.map((a) => (
+                      <motion.li
+                        key={a.id}
+                        data-testid="summary-new-achievement"
+                        className="text-warning text-sm"
+                        variants={achievementItem}
+                      >
+                        {(() => {
+                          const def = ACH_DEF_MAP.get(a.id);
+                          return def
+                            ? `${def.icon} ${def.label} unlocked!`
+                            : `Achievement unlocked: ${a.id.replace(/_/g, " ")}`;
+                        })()}
+                      </motion.li>
+                    ))}
+                  </motion.ul>
+                )}
+              </div>
+            )}
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              {(["again", "hard", "good", "easy"] as const).map((r) => (
+                <Card key={r} data-testid={`summary-count-${r}`} className="p-4 text-center">
+                  <p className={cn("text-2xl font-bold", ratingColor(r))}>{counts[r]}</p>
+                  <p className="text-muted mt-1 text-sm capitalize">{r}</p>
+                </Card>
+              ))}
             </div>
-          )}
 
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            {(["again", "hard", "good", "easy"] as const).map((r) => (
-              <Card key={r} data-testid={`summary-count-${r}`} className="p-4 text-center">
-                <p className={cn("text-2xl font-bold", ratingColor(r))}>{counts[r]}</p>
-                <p className="text-muted mt-1 text-sm capitalize">{r}</p>
-              </Card>
-            ))}
-          </div>
-
-          {embedded ? (
-            <Button
-              data-testid="btn-back-to-unit-or-home"
-              variant="gradient"
-              size="lg"
-              className="mt-8 w-full"
-              disabled={returning}
-              onClick={() => void completeAndReturnToUnit()}
-            >
-              {returning ? "Saving…" : "Back to unit"}
-            </Button>
-          ) : (
-            <Link href="/home" className="mt-8 block">
+            {embedded ? (
               <Button
                 data-testid="btn-back-to-unit-or-home"
                 variant="gradient"
                 size="lg"
-                className="w-full"
+                className="mt-8 w-full"
+                disabled={returning}
+                onClick={() => void completeAndReturnToUnit()}
               >
-                Back to home
+                {returning ? "Saving…" : "Back to unit"}
               </Button>
-            </Link>
-          )}
-        </motion.div>
-      </div>
+            ) : (
+              <Link href="/home" className="mt-8 block">
+                <Button
+                  data-testid="btn-back-to-unit-or-home"
+                  variant="gradient"
+                  size="lg"
+                  className="w-full"
+                >
+                  Back to home
+                </Button>
+              </Link>
+            )}
+          </motion.div>
+        </div>
+      </>
     );
   }
 

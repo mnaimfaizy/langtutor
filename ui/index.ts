@@ -18,6 +18,12 @@ export * from "./badge";
 export * from "./avatar";
 export { Mascot, type MascotProps, type MascotRegister, type MascotState } from "./mascot";
 export {
+  CelebrationOverlay,
+  CelebrationOverlayHost,
+  type CelebrationOverlayHostProps,
+  type CelebrationOverlayProps,
+} from "./celebration-overlay";
+export {
   CollectibleToast,
   CollectibleToastHost,
   type CollectibleToastHostProps,
