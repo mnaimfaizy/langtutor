@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Unit } from "@/lib/db";
-import { groupUnitsByChapter } from "@/lib/path/chapters";
+import { groupUnitsByChapter, chapterTierCompletedByUnit } from "@/lib/path/chapters";
 
 function unit(overrides: Partial<Unit> = {}): Unit {
   return {
@@ -87,5 +87,35 @@ describe("groupUnitsByChapter", () => {
 
     expect(chapters.map((c) => c.tier)).toEqual(["pre-A1", "A1"]);
     expect(chapters[0]?.units.map((u) => u.id)).toEqual([1, 2]);
+  });
+});
+
+describe("chapterTierCompletedByUnit", () => {
+  it("returns the tier when the completed unit is the last one in a now-complete chapter", () => {
+    const units = [
+      unit({ id: 1, index: 0, targetCefr: "A1", status: "completed" }),
+      unit({ id: 2, index: 1, targetCefr: "A1", status: "completed" }),
+      unit({ id: 3, index: 2, targetCefr: "A2", status: "locked" }),
+    ];
+
+    expect(chapterTierCompletedByUnit(units, 2)).toBe("A1");
+  });
+
+  it("returns null when the unit is not the final unit of its chapter", () => {
+    const units = [
+      unit({ id: 1, index: 0, targetCefr: "A1", status: "completed" }),
+      unit({ id: 2, index: 1, targetCefr: "A1", status: "in-progress" }),
+    ];
+
+    expect(chapterTierCompletedByUnit(units, 1)).toBeNull();
+  });
+
+  it("returns null when the chapter is not yet fully complete", () => {
+    const units = [
+      unit({ id: 1, index: 0, targetCefr: "A1", status: "completed" }),
+      unit({ id: 2, index: 1, targetCefr: "A1", status: "in-progress" }),
+    ];
+
+    expect(chapterTierCompletedByUnit(units, 2)).toBeNull();
   });
 });

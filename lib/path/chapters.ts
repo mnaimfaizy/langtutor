@@ -40,3 +40,19 @@ export function groupUnitsByChapter(units: readonly Unit[]): PathChapter[] {
 
   return chapters;
 }
+
+/**
+ * Returns the chapter tier whose final unit is @unitId and is now fully complete, or null when
+ * completing @unitId did not finish a chapter (issue #84).
+ */
+export function chapterTierCompletedByUnit(
+  units: readonly Unit[],
+  unitId: number,
+): PathChapter["tier"] | null {
+  for (const chapter of groupUnitsByChapter(units)) {
+    if (!chapter.isComplete) continue;
+    const last = chapter.units[chapter.units.length - 1];
+    if (last?.id === unitId) return chapter.tier;
+  }
+  return null;
+}

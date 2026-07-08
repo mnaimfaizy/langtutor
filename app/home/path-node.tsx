@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 
 import type { ExperienceMode, Unit, UnitStatus } from "@/lib/db";
+import { MOTION_DURATIONS, resolveMotionPreset } from "@/lib/motion";
 import { firstPendingActivityIndex } from "@/lib/path/unit-progress";
 import { isPreA1Unit } from "@/lib/path/pre-a1";
 import { Badge, Card, ProgressRing, cn } from "@/ui";
@@ -32,13 +35,19 @@ export function PathNode({
   unit,
   mode,
   isCurrent,
+  playFillAnimation = false,
+  onFillAnimationEnd,
 }: {
   unit: Unit;
   mode: ExperienceMode;
   isCurrent: boolean;
+  playFillAnimation?: boolean;
+  onFillAnimationEnd?: () => void;
 }) {
   const locked = unit.status === "locked";
   const kid = mode === "kid";
+  const reducedMotion = useReducedMotion() ?? false;
+  const fill = resolveMotionPreset("path-fill", reducedMotion);
 
   const card = (
     <Card
@@ -46,6 +55,7 @@ export function PathNode({
       data-status={unit.status}
       data-unit-id={unit.id}
       data-current={isCurrent || undefined}
+      data-filling={playFillAnimation || undefined}
       className={cn(
         "flex items-center gap-4",
         kid && "rounded-2xl",
@@ -53,9 +63,16 @@ export function PathNode({
           ? "opacity-60"
           : "hover:border-accent/40 hover:shadow-glow transition-[colors,box-shadow]",
         isCurrent && !locked && "border-accent/50 shadow-glow",
+        unit.status === "completed" && "border-success/30",
       )}
     >
-      <NodeMarker unit={unit} kid={kid} testId={`unit-${unit.index}-marker`} />
+      <NodeMarker
+        unit={unit}
+        kid={kid}
+        testId={`unit-${unit.index}-marker`}
+        playFillAnimation={playFillAnimation}
+        onFillAnimationEnd={onFillAnimationEnd}
+      />
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -79,20 +96,46 @@ export function PathNode({
     </Card>
   );
 
-  if (locked) return card;
+  const wrappedCard =
+    playFillAnimation && unit.status === "completed" ? (
+      <motion.div
+        initial={{ opacity: 0.92 }}
+        animate={{ opacity: 1 }}
+        transition={fill.transition}
+        className="rounded-xl"
+      >
+        {card}
+      </motion.div>
+    ) : (
+      card
+    );
+
+  if (locked) return wrappedCard;
 
   return (
     <Link
       href={`/path/${unit.id}`}
       className="focus-visible:ring-accent focus-visible:ring-offset-background block rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
     >
-      {card}
+      {wrappedCard}
     </Link>
   );
 }
 
 /** The node's marker: dormant lock, ready-to-start flag, filling ring, or a completed check. */
-function NodeMarker({ unit, kid, testId }: { unit: Unit; kid: boolean; testId: string }) {
+function NodeMarker({
+  unit,
+  kid,
+  testId,
+  playFillAnimation,
+  onFillAnimationEnd,
+}: {
+  unit: Unit;
+  kid: boolean;
+  testId: string;
+  playFillAnimation: boolean;
+  onFillAnimationEnd?: () => void;
+}) {
   const size = kid ? "md" : "sm";
   const iconSize = kid ? "size-6" : "size-4";
 
@@ -111,17 +154,19 @@ function NodeMarker({ unit, kid, testId }: { unit: Unit; kid: boolean; testId: s
   }
 
   if (unit.status === "completed") {
-    return (
-      <span
-        data-testid={testId}
-        className={cn(
-          "from-gradient-from via-gradient-via to-gradient-to text-gradient-foreground shadow-glow flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br",
-          kid ? "size-16" : "size-11",
-        )}
-      >
-        <CheckIcon className={iconSize} />
-      </span>
-    );
+    if (playFillAnimation) {
+      return (
+        <AnimatingCompletedMarker
+          kid={kid}
+          iconSize={iconSize}
+          testId={testId}
+          total={unit.activities.length}
+          onFillAnimationEnd={onFillAnimationEnd}
+        />
+      );
+    }
+
+    return <StaticCompletedMarker kid={kid} iconSize={iconSize} testId={testId} />;
   }
 
   if (unit.status === "in-progress") {
@@ -155,5 +200,99 @@ function NodeMarker({ unit, kid, testId }: { unit: Unit; kid: boolean; testId: s
     >
       <FlagIcon className={iconSize} />
     </span>
+  );
+}
+
+/** Completed check shown for units that were already done before this render. */
+function StaticCompletedMarker({
+  kid,
+  iconSize,
+  testId,
+}: {
+  kid: boolean;
+  iconSize: string;
+  testId: string;
+}) {
+  return (
+    <span
+      data-testid={testId}
+      className={cn(
+        "from-gradient-from via-gradient-via to-gradient-to text-gradient-foreground shadow-glow flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br",
+        kid ? "size-16" : "size-11",
+      )}
+    >
+      <CheckIcon className={iconSize} />
+    </span>
+  );
+}
+
+/** Plays ring-to-check fill once on mount (issue #84). */
+function AnimatingCompletedMarker({
+  kid,
+  iconSize,
+  testId,
+  total,
+  onFillAnimationEnd,
+}: {
+  kid: boolean;
+  iconSize: string;
+  testId: string;
+  total: number;
+  onFillAnimationEnd?: () => void;
+}) {
+  const reducedMotion = useReducedMotion() ?? false;
+  const fill = resolveMotionPreset("path-fill", reducedMotion);
+  const size = kid ? "md" : "sm";
+  const ringStart = Math.max(0, total - 1);
+  const [ringValue, setRingValue] = useState(ringStart);
+  const [showCheck, setShowCheck] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setRingValue(total));
+
+    const fillMs = reducedMotion
+      ? MOTION_DURATIONS.pathFillReduced * 1000
+      : MOTION_DURATIONS.pathFill * 1000;
+
+    const checkTimer = window.setTimeout(() => {
+      setShowCheck(true);
+      onFillAnimationEnd?.();
+    }, fillMs);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(checkTimer);
+    };
+  }, [reducedMotion, onFillAnimationEnd, total]);
+
+  if (!showCheck) {
+    return (
+      <ProgressRing
+        data-testid={testId}
+        value={ringValue}
+        max={total}
+        size={size}
+        aria-label={`${total} of ${total} activities complete`}
+        className="shrink-0"
+        indicatorClassName="stroke-success"
+      >
+        <CheckIcon className={cn(iconSize, "text-success")} />
+      </ProgressRing>
+    );
+  }
+
+  return (
+    <motion.span
+      data-testid={testId}
+      initial={{ scale: 0.9, opacity: 0.7 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={fill.transition}
+      className={cn(
+        "from-gradient-from via-gradient-via to-gradient-to text-gradient-foreground shadow-glow flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br",
+        kid ? "size-16" : "size-11",
+      )}
+    >
+      <CheckIcon className={iconSize} />
+    </motion.span>
   );
 }

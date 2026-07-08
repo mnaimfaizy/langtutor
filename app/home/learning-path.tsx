@@ -11,6 +11,7 @@ import { getContentRepository } from "@/lib/registry";
 import { PathChapterMilestone } from "./path-chapter-milestone";
 import { PathContinue } from "./path-continue";
 import { PathNode } from "./path-node";
+import { usePathProgression } from "./use-path-progression";
 
 const MODE_HEADING: Record<ExperienceMode, string> = {
   kid: "Your adventure map",
@@ -62,6 +63,9 @@ export function LearningPath() {
     };
   }, []);
 
+  const { fillingUnitIds, animatingChapterTiers, clearUnitFill, clearChapterAnim } =
+    usePathProgression(units);
+
   if (!units || units.length === 0) return null;
 
   const chapters = groupUnitsByChapter(units);
@@ -83,7 +87,13 @@ export function LearningPath() {
             <ol className="flex flex-col gap-2">
               {chapter.units.map((unit) => (
                 <li key={unit.id}>
-                  <PathNode unit={unit} mode={mode} isCurrent={unit.id === current?.id} />
+                  <PathNode
+                    unit={unit}
+                    mode={mode}
+                    isCurrent={unit.id === current?.id}
+                    playFillAnimation={fillingUnitIds.has(unit.id)}
+                    onFillAnimationEnd={() => clearUnitFill(unit.id)}
+                  />
                 </li>
               ))}
             </ol>
@@ -93,6 +103,8 @@ export function LearningPath() {
                   tier={chapter.tier}
                   nextTier={chapters[chapterIndex + 1]?.tier}
                   mode={mode}
+                  animateIn={animatingChapterTiers.has(chapter.tier)}
+                  onAnimationEnd={() => clearChapterAnim(chapter.tier)}
                 />
               </div>
             )}
