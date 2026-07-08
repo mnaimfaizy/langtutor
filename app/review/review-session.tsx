@@ -13,14 +13,17 @@ import {
   localDateString,
   recordCelebration,
 } from "@/lib/gamification";
-import type { ReviewCompleteCelebration } from "@/lib/gamification/celebration-event";
+import type {
+  LevelUpCelebration,
+  ReviewCompleteCelebration,
+} from "@/lib/gamification/celebration-event";
 import { completeUnitActivity } from "@/lib/path/unit-player";
 import { getContentRepository } from "@/lib/registry";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
 import { resolveMotionPreset } from "@/lib/motion";
 import { scheduleCard } from "@/lib/srs";
 import type { SrsRating } from "@/lib/srs";
-import { Badge, Button, Card, CelebrationOverlayHost, Progress, Skeleton } from "@/ui";
+import { Badge, Button, Card, Progress, ReviewCelebrationSequenceHost, Skeleton } from "@/ui";
 import { cn } from "@/ui/cn";
 import { EmbeddedUnitBanner, useEmbeddedActivity } from "@/app/path/embedded";
 
@@ -84,6 +87,8 @@ export function ReviewSession() {
   const [celebration, setCelebration] = useState<{
     event: ReviewCompleteCelebration;
     streakCount: number;
+    leveledUp: boolean;
+    newLevel: number;
   } | null>(null);
   const [celebrationOpen, setCelebrationOpen] = useState(false);
   const [experienceMode, setExperienceMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
@@ -180,7 +185,20 @@ export function ReviewSession() {
         };
         await repo.saveGamification(newState);
         await recordCelebration(repo, celebrationEvent);
-        setCelebration({ event: celebrationEvent, streakCount: newState.streakCount });
+        if (leveledUp) {
+          const levelUpEvent: LevelUpCelebration = {
+            kind: "level-up",
+            newLevel: newState.level,
+            at: now,
+          };
+          await recordCelebration(repo, levelUpEvent);
+        }
+        setCelebration({
+          event: celebrationEvent,
+          streakCount: newState.streakCount,
+          leveledUp,
+          newLevel: newState.level,
+        });
         setCelebrationOpen(true);
         setResult({ xpEarned, leveledUp, newLevel: newState.level, newAchievements });
         setPhase("summary");
@@ -251,9 +269,12 @@ export function ReviewSession() {
     return (
       <>
         {celebration && (
-          <CelebrationOverlayHost
+          <ReviewCelebrationSequenceHost
+            key={celebration.event.at.getTime()}
             open={celebrationOpen}
-            event={celebration.event}
+            leveledUp={celebration.leveledUp}
+            newLevel={celebration.newLevel}
+            reviewEvent={celebration.event}
             streakCount={celebration.streakCount}
             register={experienceMode}
             onComplete={() => setCelebrationOpen(false)}

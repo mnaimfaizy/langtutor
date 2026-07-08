@@ -20,8 +20,14 @@ export { Mascot, type MascotProps, type MascotRegister, type MascotState } from 
 export {
   CelebrationOverlay,
   CelebrationOverlayHost,
+  LevelUpOverlay,
+  LevelUpOverlayHost,
+  ReviewCelebrationSequenceHost,
   type CelebrationOverlayHostProps,
   type CelebrationOverlayProps,
+  type LevelUpOverlayHostProps,
+  type LevelUpOverlayProps,
+  type ReviewCelebrationSequenceProps,
 } from "./celebration-overlay";
 export {
   CollectibleToast,

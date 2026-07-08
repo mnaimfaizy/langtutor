@@ -7,8 +7,10 @@ import type { ReviewCompleteCelebration } from "@/lib/gamification/celebration-e
 import { resolveMotionPreset } from "@/lib/motion";
 import { cn } from "./cn";
 import { Mascot, type MascotRegister } from "./mascot";
+import { ProgressRing } from "./progress-ring";
 
 const OVERLAY_DURATION_MS = 2_800;
+const LEVEL_UP_DURATION_MS = 2_600;
 const CONFETTI_COUNT = 28;
 
 const CONFETTI_COLORS = ["bg-accent", "bg-warning", "bg-success", "bg-gradient-to"] as const;
@@ -170,8 +172,113 @@ export function CelebrationOverlay({
 
         <p className="text-muted text-sm">
           {event.cardCount} card{event.cardCount === 1 ? "" : "s"} reviewed
-          {event.leveledUp ? " · Level up!" : ""}
         </p>
+      </div>
+    </motion.div>
+  );
+}
+
+export type LevelUpOverlayProps = {
+  newLevel: number;
+  register?: MascotRegister;
+  onComplete: () => void;
+  className?: string;
+};
+
+/**
+ * Full-screen level-up beat — mascot celebrate state and the new level revealed
+ * before the regular session-completion celebration.
+ */
+export function LevelUpOverlay({
+  newLevel,
+  register = "kid",
+  onComplete,
+  className,
+}: LevelUpOverlayProps) {
+  const reducedMotion = useReducedMotion() ?? false;
+  const celebrate = resolveMotionPreset("celebrate", reducedMotion);
+  const confetti = React.useMemo(() => (reducedMotion ? [] : buildConfetti()), [reducedMotion]);
+
+  React.useEffect(() => {
+    const timer = window.setTimeout(onComplete, LEVEL_UP_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [onComplete]);
+
+  return (
+    <motion.div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Level up to level ${newLevel}`}
+      data-testid="level-up-overlay"
+      initial={celebrate.initial}
+      animate={celebrate.animate}
+      exit={celebrate.initial}
+      transition={celebrate.transition}
+      className={cn(
+        "bg-background/90 fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm",
+        className,
+      )}
+    >
+      {!reducedMotion && (
+        <div
+          data-testid="level-up-confetti"
+          className="pointer-events-none absolute inset-0 overflow-hidden"
+          aria-hidden="true"
+        >
+          {confetti.map((piece) => (
+            <motion.span
+              key={piece.id}
+              className={cn("absolute rounded-sm opacity-90", piece.color)}
+              style={{
+                left: piece.left,
+                top: "-8%",
+                width: piece.size,
+                height: piece.size * 1.4,
+              }}
+              initial={{ y: 0, rotate: piece.rotate, opacity: 1 }}
+              animate={{ y: "110vh", rotate: piece.rotate + 180, opacity: 0.2 }}
+              transition={{
+                duration: piece.duration,
+                delay: piece.delay,
+                ease: "easeIn",
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="relative flex flex-col items-center gap-6 px-6 text-center">
+        <Mascot data-testid="level-up-mascot" state="celebrate" register={register} />
+
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-muted text-sm font-semibold tracking-wide uppercase">Level up!</p>
+          <motion.div
+            initial={reducedMotion ? celebrate.animate : { opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={
+              reducedMotion
+                ? celebrate.transition
+                : { type: "spring", stiffness: 260, damping: 18, delay: 0.15 }
+            }
+          >
+            <ProgressRing
+              data-testid="level-up-ring"
+              value={1}
+              min={0}
+              max={1}
+              size="lg"
+              aria-label={`Level ${newLevel}`}
+              indicatorClassName="stroke-success"
+            >
+              <span
+                data-testid="level-up-number"
+                className="text-foreground text-3xl font-bold tabular-nums"
+              >
+                {newLevel}
+              </span>
+            </ProgressRing>
+          </motion.div>
+        </div>
       </div>
     </motion.div>
   );
@@ -191,6 +298,69 @@ export function CelebrationOverlayHost({
   return (
     <AnimatePresence>
       {open ? <CelebrationOverlay key="celebration" onComplete={onComplete} {...props} /> : null}
+    </AnimatePresence>
+  );
+}
+
+export type LevelUpOverlayHostProps = Omit<LevelUpOverlayProps, "onComplete"> & {
+  open: boolean;
+  onComplete: () => void;
+};
+
+export function LevelUpOverlayHost({ open, onComplete, ...props }: LevelUpOverlayHostProps) {
+  return (
+    <AnimatePresence>
+      {open ? <LevelUpOverlay key="level-up" onComplete={onComplete} {...props} /> : null}
+    </AnimatePresence>
+  );
+}
+
+export type ReviewCelebrationSequenceProps = {
+  open: boolean;
+  leveledUp: boolean;
+  newLevel: number;
+  reviewEvent: ReviewCompleteCelebration;
+  streakCount: number;
+  register?: MascotRegister;
+  onComplete: () => void;
+};
+
+/**
+ * Sequences level-up (when applicable) then session-completion celebrations so they
+ * never compete for the screen.
+ */
+export function ReviewCelebrationSequenceHost({
+  open,
+  leveledUp,
+  newLevel,
+  reviewEvent,
+  streakCount,
+  register = "kid",
+  onComplete,
+}: ReviewCelebrationSequenceProps) {
+  const [phase, setPhase] = React.useState<"level-up" | "review-complete">(
+    leveledUp ? "level-up" : "review-complete",
+  );
+
+  return (
+    <AnimatePresence mode="wait">
+      {open && phase === "level-up" ? (
+        <LevelUpOverlay
+          key="level-up"
+          newLevel={newLevel}
+          register={register}
+          onComplete={() => setPhase("review-complete")}
+        />
+      ) : null}
+      {open && phase === "review-complete" ? (
+        <CelebrationOverlay
+          key="review-complete"
+          event={reviewEvent}
+          streakCount={streakCount}
+          register={register}
+          onComplete={onComplete}
+        />
+      ) : null}
     </AnimatePresence>
   );
 }

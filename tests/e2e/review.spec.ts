@@ -136,3 +136,53 @@ test("review: empty state when no cards are due", async ({ page }) => {
   await expect(page.getByTestId("review-session")).toBeVisible();
   await expect(page.getByTestId("review-empty")).toBeVisible();
 });
+
+/** Seed gamification near the level-2 threshold so one review session triggers level-up. */
+async function seedNearLevelUp(page: Page) {
+  await page.evaluate(() => {
+    return new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open("lang-tutor");
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction("gamification", "readwrite");
+        tx.objectStore("gamification").put({
+          id: 1,
+          xp: 95,
+          level: 1,
+          streakCount: 0,
+          lastActivityDate: null,
+          achievements: [],
+        });
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => {
+          db.close();
+          reject(tx.error);
+        };
+      };
+      req.onerror = () => reject(req.error);
+    });
+  });
+}
+
+test("review: level-up shows full-screen beat before session celebration", async ({ page }) => {
+  await setupWithSeed(page);
+  await seedNearLevelUp(page);
+
+  await page.goto("/review");
+  await expect(page.getByTestId("review-session")).toBeVisible();
+
+  await rateAllDueCardsGood(page);
+
+  await expect(page.getByTestId("level-up-overlay")).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByTestId("level-up-mascot")).toBeVisible();
+  await expect(page.getByTestId("level-up-number")).toHaveText("2");
+
+  // Level-up dismisses before the regular session celebration appears.
+  await expect(page.getByTestId("level-up-overlay")).toBeHidden({ timeout: 10_000 });
+  await expect(page.getByTestId("celebration-overlay")).toBeVisible({ timeout: 5_000 });
+
+  await expect(page.getByTestId("review-summary")).toBeVisible();
+});
