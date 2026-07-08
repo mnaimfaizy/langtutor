@@ -75,5 +75,19 @@ export class LangTutorDB extends Dexie {
     this.version(4).stores({
       mediaAssets: "[kind+key+style]",
     });
+    // v5: kid-safety approval gate (issue #69).
+    this.version(5)
+      .stores({
+        mediaAssets: "[kind+key+style], approvalStatus",
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table("mediaAssets")
+          .toCollection()
+          .modify((asset: MediaAsset) => {
+            if (!asset.source) asset.source = "generated";
+            if (!asset.approvalStatus) asset.approvalStatus = "approved";
+          });
+      });
   }
 }

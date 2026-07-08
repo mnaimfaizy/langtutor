@@ -86,6 +86,8 @@ describe("per-user isolation", () => {
       data: new Uint8Array([1, 2, 3]),
       mimeType: "image/png",
       createdAt: new Date(),
+      source: "generated",
+      approvalStatus: "approved",
     });
     expect(
       await repo1.getMediaAsset({ kind: "image", key: "apple", style: "default" }),

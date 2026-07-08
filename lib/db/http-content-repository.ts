@@ -3,6 +3,7 @@ import type {
   ContentQuery,
   ContentRepository,
   ErrorEventQuery,
+  MediaAssetQuery,
   NewCard,
   NewContent,
   NewErrorEvent,
@@ -16,6 +17,7 @@ import type {
   LexiconCacheEntry,
   MediaAsset,
   MediaAssetKey,
+  MediaAssetRecord,
   Profile,
   ProfileSettings,
   Unit,
@@ -25,8 +27,10 @@ import {
   repoAddCard,
   repoAddErrorEvent,
   repoAddUnit,
+  repoApproveMediaAsset,
   repoClear,
   repoDeleteCard,
+  repoDeleteMediaAsset,
   repoExportBackup,
   repoGetAllCards,
   repoGetCard,
@@ -35,6 +39,7 @@ import {
   repoGetGamification,
   repoGetLexiconEntry,
   repoGetMediaAsset,
+  repoGetMediaAssetRaw,
   repoGetProfile,
   repoGetSettings,
   repoGetUnits,
@@ -46,6 +51,7 @@ import {
   repoPutWeakness,
   repoQueryContent,
   repoQueryErrorEvents,
+  repoQueryMediaAssets,
   repoSaveGamification,
   repoSaveProfile,
   repoSaveSettings,
@@ -121,8 +127,20 @@ export class HttpContentRepository implements ContentRepository {
   getMediaAsset(key: MediaAssetKey): Promise<MediaAsset | undefined> {
     return repoGetMediaAsset(key);
   }
+  getMediaAssetRaw(key: MediaAssetKey): Promise<MediaAsset | undefined> {
+    return repoGetMediaAssetRaw(key);
+  }
   putMediaAsset(asset: MediaAsset): Promise<void> {
     return repoPutMediaAsset(asset);
+  }
+  queryMediaAssets(query?: MediaAssetQuery): Promise<MediaAssetRecord[]> {
+    return repoQueryMediaAssets(query);
+  }
+  deleteMediaAsset(key: MediaAssetKey): Promise<void> {
+    return repoDeleteMediaAsset(key);
+  }
+  approveMediaAsset(key: MediaAssetKey): Promise<void> {
+    return repoApproveMediaAsset(key);
   }
   addUnit(unit: NewUnit): Promise<number> {
     return repoAddUnit(unit);

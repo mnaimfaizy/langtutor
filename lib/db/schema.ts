@@ -167,6 +167,17 @@ export interface GamificationState {
 /** Kind of shared media asset in the store (ADR 0016). */
 export type MediaAssetKind = "image" | "audio";
 
+/** How a media asset entered the store — generated on demand or from the curated pack. */
+export type MediaAssetSource = "generated" | "curated-pack";
+
+/** Kid-safety review gate for generated images (issue #69). Audio bypasses pending. */
+export type MediaAssetApprovalStatus = "pending" | "approved";
+
+/** Default approval for a new asset from the given source. */
+export function defaultMediaAssetApproval(source: MediaAssetSource): MediaAssetApprovalStatus {
+  return source === "curated-pack" ? "approved" : "pending";
+}
+
 /**
  * Lookup key for a shared media asset — (kind, word/phrase, style). Keys are
  * human-readable for debugging and admin review (ADR 0016).
@@ -183,7 +194,12 @@ export interface MediaAsset extends MediaAssetKey {
   data: Uint8Array;
   mimeType: string;
   createdAt: Date;
+  source: MediaAssetSource;
+  approvalStatus: MediaAssetApprovalStatus;
 }
+
+/** Metadata for admin media listings — omits the binary payload. */
+export type MediaAssetRecord = Omit<MediaAsset, "data">;
 
 /** Cached dictionary/audio lookup (PLAN §4 `lexiconCache`). Stores structured data, never raw HTML. */
 export interface LexiconCacheEntry {

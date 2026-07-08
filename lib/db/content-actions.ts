@@ -4,6 +4,7 @@ import type { BackupData } from "@/lib/backup/schema";
 import type {
   ContentQuery,
   ErrorEventQuery,
+  MediaAssetQuery,
   NewCard,
   NewContent,
   NewErrorEvent,
@@ -17,6 +18,7 @@ import type {
   LexiconCacheEntry,
   MediaAsset,
   MediaAssetKey,
+  MediaAssetRecord,
   Profile,
   ProfileSettings,
   Unit,
@@ -124,8 +126,24 @@ export async function repoGetMediaAsset(key: MediaAssetKey): Promise<MediaAsset 
   return (await getServerContentRepository()).getMediaAsset(key);
 }
 
+export async function repoGetMediaAssetRaw(key: MediaAssetKey): Promise<MediaAsset | undefined> {
+  return (await getServerContentRepository()).getMediaAssetRaw(key);
+}
+
 export async function repoPutMediaAsset(asset: MediaAsset): Promise<void> {
   return (await getServerContentRepository()).putMediaAsset(asset);
+}
+
+export async function repoQueryMediaAssets(query?: MediaAssetQuery): Promise<MediaAssetRecord[]> {
+  return (await getServerContentRepository()).queryMediaAssets(query);
+}
+
+export async function repoDeleteMediaAsset(key: MediaAssetKey): Promise<void> {
+  return (await getServerContentRepository()).deleteMediaAsset(key);
+}
+
+export async function repoApproveMediaAsset(key: MediaAssetKey): Promise<void> {
+  return (await getServerContentRepository()).approveMediaAsset(key);
 }
 
 export async function repoAddUnit(unit: NewUnit): Promise<number> {

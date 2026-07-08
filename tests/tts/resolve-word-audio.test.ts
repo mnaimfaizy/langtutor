@@ -43,6 +43,8 @@ describe("resolveWordAudio", () => {
       data: new Uint8Array([7]),
       mimeType: "audio/wav",
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      source: "generated",
+      approvalStatus: "approved",
     });
 
     const synthesizer = new MockTtsSynthesizer();

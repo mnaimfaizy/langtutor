@@ -7,6 +7,7 @@ import type {
   ContentQuery,
   ContentRepository,
   ErrorEventQuery,
+  MediaAssetQuery,
   NewCard,
   NewContent,
   NewErrorEvent,
@@ -36,6 +37,7 @@ import type {
   LexiconCacheEntry,
   MediaAsset,
   MediaAssetKey,
+  MediaAssetRecord,
   Profile,
   ProfileSettings,
   Unit,
@@ -63,6 +65,24 @@ function applyEnvFirstAiSettings(settings: ProfileSettings): ProfileSettings {
 
 function normalizeMediaAssetKey(key: MediaAssetKey): MediaAssetKey {
   return { ...key, key: key.key.toLowerCase() };
+}
+
+function rowToMediaAsset(row: typeof mediaAssetsTable.$inferSelect): MediaAsset {
+  return {
+    kind: row.kind,
+    key: row.key,
+    style: row.style,
+    mimeType: row.mimeType,
+    data: bufferToUint8Array(row.data),
+    createdAt: row.createdAt,
+    source: row.source,
+    approvalStatus: row.approvalStatus,
+  };
+}
+
+function rowToMediaAssetRecord(row: typeof mediaAssetsTable.$inferSelect): MediaAssetRecord {
+  const { data: _data, ...record } = rowToMediaAsset(row);
+  return record;
 }
 
 function bufferToUint8Array(data: Buffer): Uint8Array {
@@ -645,6 +665,12 @@ export class SqliteContentRepository implements ContentRepository {
   // ─── media assets ─────────────────────────────────────────────────────────
 
   async getMediaAsset(key: MediaAssetKey): Promise<MediaAsset | undefined> {
+    const asset = await this.getMediaAssetRaw(key);
+    if (!asset || asset.approvalStatus !== "approved") return undefined;
+    return asset;
+  }
+
+  async getMediaAssetRaw(key: MediaAssetKey): Promise<MediaAsset | undefined> {
     const normalized = normalizeMediaAssetKey(key);
     const row = this.db
       .select()
@@ -658,14 +684,7 @@ export class SqliteContentRepository implements ContentRepository {
       )
       .get();
     if (!row) return undefined;
-    return {
-      kind: row.kind,
-      key: row.key,
-      style: row.style,
-      mimeType: row.mimeType,
-      data: bufferToUint8Array(row.data),
-      createdAt: row.createdAt,
-    };
+    return rowToMediaAsset(row);
   }
 
   async putMediaAsset(asset: MediaAsset): Promise<void> {
@@ -679,6 +698,8 @@ export class SqliteContentRepository implements ContentRepository {
         mimeType: asset.mimeType,
         data: Buffer.from(asset.data),
         createdAt: asset.createdAt,
+        source: asset.source,
+        approvalStatus: asset.approvalStatus,
       })
       .onConflictDoUpdate({
         target: [mediaAssetsTable.kind, mediaAssetsTable.key, mediaAssetsTable.style],
@@ -686,9 +707,39 @@ export class SqliteContentRepository implements ContentRepository {
           mimeType: asset.mimeType,
           data: Buffer.from(asset.data),
           createdAt: asset.createdAt,
+          source: asset.source,
+          approvalStatus: asset.approvalStatus,
         },
       })
       .run();
+  }
+
+  async queryMediaAssets(query?: MediaAssetQuery): Promise<MediaAssetRecord[]> {
+    const rows = this.db.select().from(mediaAssetsTable).all();
+    return rows
+      .filter((row) => (query?.kind ? row.kind === query.kind : true))
+      .filter((row) => (query?.approvalStatus ? row.approvalStatus === query.approvalStatus : true))
+      .map(rowToMediaAssetRecord);
+  }
+
+  async deleteMediaAsset(key: MediaAssetKey): Promise<void> {
+    const normalized = normalizeMediaAssetKey(key);
+    this.db
+      .delete(mediaAssetsTable)
+      .where(
+        and(
+          eq(mediaAssetsTable.kind, normalized.kind),
+          eq(mediaAssetsTable.key, normalized.key),
+          eq(mediaAssetsTable.style, normalized.style),
+        ),
+      )
+      .run();
+  }
+
+  async approveMediaAsset(key: MediaAssetKey): Promise<void> {
+    const asset = await this.getMediaAssetRaw(key);
+    if (!asset) return;
+    await this.putMediaAsset({ ...asset, approvalStatus: "approved" });
   }
 
   // ─── learning path units ──────────────────────────────────────────────────

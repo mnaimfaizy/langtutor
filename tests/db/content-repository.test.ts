@@ -19,9 +19,9 @@ afterEach(async () => {
 });
 
 describe("DexieContentRepository — schema versioning", () => {
-  it("opens at version 4 with all §4 tables plus units and mediaAssets", async () => {
+  it("opens at version 5 with all §4 tables plus units and mediaAssets", async () => {
     await db.open();
-    expect(db.verno).toBe(4);
+    expect(db.verno).toBe(5);
     expect(db.tables.map((t) => t.name).sort()).toEqual([
       "cards",
       "content",

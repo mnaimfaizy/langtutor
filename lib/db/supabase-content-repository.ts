@@ -9,6 +9,7 @@ import type {
   ContentQuery,
   ContentRepository,
   ErrorEventQuery,
+  MediaAssetQuery,
   NewCard,
   NewContent,
   NewErrorEvent,
@@ -39,6 +40,7 @@ import type {
   LexiconCacheEntry,
   MediaAsset,
   MediaAssetKey,
+  MediaAssetRecord,
   Profile,
   ProfileSettings,
   Unit,
@@ -66,6 +68,24 @@ function applyEnvFirstAiSettings(settings: ProfileSettings): ProfileSettings {
 
 function normalizeMediaAssetKey(key: MediaAssetKey): MediaAssetKey {
   return { ...key, key: key.key.toLowerCase() };
+}
+
+function rowToMediaAsset(row: typeof mediaAssetsTable.$inferSelect): MediaAsset {
+  return {
+    kind: row.kind,
+    key: row.key,
+    style: row.style,
+    mimeType: row.mimeType,
+    data: bufferToUint8Array(row.data as Buffer),
+    createdAt: row.createdAt,
+    source: row.source,
+    approvalStatus: row.approvalStatus,
+  };
+}
+
+function rowToMediaAssetRecord(row: typeof mediaAssetsTable.$inferSelect): MediaAssetRecord {
+  const { data: _data, ...record } = rowToMediaAsset(row);
+  return record;
 }
 
 function bufferToUint8Array(data: Buffer): Uint8Array {
@@ -680,6 +700,12 @@ export class SupabaseContentRepository implements ContentRepository {
   // ─── media assets ─────────────────────────────────────────────────────────
 
   async getMediaAsset(key: MediaAssetKey): Promise<MediaAsset | undefined> {
+    const asset = await this.getMediaAssetRaw(key);
+    if (!asset || asset.approvalStatus !== "approved") return undefined;
+    return asset;
+  }
+
+  async getMediaAssetRaw(key: MediaAssetKey): Promise<MediaAsset | undefined> {
     return this.scoped(async (db) => {
       const normalized = normalizeMediaAssetKey(key);
       const rows = await db
@@ -695,14 +721,7 @@ export class SupabaseContentRepository implements ContentRepository {
         .limit(1);
       const row = rows[0];
       if (!row) return undefined;
-      return {
-        kind: row.kind,
-        key: row.key,
-        style: row.style,
-        mimeType: row.mimeType,
-        data: bufferToUint8Array(row.data as Buffer),
-        createdAt: row.createdAt,
-      };
+      return rowToMediaAsset(row);
     });
   }
 
@@ -718,6 +737,8 @@ export class SupabaseContentRepository implements ContentRepository {
           mimeType: asset.mimeType,
           data: Buffer.from(asset.data),
           createdAt: asset.createdAt,
+          source: asset.source,
+          approvalStatus: asset.approvalStatus,
         })
         .onConflictDoUpdate({
           target: [mediaAssetsTable.kind, mediaAssetsTable.key, mediaAssetsTable.style],
@@ -725,9 +746,44 @@ export class SupabaseContentRepository implements ContentRepository {
             mimeType: asset.mimeType,
             data: Buffer.from(asset.data),
             createdAt: asset.createdAt,
+            source: asset.source,
+            approvalStatus: asset.approvalStatus,
           },
         });
     });
+  }
+
+  async queryMediaAssets(query?: MediaAssetQuery): Promise<MediaAssetRecord[]> {
+    return this.scoped(async (db) => {
+      const rows = await db.select().from(mediaAssetsTable);
+      return rows
+        .filter((row) => (query?.kind ? row.kind === query.kind : true))
+        .filter((row) =>
+          query?.approvalStatus ? row.approvalStatus === query.approvalStatus : true,
+        )
+        .map(rowToMediaAssetRecord);
+    });
+  }
+
+  async deleteMediaAsset(key: MediaAssetKey): Promise<void> {
+    await this.scoped(async (db) => {
+      const normalized = normalizeMediaAssetKey(key);
+      await db
+        .delete(mediaAssetsTable)
+        .where(
+          and(
+            eq(mediaAssetsTable.kind, normalized.kind),
+            eq(mediaAssetsTable.key, normalized.key),
+            eq(mediaAssetsTable.style, normalized.style),
+          ),
+        );
+    });
+  }
+
+  async approveMediaAsset(key: MediaAssetKey): Promise<void> {
+    const asset = await this.getMediaAssetRaw(key);
+    if (!asset) return;
+    await this.putMediaAsset({ ...asset, approvalStatus: "approved" });
   }
 
   // ─── learning path units ──────────────────────────────────────────────────

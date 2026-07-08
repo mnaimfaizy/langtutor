@@ -41,7 +41,11 @@ const mockRepo = vi.hoisted(() => ({
   getLexiconEntry: vi.fn().mockResolvedValue(undefined),
   putLexiconEntry: vi.fn().mockResolvedValue(undefined),
   getMediaAsset: vi.fn().mockResolvedValue(undefined),
+  getMediaAssetRaw: vi.fn().mockResolvedValue(undefined),
   putMediaAsset: vi.fn().mockResolvedValue(undefined),
+  queryMediaAssets: vi.fn().mockResolvedValue([]),
+  deleteMediaAsset: vi.fn().mockResolvedValue(undefined),
+  approveMediaAsset: vi.fn().mockResolvedValue(undefined),
   addUnit: vi.fn().mockResolvedValue(1),
   getUnits: vi.fn().mockResolvedValue([]),
   updateUnit: vi.fn().mockResolvedValue(undefined),
@@ -100,7 +104,11 @@ describe("content actions — identity routing", () => {
     await actions.repoGetLexiconEntry("hello");
     await actions.repoPutLexiconEntry({} as LexiconCacheEntry);
     await actions.repoGetMediaAsset({} as MediaAssetKey);
+    await actions.repoGetMediaAssetRaw({} as MediaAssetKey);
     await actions.repoPutMediaAsset({} as MediaAsset);
+    await actions.repoQueryMediaAssets();
+    await actions.repoDeleteMediaAsset({} as MediaAssetKey);
+    await actions.repoApproveMediaAsset({} as MediaAssetKey);
     await actions.repoAddUnit({} as NewUnit);
     await actions.repoGetUnits();
     await actions.repoUpdateUnit(1, {});
@@ -108,6 +116,6 @@ describe("content actions — identity routing", () => {
     await actions.repoExportBackup();
     await actions.repoImportBackup({} as BackupData);
 
-    expect(mockResolveCurrentUser).toHaveBeenCalledTimes(29);
+    expect(mockResolveCurrentUser).toHaveBeenCalledTimes(33);
   });
 });

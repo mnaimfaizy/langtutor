@@ -451,6 +451,23 @@ export default function SettingsPage() {
 
       {isAdmin && (
         <Card className="mt-6">
+          <CardTitle>Media review</CardTitle>
+          <CardDescription>
+            Approve generated kid illustrations before learners can see them.
+          </CardDescription>
+          <CardContent>
+            <Link
+              href="/admin/media"
+              className={buttonClassName({ variant: "secondary", size: "sm" })}
+            >
+              Review media →
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {isAdmin && (
+        <Card className="mt-6">
           <CardTitle>User management</CardTitle>
           <CardDescription>Create, list, and delete user accounts.</CardDescription>
           <CardContent>

@@ -19,7 +19,9 @@ import {
   CONTENT_TYPE_VALUES,
   EMBEDDINGS_PROVIDER_VALUES,
   EXPERIENCE_MODE_VALUES,
+  MEDIA_ASSET_APPROVAL_STATUS_VALUES,
   MEDIA_ASSET_KIND_VALUES,
+  MEDIA_ASSET_SOURCE_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   UNIT_BUFFER_STATUS_VALUES,
@@ -42,7 +44,9 @@ export {
   CONTENT_TYPE_VALUES,
   EMBEDDINGS_PROVIDER_VALUES,
   EXPERIENCE_MODE_VALUES,
+  MEDIA_ASSET_APPROVAL_STATUS_VALUES,
   MEDIA_ASSET_KIND_VALUES,
+  MEDIA_ASSET_SOURCE_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   UNIT_BUFFER_STATUS_VALUES,
@@ -112,6 +116,10 @@ export const mediaAssets = pgTable(
     mimeType: text("mime_type").notNull(),
     data: bytea("data").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    source: text("source", { enum: MEDIA_ASSET_SOURCE_VALUES }).notNull().default("generated"),
+    approvalStatus: text("approval_status", { enum: MEDIA_ASSET_APPROVAL_STATUS_VALUES })
+      .notNull()
+      .default("approved"),
   },
   (t) => [primaryKey({ columns: [t.kind, t.key, t.style] })],
 );

@@ -78,6 +78,12 @@ test.describe("phone-width layout: deck, diagnostics, and admin", () => {
     await expect(page.getByRole("heading", { name: "User management", level: 1 })).toBeVisible();
     await expectNoHorizontalScroll(page);
   });
+
+  test("admin media review page renders without horizontal overflow", async ({ page }) => {
+    await page.goto("/admin/media");
+    await expect(page.getByRole("heading", { name: "Media review", level: 1 })).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
 });
 
 test.describe("phone-width layout: auth screens", () => {

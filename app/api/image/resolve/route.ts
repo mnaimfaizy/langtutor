@@ -43,6 +43,9 @@ export async function GET(request: Request) {
     const repo = await getServerContentRepository();
     const generator = await getImageGenerator();
     const asset = await resolveWordImage(repo, generator, word, style);
+    if (!asset) {
+      return Response.json({ error: "Image not available" }, { status: 404 });
+    }
 
     return new Response(Buffer.from(asset.data), {
       headers: {

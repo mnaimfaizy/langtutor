@@ -9,7 +9,10 @@ import type {
   GamificationState,
   LexiconCacheEntry,
   MediaAsset,
+  MediaAssetApprovalStatus,
   MediaAssetKey,
+  MediaAssetKind,
+  MediaAssetRecord,
   Profile,
   ProfileSettings,
   Skill,
@@ -36,6 +39,12 @@ export interface ErrorEventQuery {
   skill?: Skill;
   category?: string;
   cefr?: Cefr;
+}
+
+/** Optional filters for {@link ContentRepository.queryMediaAssets} (admin review). */
+export interface MediaAssetQuery {
+  kind?: MediaAssetKind;
+  approvalStatus?: MediaAssetApprovalStatus;
 }
 
 /**
@@ -94,8 +103,15 @@ export interface ContentRepository extends ContentSink {
   putLexiconEntry(entry: LexiconCacheEntry): Promise<void>;
 
   // media assets (ADR 0016 — shared, keyed by kind+word/phrase+style)
+  /** Learner-facing lookup — returns only {@link MediaAssetApprovalStatus} `approved` assets. */
   getMediaAsset(key: MediaAssetKey): Promise<MediaAsset | undefined>;
+  /** Admin/internal lookup — returns any approval state. */
+  getMediaAssetRaw(key: MediaAssetKey): Promise<MediaAsset | undefined>;
   putMediaAsset(asset: MediaAsset): Promise<void>;
+  /** Admin listing — metadata only (no binary payload). */
+  queryMediaAssets(query?: MediaAssetQuery): Promise<MediaAssetRecord[]>;
+  deleteMediaAsset(key: MediaAssetKey): Promise<void>;
+  approveMediaAsset(key: MediaAssetKey): Promise<void>;
 
   // learning path units (ADR 0015, issue #57)
   addUnit(unit: NewUnit): Promise<number>;

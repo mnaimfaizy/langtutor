@@ -1,6 +1,6 @@
 import { resolveMediaAsset } from "@/lib/content/media-assets";
 import type { ContentRepository } from "@/lib/db/content-repository";
-import type { MediaAsset, MediaAssetKey } from "@/lib/db/schema";
+import { defaultMediaAssetApproval, type MediaAsset, type MediaAssetKey } from "@/lib/db/schema";
 
 import type { ImageGenerator } from "./image-generator";
 import { buildKidIllustrationPrompt, wordImageSeed } from "./prompts";
@@ -17,12 +17,51 @@ function mediaKey(word: string, style: string): MediaAssetKey {
   return { kind: "image", key: normalizeWord(word), style };
 }
 
+async function produceWordImage(
+  generator: ImageGenerator,
+  normalized: string,
+  style: string,
+): Promise<MediaAsset> {
+  const prompt = buildKidIllustrationPrompt(normalized);
+  const generated = await generator.generate(prompt, {
+    width: IMAGE_WIDTH,
+    height: IMAGE_HEIGHT,
+    seed: wordImageSeed(normalized),
+  });
+
+  return {
+    kind: "image",
+    key: normalized,
+    style,
+    data: generated.data,
+    mimeType: generated.mimeType,
+    createdAt: new Date(),
+    source: "generated",
+    approvalStatus: defaultMediaAssetApproval("generated"),
+  };
+}
+
 /**
  * Resolve a kid-tier word illustration via the shared media store (ADR 0016).
- * On a store miss, calls `generator` once, persists the result, and serves the
- * stored asset on every subsequent lookup.
+ * On a store miss, calls `generator` once, persists the result as `pending`, and
+ * returns the asset only once an admin has approved it.
  */
 export async function resolveWordImage(
+  repo: ContentRepository,
+  generator: ImageGenerator,
+  word: string,
+  style: string = DEFAULT_STYLE,
+): Promise<MediaAsset | undefined> {
+  const normalized = normalizeWord(word);
+  const key = mediaKey(normalized, style);
+
+  return resolveMediaAsset(repo, key, () => produceWordImage(generator, normalized, style));
+}
+
+/**
+ * Admin-only: delete the existing asset for @word and generate a fresh pending image.
+ */
+export async function regenerateWordImage(
   repo: ContentRepository,
   generator: ImageGenerator,
   word: string,
@@ -31,20 +70,17 @@ export async function resolveWordImage(
   const normalized = normalizeWord(word);
   const key = mediaKey(normalized, style);
 
-  return resolveMediaAsset(repo, key, async () => {
-    const prompt = buildKidIllustrationPrompt(normalized);
-    const generated = await generator.generate(prompt, {
-      width: IMAGE_WIDTH,
-      height: IMAGE_HEIGHT,
-      seed: wordImageSeed(normalized),
-    });
-
-    const asset: MediaAsset = {
-      ...key,
-      data: generated.data,
-      mimeType: generated.mimeType,
-      createdAt: new Date(),
-    };
-    return asset;
-  });
+  await repo.deleteMediaAsset(key);
+  const asset = await resolveMediaAsset(
+    repo,
+    key,
+    () => produceWordImage(generator, normalized, style),
+    {
+      forceRegenerate: true,
+    },
+  );
+  if (!asset) {
+    throw new Error("Image regeneration failed");
+  }
+  return asset;
 }

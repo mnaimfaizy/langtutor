@@ -38,7 +38,12 @@ export async function resolveWordAudio(
       data: generated.data,
       mimeType: generated.mimeType,
       createdAt: new Date(),
+      source: "generated",
+      approvalStatus: "approved",
     };
+    return asset;
+  }).then((asset) => {
+    if (!asset) throw new Error("Audio resolution failed");
     return asset;
   });
 }

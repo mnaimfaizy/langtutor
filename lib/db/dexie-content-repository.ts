@@ -4,6 +4,7 @@ import type {
   ContentQuery,
   ContentRepository,
   ErrorEventQuery,
+  MediaAssetQuery,
   NewCard,
   NewContent,
   NewErrorEvent,
@@ -17,6 +18,7 @@ import type {
   LexiconCacheEntry,
   MediaAsset,
   MediaAssetKey,
+  MediaAssetRecord,
   Profile,
   ProfileSettings,
   Unit,
@@ -164,6 +166,12 @@ export class DexieContentRepository implements ContentRepository {
 
   // media assets -----------------------------------------------------------
   async getMediaAsset(key: MediaAssetKey): Promise<MediaAsset | undefined> {
+    const asset = await this.getMediaAssetRaw(key);
+    if (!asset || asset.approvalStatus !== "approved") return undefined;
+    return asset;
+  }
+
+  async getMediaAssetRaw(key: MediaAssetKey): Promise<MediaAsset | undefined> {
     const lookup = {
       ...key,
       key: key.key.toLowerCase(),
@@ -176,6 +184,28 @@ export class DexieContentRepository implements ContentRepository {
       ...asset,
       key: asset.key.toLowerCase(),
     });
+  }
+
+  async queryMediaAssets(query?: MediaAssetQuery): Promise<MediaAssetRecord[]> {
+    const rows = await this.db.mediaAssets.toArray();
+    return rows
+      .filter((row) => (query?.kind ? row.kind === query.kind : true))
+      .filter((row) => (query?.approvalStatus ? row.approvalStatus === query.approvalStatus : true))
+      .map(({ data: _data, ...record }) => record);
+  }
+
+  async deleteMediaAsset(key: MediaAssetKey): Promise<void> {
+    const lookup = {
+      ...key,
+      key: key.key.toLowerCase(),
+    };
+    await this.db.mediaAssets.delete([lookup.kind, lookup.key, lookup.style]);
+  }
+
+  async approveMediaAsset(key: MediaAssetKey): Promise<void> {
+    const asset = await this.getMediaAssetRaw(key);
+    if (!asset) return;
+    await this.putMediaAsset({ ...asset, approvalStatus: "approved" });
   }
 
   // learning path units -------------------------------------------------------

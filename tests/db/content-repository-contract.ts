@@ -430,6 +430,8 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
           data: new Uint8Array([byte, byte + 1]),
           mimeType: key.kind === "image" ? "image/png" : "audio/mpeg",
           createdAt: new Date("2026-01-01T00:00:00.000Z"),
+          source: "generated",
+          approvalStatus: "approved",
         };
       }
 
@@ -473,6 +475,56 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
 
         expect(await repo.getMediaAsset(imageKey)).toEqual(updated);
       });
+
+      it("hides pending images from learner-facing getMediaAsset", async () => {
+        await repo.putMediaAsset({
+          ...makeAsset(imageKey, 5),
+          approvalStatus: "pending",
+        });
+
+        expect(await repo.getMediaAsset(imageKey)).toBeUndefined();
+        expect((await repo.getMediaAssetRaw(imageKey))?.approvalStatus).toBe("pending");
+      });
+
+      it("approveMediaAsset makes a pending image visible to learners", async () => {
+        await repo.putMediaAsset({
+          ...makeAsset(imageKey, 5),
+          approvalStatus: "pending",
+        });
+
+        await repo.approveMediaAsset(imageKey);
+
+        expect((await repo.getMediaAsset(imageKey))?.approvalStatus).toBe("approved");
+      });
+
+      it("curated-pack assets default to approved and are learner-visible", async () => {
+        await repo.putMediaAsset({
+          ...makeAsset(imageKey, 8),
+          source: "curated-pack",
+          approvalStatus: "approved",
+        });
+
+        expect(await repo.getMediaAsset(imageKey)).toBeDefined();
+        expect(await repo.queryMediaAssets({ approvalStatus: "approved" })).toHaveLength(1);
+      });
+
+      it("deleteMediaAsset removes the asset", async () => {
+        await repo.putMediaAsset(makeAsset(imageKey, 3));
+        await repo.deleteMediaAsset(imageKey);
+        expect(await repo.getMediaAssetRaw(imageKey)).toBeUndefined();
+      });
+
+      it("queryMediaAssets omits binary payloads", async () => {
+        await repo.putMediaAsset(makeAsset(imageKey, 4));
+        const rows = await repo.queryMediaAssets({ kind: "image" });
+        expect(rows[0]).toMatchObject({
+          kind: "image",
+          key: "apple",
+          style: "kid-illustration",
+          approvalStatus: "approved",
+        });
+        expect(rows[0]).not.toHaveProperty("data");
+      });
     });
 
     // -------------------------------------------------------------------------
@@ -488,6 +540,8 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
           data: new Uint8Array([0]),
           mimeType: "image/png",
           createdAt: new Date(0),
+          source: "generated",
+          approvalStatus: "approved",
         });
         await repo.addUnit(makeUnit(0));
 
