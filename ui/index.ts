@@ -16,6 +16,7 @@ export * from "./progress";
 export * from "./progress-ring";
 export * from "./badge";
 export * from "./avatar";
+export { Mascot, type MascotProps, type MascotRegister, type MascotState } from "./mascot";
 export * from "./stat";
 export * from "./tts-button";
 export * from "./skeleton";

@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Avatar,
   Badge,
@@ -16,6 +16,9 @@ import {
   DialogTitle,
   DialogTrigger,
   Input,
+  Mascot,
+  type MascotRegister,
+  type MascotState,
   PassageLibraryClient,
   Popover,
   PopoverContent,
@@ -33,12 +36,80 @@ import {
 } from "@/ui";
 import { PaletteSwitcher } from "./palette-switcher";
 
+const MASCOT_STATES: MascotState[] = ["idle", "happy", "celebrate", "encourage"];
+const MASCOT_REGISTERS: MascotRegister[] = ["kid", "adult"];
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-3">
       <h2 className="text-muted text-xs font-semibold tracking-wide uppercase">{title}</h2>
       <div className="flex flex-wrap items-center gap-3">{children}</div>
     </section>
+  );
+}
+
+function MascotDemo() {
+  const [state, setState] = useState<MascotState>("idle");
+  const [register, setRegister] = useState<MascotRegister>("kid");
+
+  function cycleState() {
+    setState((current) => {
+      const index = MASCOT_STATES.indexOf(current);
+      return MASCOT_STATES[(index + 1) % MASCOT_STATES.length] ?? "idle";
+    });
+  }
+
+  function toggleRegister() {
+    setRegister((current) => (current === "kid" ? "adult" : "kid"));
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-4">
+        <Mascot data-testid="mascot-preview" state={state} register={register} />
+        <div className="space-y-2">
+          <p className="text-foreground text-sm font-medium capitalize">
+            {register} · {state}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              data-testid="mascot-cycle-state"
+              size="sm"
+              variant="secondary"
+              onClick={cycleState}
+            >
+              Cycle state
+            </Button>
+            <Button
+              data-testid="mascot-toggle-register"
+              size="sm"
+              variant="secondary"
+              onClick={toggleRegister}
+            >
+              Toggle register
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 sm:grid-cols-2">
+        {MASCOT_REGISTERS.map((reg) => (
+          <div key={reg} className="border-border bg-surface-1 space-y-3 rounded-xl border p-4">
+            <p className="text-muted text-xs font-semibold tracking-wide uppercase">
+              {reg} register
+            </p>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              {MASCOT_STATES.map((s) => (
+                <div key={s} className="flex flex-col items-center gap-1">
+                  <Mascot data-testid={`mascot-${reg}-${s}`} state={s} register={reg} />
+                  <span className="text-muted text-[10px] capitalize">{s}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -244,6 +315,10 @@ export default function UiGalleryPage() {
             alt="Lang-Tutor mascot"
             fallback="LT"
           />
+        </Section>
+
+        <Section title="Mascot — states & registers">
+          <MascotDemo />
         </Section>
 
         <Section title="Stat">
