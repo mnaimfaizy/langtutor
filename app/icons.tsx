@@ -84,6 +84,16 @@ export function RepeatIcon(props: IconProps) {
   );
 }
 
+export function TypeIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 7V4h16v3" />
+      <path d="M9 20h6" />
+      <path d="M12 4v16" />
+    </svg>
+  );
+}
+
 export function LayersIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

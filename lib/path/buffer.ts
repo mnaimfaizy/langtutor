@@ -26,7 +26,9 @@ export const PATH_BUFFER_DEPTH = 3;
  * generated `contentId` (issue #59/#60's lazy generate-and-cache pattern).
  */
 export function isActivityReady(activity: UnitActivityRef): boolean {
-  return activity.skill === "review" || activity.contentId !== undefined;
+  return (
+    activity.skill === "review" || activity.skill === "alphabet" || activity.contentId !== undefined
+  );
 }
 
 /**

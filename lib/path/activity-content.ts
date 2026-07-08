@@ -20,6 +20,12 @@ export function unitTopicFor(unit: Unit): string {
   return construction?.label ?? unit.title;
 }
 
+/** Activity kinds that need no LLM-generated content — they play from built-in or media-store data. */
+export const NO_GENERATED_CONTENT_KINDS: ReadonlySet<ActivityKind> = new Set([
+  "review",
+  "alphabet",
+]);
+
 /** Activity kinds whose content is a `passage` — reading, listening, and speaking all read/
  * hear/say the same generated text, generated via the same reading pipeline (issue #60). */
 export const PASSAGE_ACTIVITY_KINDS: ReadonlySet<ActivityKind> = new Set([
@@ -95,6 +101,10 @@ export async function generateActivityContent(
   unit: Unit,
   skill: ActivityKind,
 ): Promise<number> {
+  if (NO_GENERATED_CONTENT_KINDS.has(skill)) {
+    throw new Error(`Activity kind "${skill}" does not use generated content`);
+  }
+
   const topic = unitTopicFor(unit);
   return PASSAGE_ACTIVITY_KINDS.has(skill)
     ? generatePassageContent(repo, topic, unit.targetCefr)

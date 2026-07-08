@@ -9,12 +9,18 @@ import {
   type NewUnit,
   type Profile,
   type Unit,
+  type UnitActivityRef,
 } from "@/lib/db";
 
 import { backboneActivities } from "./backbone-planner";
 
 /** Display / chapter tier — negative-index units are pre-A1 regardless of `targetCefr`. */
 export type PathTier = Cefr | "pre-A1";
+
+/** Single alphabet activity slot for the first pre-A1 unit (issue #71). */
+export function alphabetActivities(): UnitActivityRef[] {
+  return [{ skill: "alphabet" }];
+}
 
 /** Placeholder backbone topics for the four pre-A1 activity slices (issues #71–#74). */
 const PRE_A1_TOPICS = [
@@ -70,7 +76,7 @@ export function seedPreA1Units(now: Date = new Date()): NewUnit[] {
     targetGrammarIds: [],
     targetVocab: [],
     targetCefr: "A1",
-    activities: backboneActivities(),
+    activities: i === 0 ? alphabetActivities() : backboneActivities(),
     status: i === 0 ? "available" : "locked",
     bufferStatus: "empty",
     createdAt: now,

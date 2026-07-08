@@ -49,6 +49,17 @@ describe("resolveUnitResumeTarget", () => {
     expect(generate).not.toHaveBeenCalled();
   });
 
+  it("resolves a pending alphabet activity directly, with no generation call", async () => {
+    const u = unit({ activities: [activity({ skill: "alphabet" })] });
+    const repo = makeFakeRepo([u]);
+    const generate = vi.fn() as unknown as GenerateActivityContentFn;
+
+    const target = await resolveUnitResumeTarget(repo, u, generate);
+
+    expect(target).toEqual({ href: "/alphabet?unit=1&activity=0", activityIndex: 0 });
+    expect(generate).not.toHaveBeenCalled();
+  });
+
   it("resolves an already-buffered activity straight to its cached content, with no generation call", async () => {
     const u = unit({
       activities: [

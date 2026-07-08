@@ -36,7 +36,8 @@ describe("seedPreA1Units", () => {
     const units = seedPreA1Units();
 
     expect(units.every((u) => u.targetGrammarIds.length === 0)).toBe(true);
-    expect(units[0]?.activities).toHaveLength(5);
+    expect(units[0]?.activities).toEqual([{ skill: "alphabet" }]);
+    expect(units[1]?.activities).toHaveLength(5);
   });
 });
 

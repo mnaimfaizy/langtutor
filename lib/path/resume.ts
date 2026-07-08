@@ -44,6 +44,10 @@ export async function resolveUnitResumeTarget(
     return { href: `/review${query}`, activityIndex };
   }
 
+  if (activity.skill === "alphabet") {
+    return { href: `/alphabet${query}`, activityIndex };
+  }
+
   if (activity.contentId !== undefined) {
     return { href: `/${activity.skill}/${activity.contentId}${query}`, activityIndex };
   }
