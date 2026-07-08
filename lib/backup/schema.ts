@@ -96,7 +96,12 @@ const LexiconCacheRowSchema = z.object({
   cachedAt: z.coerce.date(),
 });
 
-const ActivityKindSchema = z.union([SkillSchema, z.literal("review"), z.literal("alphabet")]);
+const ActivityKindSchema = z.union([
+  SkillSchema,
+  z.literal("review"),
+  z.literal("alphabet"),
+  z.literal("phonics"),
+]);
 
 const UnitActivityRefSchema = z.object({
   skill: ActivityKindSchema,

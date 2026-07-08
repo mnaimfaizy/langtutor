@@ -22,6 +22,11 @@ export function alphabetActivities(): UnitActivityRef[] {
   return [{ skill: "alphabet" }];
 }
 
+/** Single phonics activity slot for the second pre-A1 unit (issue #72). */
+export function phonicsActivities(): UnitActivityRef[] {
+  return [{ skill: "phonics" }];
+}
+
 /** Placeholder backbone topics for the four pre-A1 activity slices (issues #71–#74). */
 const PRE_A1_TOPICS = [
   { title: "Alphabet", note: "Learn letters, sounds, and pictures." },
@@ -76,7 +81,8 @@ export function seedPreA1Units(now: Date = new Date()): NewUnit[] {
     targetGrammarIds: [],
     targetVocab: [],
     targetCefr: "A1",
-    activities: i === 0 ? alphabetActivities() : backboneActivities(),
+    activities:
+      i === 0 ? alphabetActivities() : i === 1 ? phonicsActivities() : backboneActivities(),
     status: i === 0 ? "available" : "locked",
     bufferStatus: "empty",
     createdAt: now,

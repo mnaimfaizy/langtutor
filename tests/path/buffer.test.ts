@@ -43,6 +43,10 @@ describe("isActivityReady", () => {
     expect(isActivityReady(activity({ skill: "alphabet" }))).toBe(true);
   });
 
+  it("phonics is always ready — it uses the media store, not generated content", () => {
+    expect(isActivityReady(activity({ skill: "phonics" }))).toBe(true);
+  });
+
   it("a non-review activity without a contentId is not ready", () => {
     expect(isActivityReady(activity({ skill: "reading" }))).toBe(false);
   });

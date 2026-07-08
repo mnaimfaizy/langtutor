@@ -27,7 +27,10 @@ export const PATH_BUFFER_DEPTH = 3;
  */
 export function isActivityReady(activity: UnitActivityRef): boolean {
   return (
-    activity.skill === "review" || activity.skill === "alphabet" || activity.contentId !== undefined
+    activity.skill === "review" ||
+    activity.skill === "alphabet" ||
+    activity.skill === "phonics" ||
+    activity.contentId !== undefined
   );
 }
 

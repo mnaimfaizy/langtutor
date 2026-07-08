@@ -48,6 +48,10 @@ export async function resolveUnitResumeTarget(
     return { href: `/alphabet${query}`, activityIndex };
   }
 
+  if (activity.skill === "phonics") {
+    return { href: `/phonics${query}`, activityIndex };
+  }
+
   if (activity.contentId !== undefined) {
     return { href: `/${activity.skill}/${activity.contentId}${query}`, activityIndex };
   }

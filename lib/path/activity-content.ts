@@ -24,6 +24,7 @@ export function unitTopicFor(unit: Unit): string {
 export const NO_GENERATED_CONTENT_KINDS: ReadonlySet<ActivityKind> = new Set([
   "review",
   "alphabet",
+  "phonics",
 ]);
 
 /** Activity kinds whose content is a `passage` — reading, listening, and speaking all read/
