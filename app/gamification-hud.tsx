@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 
 import { FlameIcon, TrophyIcon } from "@/app/icons";
 import type { GamificationState } from "@/lib/db";
-import { xpLevelRingBounds } from "@/lib/gamification";
+import { isStreakAtRisk, xpLevelRingBounds } from "@/lib/gamification";
 import { getContentRepository } from "@/lib/registry";
 import { ProgressRing, buttonClassName, cn } from "@/ui";
 
@@ -29,6 +29,7 @@ export function GamificationHud() {
   if (!state) return null;
 
   const { min: levelMin, max: levelMax } = xpLevelRingBounds(state.xp);
+  const streakAtRisk = isStreakAtRisk(new Date(), state.lastActivityDate, state.streakCount);
 
   return (
     <div
@@ -37,11 +38,17 @@ export function GamificationHud() {
     >
       <div
         data-testid="hud-streak"
-        title="Day streak"
-        aria-label={`${state.streakCount} day streak`}
+        data-streak-at-risk={streakAtRisk ? "true" : undefined}
+        title={streakAtRisk ? "Streak at risk — practice today to keep it" : "Day streak"}
+        aria-label={
+          streakAtRisk
+            ? `${state.streakCount} day streak at risk`
+            : `${state.streakCount} day streak`
+        }
         className={cn(
           "border-warning/30 bg-warning/10 text-warning flex items-center gap-1 rounded-full border px-2 py-0.5",
-          state.streakCount > 0 && "shadow-warning/40 shadow-[0_0_10px_-2px]",
+          state.streakCount > 0 && !streakAtRisk && "shadow-warning/40 shadow-[0_0_10px_-2px]",
+          streakAtRisk && "border-warning/20 bg-warning/5 text-warning/55 opacity-75",
         )}
       >
         <FlameIcon className="size-3.5 shrink-0" />

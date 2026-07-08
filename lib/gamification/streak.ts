@@ -16,6 +16,9 @@ export function localDateString(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/** Local hour (0–23) after which the streak flame enters the at-risk state. */
+export const STREAK_AT_RISK_HOUR = 18;
+
 /** Returns the ISO date string for the day before `date` (YYYY-MM-DD). */
 function dayBefore(date: string): string {
   const d = new Date(date + "T00:00:00Z");
@@ -47,4 +50,22 @@ export function updateStreak(
     return { streakCount: currentStreak + 1, lastActivityDate: today };
   }
   return { streakCount: 1, lastActivityDate: today };
+}
+
+/**
+ * True when the learner still has a continuable streak but has not recorded activity
+ * today and local time is past {@link STREAK_AT_RISK_HOUR}.
+ */
+export function isStreakAtRisk(
+  now: Date,
+  lastActivityDate: string | null,
+  streakCount: number,
+): boolean {
+  if (streakCount <= 0 || lastActivityDate === null) return false;
+
+  const today = localDateString(now);
+  if (lastActivityDate === today) return false;
+  if (lastActivityDate !== dayBefore(today)) return false;
+
+  return now.getHours() >= STREAK_AT_RISK_HOUR;
 }

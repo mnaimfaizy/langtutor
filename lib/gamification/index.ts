@@ -17,7 +17,7 @@ export type {
   ReviewCompleteCelebration,
   UnitCompleteCelebration,
 } from "./celebration-event";
-export { localDateString, updateStreak } from "./streak";
+export { STREAK_AT_RISK_HOUR, isStreakAtRisk, localDateString, updateStreak } from "./streak";
 export type { StreakUpdate } from "./streak";
 export {
   DAILY_QUEST_DEFS,

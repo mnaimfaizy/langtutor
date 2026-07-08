@@ -6,6 +6,7 @@ import {
   XP_PER_CARD,
   applyReview,
   earnXp,
+  isStreakAtRisk,
   localDateString,
   updateStreak,
   xpLevelRingBounds,
@@ -202,6 +203,40 @@ describe("localDateString", () => {
   it("handles Jan 1", () => {
     const d = new Date(2025, 0, 1); // Jan 1, 2025 local
     expect(localDateString(d)).toBe("2025-01-01");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isStreakAtRisk
+// ---------------------------------------------------------------------------
+describe("isStreakAtRisk", () => {
+  const yesterday = "2025-05-31";
+  const twoDaysAgo = "2025-05-30";
+
+  it("is false before the threshold with no activity today", () => {
+    const now = new Date("2025-06-01T17:59:00");
+    expect(isStreakAtRisk(now, yesterday, 3)).toBe(false);
+  });
+
+  it("is true after the threshold with no activity today", () => {
+    const now = new Date("2025-06-01T18:00:00");
+    expect(isStreakAtRisk(now, yesterday, 3)).toBe(true);
+  });
+
+  it("is false once today's activity is recorded", () => {
+    const now = new Date("2025-06-01T21:00:00");
+    expect(isStreakAtRisk(now, TODAY, 3)).toBe(false);
+  });
+
+  it("is false when there is no streak to protect", () => {
+    const now = new Date("2025-06-01T20:00:00");
+    expect(isStreakAtRisk(now, yesterday, 0)).toBe(false);
+    expect(isStreakAtRisk(now, null, 0)).toBe(false);
+  });
+
+  it("is false when the streak is already broken (gap > 1 day)", () => {
+    const now = new Date("2025-06-01T20:00:00");
+    expect(isStreakAtRisk(now, twoDaysAgo, 5)).toBe(false);
   });
 });
 
