@@ -113,14 +113,17 @@ async function expectImageNotLoaded(page: Page, testId: string): Promise<void> {
 
 async function expectImageLoaded(page: Page, testId: string): Promise<void> {
   await expect
-    .poll(async () => {
-      return page.getByTestId(testId).evaluate(async (img: HTMLImageElement) => {
-        const src = img.currentSrc || img.getAttribute("src");
-        if (!src) return 0;
-        const response = await fetch(src);
-        return response.status;
-      });
-    }, { timeout: 15_000 })
+    .poll(
+      async () => {
+        return page.getByTestId(testId).evaluate(async (img: HTMLImageElement) => {
+          const src = img.currentSrc || img.getAttribute("src");
+          if (!src) return 0;
+          const response = await fetch(src);
+          return response.status;
+        });
+      },
+      { timeout: 15_000 },
+    )
     .toBe(200);
 }
 

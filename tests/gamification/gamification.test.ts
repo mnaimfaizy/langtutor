@@ -8,6 +8,7 @@ import {
   earnXp,
   localDateString,
   updateStreak,
+  xpLevelRingBounds,
   xpToLevel,
 } from "@/lib/gamification";
 
@@ -33,6 +34,17 @@ describe("xpToLevel", () => {
   it("level 3 at 300 XP", () => expect(xpToLevel(300)).toBe(3));
   it("monotonically non-decreasing", () =>
     expect(xpToLevel(300)).toBeGreaterThanOrEqual(xpToLevel(299)));
+});
+
+// ---------------------------------------------------------------------------
+// xpLevelRingBounds
+// ---------------------------------------------------------------------------
+describe("xpLevelRingBounds", () => {
+  it("level 1 spans 0–100 XP", () => expect(xpLevelRingBounds(50)).toEqual({ min: 0, max: 100 }));
+  it("level 3 spans 300–600 XP", () =>
+    expect(xpLevelRingBounds(450)).toEqual({ min: 300, max: 600 }));
+  it("max level shows a full ring", () =>
+    expect(xpLevelRingBounds(12_000)).toEqual({ min: 10_000, max: 10_001 }));
 });
 
 // ---------------------------------------------------------------------------

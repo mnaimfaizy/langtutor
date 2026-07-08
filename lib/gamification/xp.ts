@@ -21,3 +21,11 @@ export function xpToLevel(xp: number): number {
 export function earnXp(cardCount: number): number {
   return cardCount * XP_PER_CARD;
 }
+
+/** Bounds for a level progress ring: XP span from current level floor to next threshold. */
+export function xpLevelRingBounds(xp: number): { min: number; max: number } {
+  const level = xpToLevel(xp);
+  const min = LEVEL_THRESHOLDS[level - 1] ?? 0;
+  const next = LEVEL_THRESHOLDS[level];
+  return { min, max: next ?? min + 1 };
+}

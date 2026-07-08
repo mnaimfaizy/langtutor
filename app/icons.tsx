@@ -173,6 +173,16 @@ export function LockIcon(props: IconProps) {
   );
 }
 
+/** Streak flame for the gamification HUD (issue #78). */
+export function FlameIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 22c4-2.5 6.5-5.5 6.5-9.5a5.5 5.5 0 0 0-11 0c0 1.2.4 2.3 1 3.2" />
+      <path d="M12 22c-4-2.5-6.5-5.5-6.5-9.5C5.5 8 8 5 12 2c4 3 6.5 6 6.5 10.5 0 4-2.5 7-6.5 9.5Z" />
+    </svg>
+  );
+}
+
 /** Marks a completed path node (issue #62). */
 export function CheckIcon(props: IconProps) {
   return (

@@ -10,4 +10,4 @@ export type {
 } from "./celebration-event";
 export { localDateString, updateStreak } from "./streak";
 export type { StreakUpdate } from "./streak";
-export { LEVEL_THRESHOLDS, XP_PER_CARD, earnXp, xpToLevel } from "./xp";
+export { LEVEL_THRESHOLDS, XP_PER_CARD, earnXp, xpLevelRingBounds, xpToLevel } from "./xp";
