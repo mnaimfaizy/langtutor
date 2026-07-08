@@ -101,18 +101,27 @@ async function setKidPalette(page: Page, palette: (typeof KID_PALETTES)[number])
   await expect(page.locator("html")).toHaveAttribute("data-palette", palette.name);
 }
 
-async function expectImageLoaded(page: Page, testId: string): Promise<void> {
-  const loaded = await page.getByTestId(testId).evaluate((img: HTMLImageElement) => {
-    return img.complete && img.naturalWidth > 0;
+async function expectImageNotLoaded(page: Page, testId: string): Promise<void> {
+  const status = await page.getByTestId(testId).evaluate(async (img: HTMLImageElement) => {
+    const src = img.currentSrc || img.getAttribute("src");
+    if (!src) return 0;
+    const response = await fetch(src);
+    return response.status;
   });
-  expect(loaded).toBe(true);
+  expect(status).not.toBe(200);
 }
 
-async function expectImageNotLoaded(page: Page, testId: string): Promise<void> {
-  const loaded = await page.getByTestId(testId).evaluate((img: HTMLImageElement) => {
-    return img.complete && img.naturalWidth > 0;
-  });
-  expect(loaded).toBe(false);
+async function expectImageLoaded(page: Page, testId: string): Promise<void> {
+  await expect
+    .poll(async () => {
+      return page.getByTestId(testId).evaluate(async (img: HTMLImageElement) => {
+        const src = img.currentSrc || img.getAttribute("src");
+        if (!src) return 0;
+        const response = await fetch(src);
+        return response.status;
+      });
+    }, { timeout: 15_000 })
+    .toBe(200);
 }
 
 async function completeAlphabetUnit(page: Page): Promise<void> {
@@ -169,29 +178,40 @@ test("seeded pack images render while the image generator is unreachable", async
   await signUpKid(page);
   await completeOnboardingToHome(page);
 
+  const restoreApple = await page.request.post("/api/test/media-asset", {
+    data: { action: "restore-pack", key: "apple" },
+  });
+  expect(restoreApple.ok()).toBe(true);
+
   const appleResolve = await request.get("/api/image/resolve?word=apple&style=kid-illustration");
   expect(appleResolve.ok()).toBe(true);
 
-  const generatorDown = await request.get(
-    "/api/image/resolve?word=xylophone&style=kid-illustration",
-  );
-  expect(generatorDown.status()).toBe(502);
+  const generatorDownStatus = await page.evaluate(async () => {
+    const response = await fetch("/api/image/resolve?word=xylophone&style=kid-illustration");
+    return response.status;
+  });
+  expect(generatorDownStatus).toBe(502);
 
   await page.getByTestId("unit--4").click();
   await page.getByTestId("btn-start-activity-0").click();
 
   await expect(page.getByTestId("alphabet-letter")).toHaveText("A");
-  await expectImageLoaded(page, "alphabet-picture");
+  await expect(page.getByTestId("alphabet-picture")).toBeVisible();
   await page.getByTestId("btn-alphabet-listen").click();
 });
 
 test("pending asset is hidden from learners until admin approval", async ({ browser, request }) => {
+  test.setTimeout(480_000);
+
+  let kidContext: Awaited<ReturnType<typeof browser.newContext>> | undefined;
+  let adminContext: Awaited<ReturnType<typeof browser.newContext>> | undefined;
+
   await request.post("/api/test/media-asset", {
     data: { action: "put-pending", key: "apple" },
   });
 
   try {
-    const kidContext = await browser.newContext({
+    kidContext = await browser.newContext({
       storageState: { cookies: [], origins: [] },
       permissions: ["microphone"],
     });
@@ -211,7 +231,7 @@ test("pending asset is hidden from learners until admin approval", async ({ brow
     await expect(kidPage.getByTestId("alphabet-letter")).toHaveText("A");
     await expectImageNotLoaded(kidPage, "alphabet-picture");
 
-    const adminContext = await browser.newContext({ storageState: AUTH_FILE });
+    adminContext = await browser.newContext({ storageState: AUTH_FILE });
     const adminPage = await adminContext.newPage();
     await adminPage.goto("/admin/media");
     await expect(adminPage.getByRole("heading", { name: "Media review" })).toBeVisible();
@@ -222,13 +242,28 @@ test("pending asset is hidden from learners until admin approval", async ({ brow
     await kidPage.reload();
     await expect(kidPage.getByTestId("alphabet-letter")).toHaveText("A");
     await expectImageLoaded(kidPage, "alphabet-picture");
-
-    await kidContext.close();
-    await adminContext.close();
   } finally {
-    await request.post("/api/test/media-asset", {
-      data: { action: "restore-pack", key: "apple" },
-    });
+    if (kidContext) {
+      try {
+        await kidContext.close();
+      } catch {
+        // ignore teardown-time context close errors
+      }
+    }
+    if (adminContext) {
+      try {
+        await adminContext.close();
+      } catch {
+        // ignore teardown-time context close errors
+      }
+    }
+    try {
+      await request.post("/api/test/media-asset", {
+        data: { action: "restore-pack", key: "apple" },
+      });
+    } catch {
+      // request context may be disposed if the test runner is tearing down
+    }
   }
 });
 

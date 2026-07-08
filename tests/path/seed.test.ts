@@ -102,6 +102,21 @@ describe("syncPreA1Units", () => {
     expect(units.find((u) => u.index === 0)?.status).toBe("locked");
   });
 
+  it("de-duplicates concurrent pre-A1 sync callers", async () => {
+    const repo = makeFakeRepo();
+    await loadPathIfEmpty(repo, "A1");
+
+    await Promise.all([
+      syncPreA1Units(repo, profile({ experienceMode: "kid" })),
+      syncPreA1Units(repo, profile({ experienceMode: "kid" })),
+    ]);
+
+    const preA1 = (await repo.getUnits()).filter((u) => u.index < 0);
+    const uniqueIndexes = new Set(preA1.map((u) => u.index));
+    expect(preA1).toHaveLength(PRE_A1_UNIT_COUNT);
+    expect(uniqueIndexes.size).toBe(PRE_A1_UNIT_COUNT);
+  });
+
   it("does not seed pre-A1 for adult mode without opt-in", async () => {
     const repo = makeFakeRepo();
     await loadPathIfEmpty(repo, "A1");

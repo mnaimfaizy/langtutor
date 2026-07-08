@@ -9,6 +9,7 @@ import { seedBackbonePath } from "./backbone-planner";
 import { hasReachedFirstA1Unit, seedPreA1Units, shouldSeedPreA1 } from "./pre-a1";
 
 let _seedingPromise: Promise<void> | null = null;
+let _preA1SyncPromise: Promise<void> | null = null;
 
 /**
  * Seeds @repo's learning path from the backbone if the learner has no units yet.
@@ -40,6 +41,18 @@ async function _doSeed(repo: ContentRepository, anchorLevel: Cefr): Promise<void
  * unit 0 has unlocked — the natural handoff into A1.
  */
 export async function syncPreA1Units(repo: ContentRepository, profile: Profile): Promise<void> {
+  if (_preA1SyncPromise) {
+    await _preA1SyncPromise;
+    return;
+  }
+
+  _preA1SyncPromise = _doSyncPreA1Units(repo, profile).finally(() => {
+    _preA1SyncPromise = null;
+  });
+  await _preA1SyncPromise;
+}
+
+async function _doSyncPreA1Units(repo: ContentRepository, profile: Profile): Promise<void> {
   const anchorLevel = profile.cefrLevel ?? "A1";
   const units = await repo.getUnits();
   if (hasReachedFirstA1Unit(units)) return;
