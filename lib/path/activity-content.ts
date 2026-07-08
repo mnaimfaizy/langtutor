@@ -25,6 +25,7 @@ export const NO_GENERATED_CONTENT_KINDS: ReadonlySet<ActivityKind> = new Set([
   "review",
   "alphabet",
   "phonics",
+  "picture-match",
   "listen-tap",
 ]);
 

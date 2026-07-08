@@ -229,7 +229,13 @@ export type UnitBufferStatus = "empty" | "buffered";
  * or `"review"` (vocabulary SRS review — not a diagnosed skill, so it lives outside
  * {@link Skill} rather than widening that diagnostics-dimension type).
  */
-export type ActivityKind = Skill | "review" | "alphabet" | "phonics" | "listen-tap";
+export type ActivityKind =
+  | Skill
+  | "review"
+  | "alphabet"
+  | "phonics"
+  | "picture-match"
+  | "listen-tap";
 
 /**
  * One ordered slot in a unit's activity list. `contentId` is undefined until the teacher

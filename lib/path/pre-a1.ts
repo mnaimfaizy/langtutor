@@ -27,6 +27,11 @@ export function phonicsActivities(): UnitActivityRef[] {
   return [{ skill: "phonics" }];
 }
 
+/** Single picture-match activity slot for the third pre-A1 unit (issue #74). */
+export function pictureMatchActivities(): UnitActivityRef[] {
+  return [{ skill: "picture-match" }];
+}
+
 /** Single listen-and-tap activity slot for the fourth pre-A1 unit (issue #73). */
 export function listenTapActivities(): UnitActivityRef[] {
   return [{ skill: "listen-tap" }];
@@ -91,9 +96,11 @@ export function seedPreA1Units(now: Date = new Date()): NewUnit[] {
         ? alphabetActivities()
         : i === 1
           ? phonicsActivities()
-          : i === 3
-            ? listenTapActivities()
-            : backboneActivities(),
+          : i === 2
+            ? pictureMatchActivities()
+            : i === 3
+              ? listenTapActivities()
+              : backboneActivities(),
     status: i === 0 ? "available" : "locked",
     bufferStatus: "empty",
     createdAt: now,

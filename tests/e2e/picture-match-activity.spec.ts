@@ -1,17 +1,15 @@
 /**
- * Issue #73 — listen-and-tap activity in the fourth pre-A1 unit. Plays audio with
- * media-store TTS, scores picture-choice taps, then marks the slot done via the unit player.
+ * Issue #74 — picture-match activity in the third pre-A1 unit. Supports picture→word and
+ * word→picture rounds with media-store images/audio, then marks the slot done via the unit player.
  */
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-import { LISTEN_TAP_ROUNDS } from "@/lib/listen-tap/vocab";
 import { PICTURE_MATCH_ROUNDS } from "@/lib/picture-match/vocab";
 
 const BATCH_SIZE = 6;
 const ALPHABET_LENGTH = 26;
 const PICTURE_MATCH_ROUND_COUNT = PICTURE_MATCH_ROUNDS.length;
-const LISTEN_TAP_ROUND_COUNT = LISTEN_TAP_ROUNDS.length;
 
 // Minimal valid WAV header — enough for <audio> playback in Chromium.
 const TINY_WAV = Buffer.from([
@@ -55,7 +53,7 @@ test.beforeEach(async ({ request, page }) => {
 test.use({ storageState: { cookies: [], origins: [] } });
 
 async function signUpKid(page: Page): Promise<void> {
-  const email = `listen-tap-kid-${Date.now()}@example.com`;
+  const email = `picture-match-kid-${Date.now()}@example.com`;
   await page.goto("/sign-up");
   await page.getByTestId("signup-mode-btn-kid").click();
   await page.getByTestId("signup-mode-continue").click();
@@ -102,43 +100,36 @@ async function completePhonicsUnit(page: Page): Promise<void> {
   await page.goto("/home");
 }
 
-async function completePictureMatchUnit(page: Page): Promise<void> {
-  await page.getByTestId("unit--2").click();
-  await page.getByTestId("btn-start-activity-0").click();
-
-  for (let i = 0; i < PICTURE_MATCH_ROUND_COUNT; i++) {
-    const target = PICTURE_MATCH_ROUNDS[i]!.targetWord;
-    await page.getByTestId(`picture-match-choice-${target}`).click();
-    await page.getByTestId("btn-picture-match-next").click();
-  }
-
-  await expect(page.getByTestId("unit-complete-message")).toBeVisible();
-  await page.goto("/home");
-}
-
-test("pre-A1 listen-and-tap unit plays audio, scores choices, and completes the slot", async ({
+test("pre-A1 picture-match unit scores both directions and completes the slot", async ({
   page,
 }) => {
   await signUpKid(page);
   await completeOnboardingToHome(page);
   await completeAlphabetUnit(page);
   await completePhonicsUnit(page);
-  await completePictureMatchUnit(page);
 
-  const listenTapUnit = page.getByTestId("unit--1");
-  await expect(listenTapUnit).toHaveAttribute("data-status", "available");
-  await listenTapUnit.click();
+  const pictureMatchUnit = page.getByTestId("unit--2");
+  await expect(pictureMatchUnit).toHaveAttribute("data-status", "available");
+  await pictureMatchUnit.click();
 
-  await expect(page.getByTestId("unit-title")).toContainText("Listen & tap");
+  await expect(page.getByTestId("unit-title")).toContainText("Picture words");
   await page.getByTestId("btn-start-activity-0").click();
 
-  await expect(page.getByTestId("listen-tap-choices")).toBeVisible();
+  await expect(page.getByTestId("picture-match-choices")).toBeVisible();
 
-  for (let i = 0; i < LISTEN_TAP_ROUND_COUNT; i++) {
-    const target = LISTEN_TAP_ROUNDS[i]!.targetWord;
-    await page.getByTestId(`listen-tap-choice-${target}`).click();
-    await expect(page.getByTestId("listen-tap-feedback")).toBeVisible();
-    await page.getByTestId("btn-listen-tap-next").click();
+  for (let i = 0; i < PICTURE_MATCH_ROUND_COUNT; i++) {
+    const round = PICTURE_MATCH_ROUNDS[i]!;
+    const target = round.targetWord;
+
+    if (round.direction === "picture-to-word") {
+      await expect(page.getByTestId("picture-match-prompt-image")).toBeVisible();
+    } else {
+      await expect(page.getByTestId("btn-picture-match-listen")).toBeVisible();
+    }
+
+    await page.getByTestId(`picture-match-choice-${target}`).click();
+    await expect(page.getByTestId("picture-match-feedback")).toBeVisible();
+    await page.getByTestId("btn-picture-match-next").click();
   }
 
   await expect(page).toHaveURL(/\/path\/\d+$/);

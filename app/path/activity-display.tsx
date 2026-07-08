@@ -12,6 +12,7 @@ export const ACTIVITY_LABEL: Record<ActivityKind, string> = {
   speaking: "Speaking",
   alphabet: "Alphabet",
   phonics: "Phonics",
+  "picture-match": "Picture match",
   "listen-tap": "Listen & tap",
 };
 
@@ -23,5 +24,6 @@ export const ACTIVITY_ICON: Record<ActivityKind, typeof BookIcon> = {
   speaking: MicIcon,
   alphabet: TypeIcon,
   phonics: HeadphonesIcon,
+  "picture-match": BookIcon,
   "listen-tap": HeadphonesIcon,
 };

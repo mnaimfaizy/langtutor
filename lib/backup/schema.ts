@@ -101,6 +101,7 @@ const ActivityKindSchema = z.union([
   z.literal("review"),
   z.literal("alphabet"),
   z.literal("phonics"),
+  z.literal("picture-match"),
   z.literal("listen-tap"),
 ]);
 

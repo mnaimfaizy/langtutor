@@ -32,13 +32,13 @@ describe("seedPreA1Units", () => {
     expect(units.slice(1).every((u) => u.status === "locked")).toBe(true);
   });
 
-  it("uses backbone placeholder activities with no grammar anchors", () => {
+  it("uses dedicated pre-A1 activity slots with no grammar anchors", () => {
     const units = seedPreA1Units();
 
     expect(units.every((u) => u.targetGrammarIds.length === 0)).toBe(true);
     expect(units[0]?.activities).toEqual([{ skill: "alphabet" }]);
     expect(units[1]?.activities).toEqual([{ skill: "phonics" }]);
-    expect(units[2]?.activities).toHaveLength(5);
+    expect(units[2]?.activities).toEqual([{ skill: "picture-match" }]);
     expect(units[3]?.activities).toEqual([{ skill: "listen-tap" }]);
   });
 });

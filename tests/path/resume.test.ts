@@ -71,6 +71,17 @@ describe("resolveUnitResumeTarget", () => {
     expect(generate).not.toHaveBeenCalled();
   });
 
+  it("resolves a pending picture-match activity directly, with no generation call", async () => {
+    const u = unit({ activities: [activity({ skill: "picture-match" })] });
+    const repo = makeFakeRepo([u]);
+    const generate = vi.fn() as unknown as GenerateActivityContentFn;
+
+    const target = await resolveUnitResumeTarget(repo, u, generate);
+
+    expect(target).toEqual({ href: "/picture-match?unit=1&activity=0", activityIndex: 0 });
+    expect(generate).not.toHaveBeenCalled();
+  });
+
   it("resolves a pending listen-tap activity directly, with no generation call", async () => {
     const u = unit({ activities: [activity({ skill: "listen-tap" })] });
     const repo = makeFakeRepo([u]);
