@@ -50,10 +50,12 @@ Pick the highest-priority open issue that is not blocked by another open issue.
 - Do not close an issue until you have committed the fix and `pnpm verify` passes.
 - Do not leave commented-out code or TODO comments in committed code.
 - If you are blocked (missing context, failing tests you cannot fix, external dependency), leave a comment on the issue explaining the blocker and move on — do not close it.
-- Do not use broad process-kill patterns (`pkill -f` / `killall`) against generic runtime names
-  such as `playwright`, `node`, `npm`, `tsx`, `cursor`, or `copilot`; these can kill the tool
-  supervisor and abort the run. If cleanup is needed before e2e retry, only use:
-  `pkill -f "next dev" 2>/dev/null || true` and `pkill -f "next-server" 2>/dev/null || true`.
+- Do not kill the dev server with `pkill -f "<name>"` (or `killall`). Because `-f` matches the
+  full command line, `pkill` also matches the shell running your own command and aborts the run
+  (issue #62 — this is why `pkill -f "playwright"` and `pkill -f "next dev"` both killed the
+  agent). Playwright manages its own dev server; to clear stale state between e2e runs use only
+  `rm -rf .next && rm -f langtutor-e2e.db*`. If a kill is truly unavoidable, use the
+  self-exclusion bracket trick: `pkill -f 'next[ ]dev' 2>/dev/null || true`.
 
 # Done
 

@@ -4,6 +4,10 @@ const PORT = 3000;
 const baseURL = `http://localhost:${PORT}`;
 const AUTH_FILE = "tests/e2e/.auth/user.json";
 
+// The Sandcastle sandbox image sets LANGTUTOR_TURBOPACK_ROOT (and nothing else does),
+// so it doubles as a reliable "running inside the sandbox" marker. See .sandcastle/Dockerfile.
+const IN_SANDBOX = !!process.env.LANGTUTOR_TURBOPACK_ROOT;
+
 // E2e smoke tests run against the dev server (auto-started below). Unit tests live in
 // tests/** as *.test.ts (Vitest); e2e specs are tests/e2e/**/*.spec.ts (this runner).
 export default defineConfig({
@@ -48,7 +52,18 @@ export default defineConfig({
     // Locally, reuse the already-running dev server (points at your real DB).
     command: "pnpm dev",
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    // Reuse only for interactive local dev. In CI and inside the Sandcastle sandbox we
+    // must NOT silently reuse a wedged/zombie server left over from a prior `playwright
+    // test` invocation — that reuse is what hangs auth/navigation (see
+    // .sandcastle/ENVIRONMENT.md issues #59/#60). `false` makes Playwright throw loudly
+    // and start its own clean server instead of hanging.
+    reuseExistingServer: !process.env.CI && !IN_SANDBOX,
+    // Shut the dev server down with SIGTERM instead of Playwright's default (a forced
+    // SIGKILL of the whole process group). Next.js needs a clean shutdown; a SIGKILL
+    // mid-write corrupts `.next` and the generated route types — the documented root
+    // cause of the post-run corruption/flakiness in .sandcastle/ENVIRONMENT.md (#58/#60).
+    // Playwright's own docs also note Docker teardown requires SIGTERM.
+    gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
     timeout: 120_000,
     env: {
       ...process.env,

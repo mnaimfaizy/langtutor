@@ -24,18 +24,28 @@
   `pnpm exec playwright install chromium` (no `--with-deps`) is safe — it installs to the
   container-native `/ms-playwright` path, never to a bind mount.
 - **Wiping `node_modules` / the pnpm store more than once.** See anti-thrash rule below.
-- **Broad process-kill patterns (`pkill -f` / `killall`) that can match the agent toolchain**
-  (especially `playwright`, `cursor`, `copilot`, `tsx`, `node`, or `npm`). These can kill the
-  command supervisor and abort the whole run with exit 137.
+- **`pkill -f "<pattern>"` / `killall` to kill dev servers.** With `-f`, `pkill` matches the
+  _full command line_ of every process — **including the shell running your own `pkill`**, whose
+  command line contains the exact pattern you just typed. It therefore signals the agent's own
+  process and aborts the run. This is true for **any** literal pattern (`playwright`, `next dev`,
+  `next-server`, `node`, …), not just broad ones. See "Safe process cleanup" below.
 
 ## Safe process cleanup
 
-If you must clean stale dev servers before a Playwright retry, only target Next.js processes:
+**Prefer not killing anything.** Playwright's `webServer` starts and stops (`SIGTERM`) its own
+dev server for every invocation, so between e2e runs you only need to clear stale build/db state:
 
-- `pkill -f "next dev" 2>/dev/null || true`
-- `pkill -f "next-server" 2>/dev/null || true`
+- `rm -rf .next && rm -f langtutor-e2e.db*`
 
-Never target `playwright` (or other broad runtime names) with `pkill -f` in this sandbox.
+**Never** run `pkill -f "next dev"`, `pkill -f "next-server"`, `pkill -f "playwright"`, etc. —
+they self-match the shell running the command and kill the agent (issue #62: exit 137 with
+`playwright`, exit 143 with `next dev`).
+
+If a wedged dev server is genuinely still listening and a kill is unavoidable, use the
+self-exclusion "bracket trick" so the regex cannot match its own command line:
+
+- `pkill -f 'next[ ]dev' 2>/dev/null || true`
+- `pkill -f '[n]ext-server' 2>/dev/null || true`
 
 ## Anti-thrash rule
 
@@ -111,17 +121,36 @@ langtutor-e2e.db*` and retry once in a single consolidated invocation.
   embedded activity from `/path/[id]` to `/review?unit=...&activity=...`) intermittently
   fails to render the destination page's content even though `page.waitForURL` resolves —
   the same class of instability as the auth-setup hang, just surfacing one step later.
-  Full process cleanup (`pkill -9 -f "next dev"`, `pkill -9 -f "next-server"`, `rm -rf .next`,
-  `rm -f langtutor-e2e.db*`) plus a idle pause before retrying reduces but does not
-  eliminate it. Confirmed the app code itself is not at fault: the identical
+  Full process cleanup (`rm -rf .next`, `rm -f langtutor-e2e.db*`) plus a idle pause before
+  retrying reduces but does not
+  eliminate it. (⚠️ Do **not** add `pkill -f "next dev"`/`pkill -f "next-server"` here — those
+  self-match and abort the run; see issue #62 below.) Confirmed the app code itself is not at fault: the identical
   review-activity flow passed cleanly on the first invocation of a fresh session, and
   `pnpm verify` (typecheck/lint/format/unit tests) is unaffected. Fix: run e2e specs in the
   _first_ Playwright invocation of a session, before any other spec runs have started and
   stopped `pnpm dev` — do not chain multiple `playwright test` invocations for the same
   feature in one sitting.
-- **(issue #62) `pkill -9 -f "playwright"` can terminate the command runner itself and abort
-  the iteration with exit 137** because the pattern can match a supervising process command line.
-  Treat `playwright` as a banned kill pattern in this environment. If cleanup is required,
-  kill only `next dev` and `next-server`, then clear `.next`/e2e db as needed.
+- **(issue #62) `pkill -f "<pattern>"` self-matches its own command line and kills the agent.**
+  `pkill -9 -f "playwright"` aborted a run with exit 137 (SIGKILL); the "safe" replacement
+  `pkill -f "next dev"` then aborted the next run with exit 143 (SIGTERM). Root cause: `-f`
+  matches the _full command line_, and the shell executing the `pkill` has that exact pattern in
+  its own command line, so `pkill` signals its own process (the agent). It is **not** specific to
+  `playwright` — any literal pattern you type self-matches. Fix: don't kill the dev server
+  (Playwright manages its lifecycle) — just `rm -rf .next && rm -f langtutor-e2e.db*`. If a kill
+  is truly unavoidable, use the bracket trick (`pkill -f 'next[ ]dev'`) so the pattern can't match
+  itself. See "Safe process cleanup".
+- **(issue #62) e2e flakiness mitigations now baked into `playwright.config.ts`.** Two changes,
+  informed by Playwright's own webServer/Docker docs, reduce the `.next`-corruption class of
+  flakiness that made agents reach for `pkill` in the first place:
+  1. `gracefulShutdown: { signal: "SIGTERM", timeout: 5000 }` — Playwright otherwise **SIGKILLs
+     the dev-server process group** at teardown; a SIGKILL'd `next dev` mid-write is what corrupts
+     `.next`/route types (#58/#60). SIGTERM lets Next exit cleanly. (Docs also note Docker
+     teardown requires SIGTERM.)
+  2. `reuseExistingServer: false` inside the sandbox (keyed off `LANGTUTOR_TURBOPACK_ROOT`) — a
+     wedged/zombie server from a prior invocation is no longer silently reused; Playwright throws
+     loudly and starts a clean server instead of hanging.
+     Still worth doing at the sandbox level (needs `@ai-hero/sandcastle` `docker()` support, not yet
+     wired): run the container with `--init` (reap zombie `next-server`/Chromium processes, PID-1
+     handling) and `--ipc=host` (Chromium OOM guard). See https://playwright.dev/docs/docker.
 - (Add new, verified environment findings here — with the run/issue number — so the next
   agent does not re-discover them.)
