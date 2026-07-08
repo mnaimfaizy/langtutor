@@ -212,6 +212,31 @@ export const gamification = sqliteTable(
   (t) => [uniqueIndex("idx_gamification_user_id").on(t.userId)],
 );
 
+/** Per-user quest progress (singleton row; ADR 0019, issue #76). */
+export const questState = sqliteTable(
+  "quest_state",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id").notNull(),
+    dailyPeriodStart: text("daily_period_start"),
+    weeklyPeriodStart: text("weekly_period_start"),
+    entries: text("entries").notNull().default("[]"),
+  },
+  (t) => [uniqueIndex("idx_quest_state_user_id").on(t.userId)],
+);
+
+/** Per-user collectible grants — one row per (collectible, unit); idempotent by compound PK. */
+export const collectibleGrants = sqliteTable(
+  "collectible_grants",
+  {
+    userId: text("user_id").notNull(),
+    collectibleId: text("collectible_id").notNull(),
+    unitId: integer("unit_id").notNull(),
+    grantedAt: integer("granted_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.collectibleId, t.unitId] })],
+);
+
 /**
  * Learning path units (ADR 0015). `index` orders the path ascending; negative values are
  * reserved for a future pre-A1 tier (ADR 0016). Backbone seeding (issue #57) writes

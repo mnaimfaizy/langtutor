@@ -14,6 +14,7 @@ import type {
   Card,
   Content,
   ErrorEventRecord,
+  CollectibleGrant,
   GamificationState,
   LexiconCacheEntry,
   MediaAsset,
@@ -21,6 +22,7 @@ import type {
   MediaAssetRecord,
   Profile,
   ProfileSettings,
+  QuestState,
   Unit,
   Weakness,
 } from "@/lib/db/schema";
@@ -112,6 +114,26 @@ export async function repoGetGamification(): Promise<GamificationState | undefin
 
 export async function repoSaveGamification(state: GamificationState): Promise<void> {
   return (await getServerContentRepository()).saveGamification(state);
+}
+
+export async function repoGetQuestState(): Promise<QuestState | undefined> {
+  return (await getServerContentRepository()).getQuestState();
+}
+
+export async function repoSaveQuestState(state: QuestState): Promise<void> {
+  return (await getServerContentRepository()).saveQuestState(state);
+}
+
+export async function repoGetCollectibles(): Promise<CollectibleGrant[]> {
+  return (await getServerContentRepository()).getCollectibles();
+}
+
+export async function repoGrantCollectible(
+  collectibleId: string,
+  unitId: number,
+  grantedAt: Date,
+): Promise<void> {
+  return (await getServerContentRepository()).grantCollectible(collectibleId, unitId, grantedAt);
 }
 
 export async function repoGetLexiconEntry(word: string): Promise<LexiconCacheEntry | undefined> {

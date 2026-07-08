@@ -11,6 +11,7 @@ import type {
   NewErrorEvent,
   NewUnit,
   Profile,
+  QuestState,
   Weakness,
 } from "@/lib/db";
 
@@ -38,6 +39,10 @@ const mockRepo = vi.hoisted(() => ({
   putWeakness: vi.fn().mockResolvedValue(undefined),
   getGamification: vi.fn().mockResolvedValue(undefined),
   saveGamification: vi.fn().mockResolvedValue(undefined),
+  getQuestState: vi.fn().mockResolvedValue(undefined),
+  saveQuestState: vi.fn().mockResolvedValue(undefined),
+  getCollectibles: vi.fn().mockResolvedValue([]),
+  grantCollectible: vi.fn().mockResolvedValue(undefined),
   getLexiconEntry: vi.fn().mockResolvedValue(undefined),
   putLexiconEntry: vi.fn().mockResolvedValue(undefined),
   getMediaAsset: vi.fn().mockResolvedValue(undefined),
@@ -101,6 +106,10 @@ describe("content actions — identity routing", () => {
     await actions.repoPutWeakness({} as Weakness);
     await actions.repoGetGamification();
     await actions.repoSaveGamification({} as GamificationState);
+    await actions.repoGetQuestState();
+    await actions.repoSaveQuestState({} as QuestState);
+    await actions.repoGetCollectibles();
+    await actions.repoGrantCollectible("sticker-fox", 1, new Date());
     await actions.repoGetLexiconEntry("hello");
     await actions.repoPutLexiconEntry({} as LexiconCacheEntry);
     await actions.repoGetMediaAsset({} as MediaAssetKey);
@@ -116,6 +125,6 @@ describe("content actions — identity routing", () => {
     await actions.repoExportBackup();
     await actions.repoImportBackup({} as BackupData);
 
-    expect(mockResolveCurrentUser).toHaveBeenCalledTimes(33);
+    expect(mockResolveCurrentUser).toHaveBeenCalledTimes(37);
   });
 });

@@ -13,6 +13,7 @@ import type {
   Card,
   Content,
   ErrorEventRecord,
+  CollectibleGrant,
   GamificationState,
   LexiconCacheEntry,
   MediaAsset,
@@ -20,6 +21,7 @@ import type {
   MediaAssetRecord,
   Profile,
   ProfileSettings,
+  QuestState,
   Unit,
   Weakness,
 } from "./schema";
@@ -37,13 +39,16 @@ import {
   repoGetContent,
   repoGetDueCards,
   repoGetGamification,
+  repoGetCollectibles,
   repoGetLexiconEntry,
   repoGetMediaAsset,
   repoGetMediaAssetRaw,
   repoGetProfile,
+  repoGetQuestState,
   repoGetSettings,
   repoGetUnits,
   repoGetWeaknesses,
+  repoGrantCollectible,
   repoImportBackup,
   repoPutContent,
   repoPutLexiconEntry,
@@ -54,6 +59,7 @@ import {
   repoQueryMediaAssets,
   repoSaveGamification,
   repoSaveProfile,
+  repoSaveQuestState,
   repoSaveSettings,
   repoUpdateCard,
   repoUpdateUnit,
@@ -117,6 +123,18 @@ export class HttpContentRepository implements ContentRepository {
   }
   saveGamification(state: GamificationState): Promise<void> {
     return repoSaveGamification(state);
+  }
+  getQuestState(): Promise<QuestState | undefined> {
+    return repoGetQuestState();
+  }
+  saveQuestState(state: QuestState): Promise<void> {
+    return repoSaveQuestState(state);
+  }
+  getCollectibles(): Promise<CollectibleGrant[]> {
+    return repoGetCollectibles();
+  }
+  grantCollectible(collectibleId: string, unitId: number, grantedAt: Date): Promise<void> {
+    return repoGrantCollectible(collectibleId, unitId, grantedAt);
   }
   getLexiconEntry(word: string): Promise<LexiconCacheEntry | undefined> {
     return repoGetLexiconEntry(word);

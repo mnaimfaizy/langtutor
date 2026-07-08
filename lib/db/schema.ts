@@ -164,6 +164,30 @@ export interface GamificationState {
   achievements: Achievement[];
 }
 
+/** Progress toward one quest definition within the current daily/weekly period. */
+export interface QuestProgressEntry {
+  questId: string;
+  progress: number;
+  /** Set when the quest target is met for the current period; null while in progress. */
+  completedAt: Date | null;
+}
+
+/** Per-user quest progress (singleton row). Daily/weekly rollover slices read and write this. */
+export interface QuestState {
+  /** ISO `YYYY-MM-DD` local date when daily quests were last refreshed. */
+  dailyPeriodStart: string | null;
+  /** ISO `YYYY-MM-DD` local date when weekly quests were last refreshed. */
+  weeklyPeriodStart: string | null;
+  entries: QuestProgressEntry[];
+}
+
+/** A collectible earned by completing a learning-path unit (ADR 0019). */
+export interface CollectibleGrant {
+  collectibleId: string;
+  unitId: number;
+  grantedAt: Date;
+}
+
 /** Kind of shared media asset in the store (ADR 0016). */
 export type MediaAssetKind = "image" | "audio";
 

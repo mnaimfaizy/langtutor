@@ -12,6 +12,7 @@ import type {
 } from "./content-repository";
 import type {
   Card,
+  CollectibleGrant,
   Content,
   ErrorEventRecord,
   GamificationState,
@@ -21,6 +22,7 @@ import type {
   MediaAssetRecord,
   Profile,
   ProfileSettings,
+  QuestState,
   Unit,
   Weakness,
 } from "./schema";
@@ -153,6 +155,29 @@ export class DexieContentRepository implements ContentRepository {
 
   async saveGamification(state: GamificationState): Promise<void> {
     await this.db.gamification.put({ ...state, id: SINGLETON_KEY });
+  }
+
+  // quest state -------------------------------------------------------------
+  async getQuestState(): Promise<QuestState | undefined> {
+    const row = await this.db.questState.get(SINGLETON_KEY);
+    if (!row) return undefined;
+    const { id: _id, ...state } = row;
+    return state;
+  }
+
+  async saveQuestState(state: QuestState): Promise<void> {
+    await this.db.questState.put({ ...state, id: SINGLETON_KEY });
+  }
+
+  // collectible grants ------------------------------------------------------
+  getCollectibles(): Promise<CollectibleGrant[]> {
+    return this.db.collectibleGrants.toArray();
+  }
+
+  async grantCollectible(collectibleId: string, unitId: number, grantedAt: Date): Promise<void> {
+    const existing = await this.db.collectibleGrants.get([collectibleId, unitId]);
+    if (existing) return;
+    await this.db.collectibleGrants.put({ collectibleId, unitId, grantedAt });
   }
 
   // lexicon cache -----------------------------------------------------------

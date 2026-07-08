@@ -19,17 +19,19 @@ afterEach(async () => {
 });
 
 describe("DexieContentRepository — schema versioning", () => {
-  it("opens at version 5 with all §4 tables plus units and mediaAssets", async () => {
+  it("opens at version 6 with quest state and collectible grants", async () => {
     await db.open();
-    expect(db.verno).toBe(5);
+    expect(db.verno).toBe(6);
     expect(db.tables.map((t) => t.name).sort()).toEqual([
       "cards",
+      "collectibleGrants",
       "content",
       "errorEvents",
       "gamification",
       "lexiconCache",
       "mediaAssets",
       "profile",
+      "questState",
       "units",
       "weakness",
     ]);

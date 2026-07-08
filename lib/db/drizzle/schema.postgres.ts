@@ -200,6 +200,29 @@ export const gamification = pgTable(
   (t) => [uniqueIndex("idx_gamification_user_id").on(t.userId)],
 );
 
+export const questState = pgTable(
+  "quest_state",
+  {
+    id: serial("id").primaryKey(),
+    userId: uuid("user_id").notNull(),
+    dailyPeriodStart: text("daily_period_start"),
+    weeklyPeriodStart: text("weekly_period_start"),
+    entries: text("entries").notNull().default("[]"),
+  },
+  (t) => [uniqueIndex("idx_quest_state_user_id").on(t.userId)],
+);
+
+export const collectibleGrants = pgTable(
+  "collectible_grants",
+  {
+    userId: uuid("user_id").notNull(),
+    collectibleId: text("collectible_id").notNull(),
+    unitId: integer("unit_id").notNull(),
+    grantedAt: timestamp("granted_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.collectibleId, t.unitId] })],
+);
+
 export const units = pgTable(
   "units",
   {

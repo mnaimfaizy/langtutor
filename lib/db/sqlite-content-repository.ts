@@ -23,6 +23,8 @@ import {
   gamification as gamificationTable,
   lexiconCache as lexiconCacheTable,
   mediaAssets as mediaAssetsTable,
+  collectibleGrants as collectibleGrantsTable,
+  questState as questStateTable,
   profiles as profilesTable,
   units as unitsTable,
   weakness as weaknessTable,
@@ -30,6 +32,7 @@ import {
 import type {
   Achievement,
   Card,
+  CollectibleGrant,
   Content,
   ErrorEventRecord,
   FsrsState,
@@ -40,6 +43,8 @@ import type {
   MediaAssetRecord,
   Profile,
   ProfileSettings,
+  QuestProgressEntry,
+  QuestState,
   Unit,
   UnitActivityRef,
   Weakness,
@@ -121,6 +126,29 @@ function parseFsrs(json: string): FsrsState {
 function parseAchievements(json: string): Achievement[] {
   const raw = JSON.parse(json) as Array<{ id: string; unlockedAt: string | Date }>;
   return raw.map((a) => ({ id: a.id, unlockedAt: new Date(a.unlockedAt) }));
+}
+
+function parseQuestEntries(json: string): QuestProgressEntry[] {
+  const raw = JSON.parse(json) as Array<{
+    questId: string;
+    progress: number;
+    completedAt: string | null;
+  }>;
+  return raw.map((e) => ({
+    questId: e.questId,
+    progress: e.progress,
+    completedAt: e.completedAt ? new Date(e.completedAt) : null,
+  }));
+}
+
+function serializeQuestEntries(entries: QuestProgressEntry[]): string {
+  return JSON.stringify(
+    entries.map((e) => ({
+      questId: e.questId,
+      progress: e.progress,
+      completedAt: e.completedAt ? e.completedAt.toISOString() : null,
+    })),
+  );
 }
 
 // ─── Row → domain mappers ──────────────────────────────────────────────────────
@@ -628,6 +656,94 @@ export class SqliteContentRepository implements ContentRepository {
     }
   }
 
+  // ─── quest state ──────────────────────────────────────────────────────────
+
+  async getQuestState(): Promise<QuestState | undefined> {
+    const row = this.db
+      .select()
+      .from(questStateTable)
+      .where(eq(questStateTable.userId, this.userId))
+      .get();
+    if (!row) return undefined;
+    return {
+      dailyPeriodStart: row.dailyPeriodStart ?? null,
+      weeklyPeriodStart: row.weeklyPeriodStart ?? null,
+      entries: parseQuestEntries(row.entries),
+    };
+  }
+
+  async saveQuestState(state: QuestState): Promise<void> {
+    const entriesJson = serializeQuestEntries(state.entries);
+
+    const existing = this.db
+      .select({ id: questStateTable.id })
+      .from(questStateTable)
+      .where(eq(questStateTable.userId, this.userId))
+      .get();
+
+    if (existing) {
+      this.db
+        .update(questStateTable)
+        .set({
+          dailyPeriodStart: state.dailyPeriodStart,
+          weeklyPeriodStart: state.weeklyPeriodStart,
+          entries: entriesJson,
+        })
+        .where(eq(questStateTable.userId, this.userId))
+        .run();
+    } else {
+      this.db
+        .insert(questStateTable)
+        .values({
+          userId: this.userId,
+          dailyPeriodStart: state.dailyPeriodStart,
+          weeklyPeriodStart: state.weeklyPeriodStart,
+          entries: entriesJson,
+        })
+        .run();
+    }
+  }
+
+  // ─── collectible grants ───────────────────────────────────────────────────
+
+  async getCollectibles(): Promise<CollectibleGrant[]> {
+    const rows = this.db
+      .select()
+      .from(collectibleGrantsTable)
+      .where(eq(collectibleGrantsTable.userId, this.userId))
+      .all();
+    return rows.map((row) => ({
+      collectibleId: row.collectibleId,
+      unitId: row.unitId,
+      grantedAt: row.grantedAt,
+    }));
+  }
+
+  async grantCollectible(collectibleId: string, unitId: number, grantedAt: Date): Promise<void> {
+    const existing = this.db
+      .select({ collectibleId: collectibleGrantsTable.collectibleId })
+      .from(collectibleGrantsTable)
+      .where(
+        and(
+          eq(collectibleGrantsTable.userId, this.userId),
+          eq(collectibleGrantsTable.collectibleId, collectibleId),
+          eq(collectibleGrantsTable.unitId, unitId),
+        ),
+      )
+      .get();
+    if (existing) return;
+
+    this.db
+      .insert(collectibleGrantsTable)
+      .values({
+        userId: this.userId,
+        collectibleId,
+        unitId,
+        grantedAt,
+      })
+      .run();
+  }
+
   // ─── lexicon cache ────────────────────────────────────────────────────────
 
   async getLexiconEntry(word: string): Promise<LexiconCacheEntry | undefined> {
@@ -823,6 +939,11 @@ export class SqliteContentRepository implements ContentRepository {
     this.db.delete(errorEventsTable).where(eq(errorEventsTable.userId, this.userId)).run();
     this.db.delete(weaknessTable).where(eq(weaknessTable.userId, this.userId)).run();
     this.db.delete(gamificationTable).where(eq(gamificationTable.userId, this.userId)).run();
+    this.db.delete(questStateTable).where(eq(questStateTable.userId, this.userId)).run();
+    this.db
+      .delete(collectibleGrantsTable)
+      .where(eq(collectibleGrantsTable.userId, this.userId))
+      .run();
     this.db.delete(lexiconCacheTable).run();
     this.db.delete(mediaAssetsTable).run();
     this.db.delete(unitsTable).where(eq(unitsTable.userId, this.userId)).run();

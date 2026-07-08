@@ -2,6 +2,7 @@ import Dexie, { type EntityTable, type Table } from "dexie";
 import type {
   Card,
   Cefr,
+  CollectibleGrant,
   Content,
   ErrorEventRecord,
   GamificationState,
@@ -9,12 +10,13 @@ import type {
   MediaAsset,
   MediaAssetKind,
   Profile,
+  QuestState,
   Skill,
   Unit,
   Weakness,
 } from "./schema";
 
-/** Primary key shared by single-row tables (`profile`, `gamification`). */
+/** Primary key shared by single-row tables (`profile`, `gamification`, `questState`). */
 export const SINGLETON_KEY = 1 as const;
 
 /** Stored shape of a single-row table: the entity plus its fixed primary key. */
@@ -25,6 +27,9 @@ export type WeaknessKey = [Skill, string, Cefr];
 
 /** Compound primary key for the `mediaAssets` table: (kind, key, style). */
 export type MediaAssetCompoundKey = [MediaAssetKind, string, string];
+
+/** Compound primary key for the `collectibleGrants` table: (collectibleId, unitId). */
+export type CollectibleGrantKey = [string, number];
 
 /**
  * The IndexedDB database for Lang-Tutor — one store per PLAN §4 table.
@@ -45,9 +50,11 @@ export class LangTutorDB extends Dexie {
   // Inbound (caller-provided) keys.
   profile!: Table<Singleton<Profile>, number>;
   gamification!: Table<Singleton<GamificationState>, number>;
+  questState!: Table<Singleton<QuestState>, number>;
   weakness!: Table<Weakness, WeaknessKey>;
   lexiconCache!: Table<LexiconCacheEntry, string>;
   mediaAssets!: Table<MediaAsset, MediaAssetCompoundKey>;
+  collectibleGrants!: Table<CollectibleGrant, CollectibleGrantKey>;
 
   constructor(name = "lang-tutor") {
     super(name);
@@ -89,5 +96,10 @@ export class LangTutorDB extends Dexie {
             if (!asset.approvalStatus) asset.approvalStatus = "approved";
           });
       });
+    // v6: quest state + collectible grants (ADR 0019, issue #76).
+    this.version(6).stores({
+      questState: "id",
+      collectibleGrants: "[collectibleId+unitId]",
+    });
   }
 }

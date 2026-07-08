@@ -320,6 +320,83 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
     });
 
     // -------------------------------------------------------------------------
+    describe("quest state (singleton)", () => {
+      it("returns undefined before any state is saved", async () => {
+        expect(await repo.getQuestState()).toBeUndefined();
+      });
+
+      it("round-trips quest state", async () => {
+        await repo.saveQuestState({
+          dailyPeriodStart: "2026-06-22",
+          weeklyPeriodStart: "2026-06-16",
+          entries: [
+            { questId: "daily-review-10", progress: 4, completedAt: null },
+            {
+              questId: "daily-finish-unit",
+              progress: 1,
+              completedAt: new Date("2026-06-22T12:00:00.000Z"),
+            },
+          ],
+        });
+
+        const loaded = await repo.getQuestState();
+        expect(loaded?.dailyPeriodStart).toBe("2026-06-22");
+        expect(loaded?.entries).toHaveLength(2);
+        expect(loaded?.entries[1]?.completedAt).toEqual(new Date("2026-06-22T12:00:00.000Z"));
+      });
+
+      it("overwrites on repeated save (stays a single row)", async () => {
+        await repo.saveQuestState({
+          dailyPeriodStart: "2026-06-21",
+          weeklyPeriodStart: null,
+          entries: [],
+        });
+        await repo.saveQuestState({
+          dailyPeriodStart: "2026-06-22",
+          weeklyPeriodStart: "2026-06-16",
+          entries: [{ questId: "daily-review-10", progress: 1, completedAt: null }],
+        });
+
+        const state = await repo.getQuestState();
+        expect(state?.dailyPeriodStart).toBe("2026-06-22");
+        expect(state?.entries).toHaveLength(1);
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    describe("collectible grants", () => {
+      const grantedAt = new Date("2026-06-22T15:00:00.000Z");
+
+      it("returns an empty array before any grant", async () => {
+        expect(await repo.getCollectibles()).toEqual([]);
+      });
+
+      it("round-trips a collectible grant", async () => {
+        await repo.grantCollectible("sticker-fox", 42, grantedAt);
+
+        expect(await repo.getCollectibles()).toEqual([
+          { collectibleId: "sticker-fox", unitId: 42, grantedAt },
+        ]);
+      });
+
+      it("granting the same collectible for the same unit twice is a no-op", async () => {
+        await repo.grantCollectible("sticker-fox", 42, grantedAt);
+        await repo.grantCollectible("sticker-fox", 42, new Date("2026-06-23T00:00:00.000Z"));
+
+        const grants = await repo.getCollectibles();
+        expect(grants).toHaveLength(1);
+        expect(grants[0]?.grantedAt).toEqual(grantedAt);
+      });
+
+      it("allows the same collectible for different units", async () => {
+        await repo.grantCollectible("sticker-fox", 1, grantedAt);
+        await repo.grantCollectible("sticker-fox", 2, grantedAt);
+
+        expect(await repo.getCollectibles()).toHaveLength(2);
+      });
+    });
+
+    // -------------------------------------------------------------------------
     describe("lexicon cache (case-insensitive)", () => {
       it("caches and retrieves entries case-insensitively", async () => {
         await repo.putLexiconEntry({
@@ -544,6 +621,12 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
           approvalStatus: "approved",
         });
         await repo.addUnit(makeUnit(0));
+        await repo.saveQuestState({
+          dailyPeriodStart: "2026-06-22",
+          weeklyPeriodStart: null,
+          entries: [],
+        });
+        await repo.grantCollectible("sticker-fox", 1, new Date(0));
 
         await repo.clear();
 
@@ -554,6 +637,8 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
           await repo.getMediaAsset({ kind: "image", key: "temp", style: "default" }),
         ).toBeUndefined();
         expect(await repo.getUnits()).toEqual([]);
+        expect(await repo.getQuestState()).toBeUndefined();
+        expect(await repo.getCollectibles()).toEqual([]);
       });
     });
 

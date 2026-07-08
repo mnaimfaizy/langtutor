@@ -5,6 +5,7 @@ import type {
   Content,
   ContentSource,
   ContentType,
+  CollectibleGrant,
   ErrorEventRecord,
   GamificationState,
   LexiconCacheEntry,
@@ -15,6 +16,7 @@ import type {
   MediaAssetRecord,
   Profile,
   ProfileSettings,
+  QuestState,
   Skill,
   Unit,
   Weakness,
@@ -97,6 +99,14 @@ export interface ContentRepository extends ContentSink {
   // gamification (single row)
   getGamification(): Promise<GamificationState | undefined>;
   saveGamification(state: GamificationState): Promise<void>;
+
+  // quests (single row per user; ADR 0019, issue #76)
+  getQuestState(): Promise<QuestState | undefined>;
+  saveQuestState(state: QuestState): Promise<void>;
+
+  // collectibles (per-user grants; idempotent per unit)
+  getCollectibles(): Promise<CollectibleGrant[]>;
+  grantCollectible(collectibleId: string, unitId: number, grantedAt: Date): Promise<void>;
 
   // lexicon cache (case-insensitive on `word`)
   getLexiconEntry(word: string): Promise<LexiconCacheEntry | undefined>;

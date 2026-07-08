@@ -13,6 +13,8 @@ import {
   gamification,
   lexiconCache,
   mediaAssets,
+  collectibleGrants,
+  questState,
   profiles,
   weakness,
 } from "@/lib/db/drizzle/schema";
@@ -52,16 +54,18 @@ describe("Migration — table existence", () => {
     ).map((r) => r.name);
   }
 
-  it("creates all expected tables including media_assets", () => {
+  it("creates all expected tables including media_assets and quest tables", () => {
     const names = tableNames();
     expect(names).toContain("app_config");
     expect(names).toContain("cards");
+    expect(names).toContain("collectible_grants");
     expect(names).toContain("content");
     expect(names).toContain("error_events");
     expect(names).toContain("gamification");
     expect(names).toContain("lexicon_cache");
     expect(names).toContain("media_assets");
     expect(names).toContain("profile");
+    expect(names).toContain("quest_state");
     expect(names).toContain("weakness");
   });
 });
@@ -103,6 +107,10 @@ describe("Migration — indexes", () => {
 
   it("creates gamification user_id unique index", () => {
     expect(indexesOn("gamification")).toContain("idx_gamification_user_id");
+  });
+
+  it("creates quest_state user_id unique index", () => {
+    expect(indexesOn("quest_state")).toContain("idx_quest_state_user_id");
   });
 });
 
@@ -184,6 +192,19 @@ describe("Migration — schema shape", () => {
     expect(columns("gamification")).toContain("xp");
     expect(columns("gamification")).toContain("streak_count");
   });
+
+  it("quest_state has user_id (per-user singleton)", () => {
+    expect(columns("quest_state")).toContain("user_id");
+    expect(columns("quest_state")).toContain("daily_period_start");
+    expect(columns("quest_state")).toContain("entries");
+  });
+
+  it("collectible_grants has user_id as part of compound PK", () => {
+    expect(columns("collectible_grants")).toContain("user_id");
+    expect(columns("collectible_grants")).toContain("collectible_id");
+    expect(columns("collectible_grants")).toContain("unit_id");
+    expect(columns("collectible_grants")).toContain("granted_at");
+  });
 });
 
 describe("Drizzle schema table objects", () => {
@@ -193,6 +214,8 @@ describe("Drizzle schema table objects", () => {
     expect(content).toBeDefined();
     expect(errorEvents).toBeDefined();
     expect(gamification).toBeDefined();
+    expect(questState).toBeDefined();
+    expect(collectibleGrants).toBeDefined();
     expect(lexiconCache).toBeDefined();
     expect(mediaAssets).toBeDefined();
     expect(profiles).toBeDefined();
