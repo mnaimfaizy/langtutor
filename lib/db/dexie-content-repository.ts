@@ -15,6 +15,8 @@ import type {
   ErrorEventRecord,
   GamificationState,
   LexiconCacheEntry,
+  MediaAsset,
+  MediaAssetKey,
   Profile,
   ProfileSettings,
   Unit,
@@ -158,6 +160,22 @@ export class DexieContentRepository implements ContentRepository {
 
   async putLexiconEntry(entry: LexiconCacheEntry): Promise<void> {
     await this.db.lexiconCache.put({ ...entry, word: entry.word.toLowerCase() });
+  }
+
+  // media assets -----------------------------------------------------------
+  async getMediaAsset(key: MediaAssetKey): Promise<MediaAsset | undefined> {
+    const lookup = {
+      ...key,
+      key: key.key.toLowerCase(),
+    };
+    return this.db.mediaAssets.get([lookup.kind, lookup.key, lookup.style]);
+  }
+
+  async putMediaAsset(asset: MediaAsset): Promise<void> {
+    await this.db.mediaAssets.put({
+      ...asset,
+      key: asset.key.toLowerCase(),
+    });
   }
 
   // learning path units -------------------------------------------------------

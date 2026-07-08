@@ -162,6 +162,27 @@ export interface GamificationState {
   achievements: Achievement[];
 }
 
+/** Kind of shared media asset in the store (ADR 0016). */
+export type MediaAssetKind = "image" | "audio";
+
+/**
+ * Lookup key for a shared media asset — (kind, word/phrase, style). Keys are
+ * human-readable for debugging and admin review (ADR 0016).
+ */
+export interface MediaAssetKey {
+  kind: MediaAssetKind;
+  /** Word or phrase; normalized to lowercase on storage. */
+  key: string;
+  style: string;
+}
+
+/** A persisted image or audio clip in the shared media asset store (ADR 0016). */
+export interface MediaAsset extends MediaAssetKey {
+  data: Uint8Array;
+  mimeType: string;
+  createdAt: Date;
+}
+
 /** Cached dictionary/audio lookup (PLAN §4 `lexiconCache`). Stores structured data, never raw HTML. */
 export interface LexiconCacheEntry {
   /** Lowercased word — the cache key. */

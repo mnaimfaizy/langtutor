@@ -4,6 +4,8 @@ import type {
   Cefr,
   ContentRepository,
   ContentType,
+  MediaAsset,
+  MediaAssetKey,
   NewCard,
   NewContent,
   NewErrorEvent,
@@ -404,11 +406,78 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
     });
 
     // -------------------------------------------------------------------------
+    describe("media assets (shared store, ADR 0016)", () => {
+      const imageKey: MediaAssetKey = {
+        kind: "image",
+        key: "apple",
+        style: "kid-illustration",
+      };
+
+      function makeAsset(key: MediaAssetKey, byte: number): MediaAsset {
+        return {
+          ...key,
+          data: new Uint8Array([byte, byte + 1]),
+          mimeType: key.kind === "image" ? "image/png" : "audio/mpeg",
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        };
+      }
+
+      it("returns undefined before any asset is stored", async () => {
+        expect(await repo.getMediaAsset(imageKey)).toBeUndefined();
+      });
+
+      it("round-trips an image asset", async () => {
+        const asset = makeAsset(imageKey, 1);
+        await repo.putMediaAsset(asset);
+
+        const loaded = await repo.getMediaAsset(imageKey);
+        expect(loaded).toEqual(asset);
+      });
+
+      it("round-trips an audio asset under a distinct key", async () => {
+        const audioKey: MediaAssetKey = { kind: "audio", key: "apple", style: "default" };
+        const asset = makeAsset(audioKey, 42);
+        await repo.putMediaAsset(asset);
+
+        expect(await repo.getMediaAsset(audioKey)).toEqual(asset);
+      });
+
+      it("looks up keys case-insensitively on the word/phrase", async () => {
+        const asset = makeAsset(imageKey, 7);
+        await repo.putMediaAsset(asset);
+
+        const loaded = await repo.getMediaAsset({
+          kind: "image",
+          key: "APPLE",
+          style: "kid-illustration",
+        });
+        expect(loaded?.key).toBe("apple");
+        expect(loaded?.data).toEqual(asset.data);
+      });
+
+      it("overwrites on put for the same (kind, key, style)", async () => {
+        await repo.putMediaAsset(makeAsset(imageKey, 1));
+        const updated = makeAsset(imageKey, 99);
+        await repo.putMediaAsset(updated);
+
+        expect(await repo.getMediaAsset(imageKey)).toEqual(updated);
+      });
+    });
+
+    // -------------------------------------------------------------------------
     describe("clear()", () => {
       it("wipes every table", async () => {
         await repo.saveProfile(makeProfile());
         await repo.addCard(makeCard("temp", "A1"));
         await repo.putContent(makeContent("passage", "A1", "x"));
+        await repo.putMediaAsset({
+          kind: "image",
+          key: "temp",
+          style: "default",
+          data: new Uint8Array([0]),
+          mimeType: "image/png",
+          createdAt: new Date(0),
+        });
         await repo.addUnit(makeUnit(0));
 
         await repo.clear();
@@ -416,6 +485,9 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
         expect(await repo.getProfile()).toBeUndefined();
         expect(await repo.getAllCards()).toEqual([]);
         expect(await repo.queryContent()).toEqual([]);
+        expect(
+          await repo.getMediaAsset({ kind: "image", key: "temp", style: "default" }),
+        ).toBeUndefined();
         expect(await repo.getUnits()).toEqual([]);
       });
     });

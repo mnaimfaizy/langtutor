@@ -6,6 +6,8 @@ import type {
   ErrorEventRecord,
   GamificationState,
   LexiconCacheEntry,
+  MediaAsset,
+  MediaAssetKind,
   Profile,
   Skill,
   Unit,
@@ -20,6 +22,9 @@ export type Singleton<T> = T & { id: typeof SINGLETON_KEY };
 
 /** Compound primary key for the `weakness` table: (skill, category, cefr). */
 export type WeaknessKey = [Skill, string, Cefr];
+
+/** Compound primary key for the `mediaAssets` table: (kind, key, style). */
+export type MediaAssetCompoundKey = [MediaAssetKind, string, string];
 
 /**
  * The IndexedDB database for Lang-Tutor — one store per PLAN §4 table.
@@ -42,6 +47,7 @@ export class LangTutorDB extends Dexie {
   gamification!: Table<Singleton<GamificationState>, number>;
   weakness!: Table<Weakness, WeaknessKey>;
   lexiconCache!: Table<LexiconCacheEntry, string>;
+  mediaAssets!: Table<MediaAsset, MediaAssetCompoundKey>;
 
   constructor(name = "lang-tutor") {
     super(name);
@@ -64,6 +70,10 @@ export class LangTutorDB extends Dexie {
     // the migration-round-trip test harness, not real user data.
     this.version(3).stores({
       units: "++id, index, status",
+    });
+    // v4: shared media asset store (ADR 0016, issue #65).
+    this.version(4).stores({
+      mediaAssets: "[kind+key+style]",
     });
   }
 }

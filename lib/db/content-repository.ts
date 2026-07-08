@@ -8,6 +8,8 @@ import type {
   ErrorEventRecord,
   GamificationState,
   LexiconCacheEntry,
+  MediaAsset,
+  MediaAssetKey,
   Profile,
   ProfileSettings,
   Skill,
@@ -90,6 +92,10 @@ export interface ContentRepository extends ContentSink {
   // lexicon cache (case-insensitive on `word`)
   getLexiconEntry(word: string): Promise<LexiconCacheEntry | undefined>;
   putLexiconEntry(entry: LexiconCacheEntry): Promise<void>;
+
+  // media assets (ADR 0016 — shared, keyed by kind+word/phrase+style)
+  getMediaAsset(key: MediaAssetKey): Promise<MediaAsset | undefined>;
+  putMediaAsset(asset: MediaAsset): Promise<void>;
 
   // learning path units (ADR 0015, issue #57)
   addUnit(unit: NewUnit): Promise<number>;

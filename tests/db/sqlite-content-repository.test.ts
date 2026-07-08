@@ -78,6 +78,22 @@ describe("per-user isolation", () => {
     expect(await repo1.getLexiconEntry("apple")).toBeDefined();
     expect(await repo2.getLexiconEntry("apple")).toBeDefined();
 
+    // Shared: media asset written by user1 is readable by user2
+    await repo1.putMediaAsset({
+      kind: "image",
+      key: "apple",
+      style: "default",
+      data: new Uint8Array([1, 2, 3]),
+      mimeType: "image/png",
+      createdAt: new Date(),
+    });
+    expect(
+      await repo1.getMediaAsset({ kind: "image", key: "apple", style: "default" }),
+    ).toBeDefined();
+    expect(
+      await repo2.getMediaAsset({ kind: "image", key: "apple", style: "default" }),
+    ).toBeDefined();
+
     // Per-user: user1's learning path is invisible to user2
     await repo1.addUnit({
       index: 0,

@@ -24,6 +24,7 @@ import {
   errorEvents as errorEventsTable,
   gamification as gamificationTable,
   lexiconCache as lexiconCacheTable,
+  mediaAssets as mediaAssetsTable,
   profiles as profilesTable,
   units as unitsTable,
   weakness as weaknessTable,
@@ -36,6 +37,8 @@ import type {
   FsrsState,
   GamificationState,
   LexiconCacheEntry,
+  MediaAsset,
+  MediaAssetKey,
   Profile,
   ProfileSettings,
   Unit,
@@ -59,6 +62,14 @@ function applyEnvFirstAiSettings(settings: ProfileSettings): ProfileSettings {
     embeddingsModel:
       env.MISTRAL_EMBED_MODEL?.trim() || settings.embeddingsModel || DEFAULT_MISTRAL_EMBED_MODEL,
   };
+}
+
+function normalizeMediaAssetKey(key: MediaAssetKey): MediaAssetKey {
+  return { ...key, key: key.key.toLowerCase() };
+}
+
+function bufferToUint8Array(data: Buffer): Uint8Array {
+  return new Uint8Array(data);
 }
 
 // ─── JSON helpers ─────────────────────────────────────────────────────────────
@@ -666,6 +677,59 @@ export class SupabaseContentRepository implements ContentRepository {
     });
   }
 
+  // ─── media assets ─────────────────────────────────────────────────────────
+
+  async getMediaAsset(key: MediaAssetKey): Promise<MediaAsset | undefined> {
+    return this.scoped(async (db) => {
+      const normalized = normalizeMediaAssetKey(key);
+      const rows = await db
+        .select()
+        .from(mediaAssetsTable)
+        .where(
+          and(
+            eq(mediaAssetsTable.kind, normalized.kind),
+            eq(mediaAssetsTable.key, normalized.key),
+            eq(mediaAssetsTable.style, normalized.style),
+          ),
+        )
+        .limit(1);
+      const row = rows[0];
+      if (!row) return undefined;
+      return {
+        kind: row.kind,
+        key: row.key,
+        style: row.style,
+        mimeType: row.mimeType,
+        data: bufferToUint8Array(row.data as Buffer),
+        createdAt: row.createdAt,
+      };
+    });
+  }
+
+  async putMediaAsset(asset: MediaAsset): Promise<void> {
+    await this.scoped(async (db) => {
+      const normalized = normalizeMediaAssetKey(asset);
+      await db
+        .insert(mediaAssetsTable)
+        .values({
+          kind: normalized.kind,
+          key: normalized.key,
+          style: normalized.style,
+          mimeType: asset.mimeType,
+          data: Buffer.from(asset.data),
+          createdAt: asset.createdAt,
+        })
+        .onConflictDoUpdate({
+          target: [mediaAssetsTable.kind, mediaAssetsTable.key, mediaAssetsTable.style],
+          set: {
+            mimeType: asset.mimeType,
+            data: Buffer.from(asset.data),
+            createdAt: asset.createdAt,
+          },
+        });
+    });
+  }
+
   // ─── learning path units ──────────────────────────────────────────────────
 
   async addUnit(unit: NewUnit): Promise<number> {
@@ -747,6 +811,7 @@ export class SupabaseContentRepository implements ContentRepository {
       await db.delete(weaknessTable).where(eq(weaknessTable.userId, this.userId));
       await db.delete(gamificationTable).where(eq(gamificationTable.userId, this.userId));
       await db.delete(lexiconCacheTable);
+      await db.delete(mediaAssetsTable);
       await db.delete(unitsTable).where(eq(unitsTable.userId, this.userId));
     });
   }

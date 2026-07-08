@@ -10,6 +10,7 @@ export {
   errorEvents,
   gamification,
   lexiconCache,
+  mediaAssets,
   profiles,
   weakness,
 } from "./schema";

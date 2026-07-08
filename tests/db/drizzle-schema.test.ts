@@ -12,6 +12,7 @@ import {
   errorEvents,
   gamification,
   lexiconCache,
+  mediaAssets,
   profiles,
   weakness,
 } from "@/lib/db/drizzle/schema";
@@ -51,7 +52,7 @@ describe("Migration — table existence", () => {
     ).map((r) => r.name);
   }
 
-  it("creates all 8 expected tables", () => {
+  it("creates all expected tables including media_assets", () => {
     const names = tableNames();
     expect(names).toContain("app_config");
     expect(names).toContain("cards");
@@ -59,6 +60,7 @@ describe("Migration — table existence", () => {
     expect(names).toContain("error_events");
     expect(names).toContain("gamification");
     expect(names).toContain("lexicon_cache");
+    expect(names).toContain("media_assets");
     expect(names).toContain("profile");
     expect(names).toContain("weakness");
   });
@@ -142,6 +144,14 @@ describe("Migration — schema shape", () => {
     expect(columns("lexicon_cache")).toContain("word");
   });
 
+  it("media_assets has no user_id (shared table)", () => {
+    expect(columns("media_assets")).not.toContain("user_id");
+    expect(columns("media_assets")).toContain("kind");
+    expect(columns("media_assets")).toContain("key");
+    expect(columns("media_assets")).toContain("style");
+    expect(columns("media_assets")).toContain("data");
+  });
+
   it("profile has user_id (per-user table)", () => {
     expect(columns("profile")).toContain("user_id");
   });
@@ -184,6 +194,7 @@ describe("Drizzle schema table objects", () => {
     expect(errorEvents).toBeDefined();
     expect(gamification).toBeDefined();
     expect(lexiconCache).toBeDefined();
+    expect(mediaAssets).toBeDefined();
     expect(profiles).toBeDefined();
     expect(weakness).toBeDefined();
   });

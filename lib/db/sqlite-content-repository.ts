@@ -21,6 +21,7 @@ import {
   errorEvents as errorEventsTable,
   gamification as gamificationTable,
   lexiconCache as lexiconCacheTable,
+  mediaAssets as mediaAssetsTable,
   profiles as profilesTable,
   units as unitsTable,
   weakness as weaknessTable,
@@ -33,6 +34,8 @@ import type {
   FsrsState,
   GamificationState,
   LexiconCacheEntry,
+  MediaAsset,
+  MediaAssetKey,
   Profile,
   ProfileSettings,
   Unit,
@@ -56,6 +59,14 @@ function applyEnvFirstAiSettings(settings: ProfileSettings): ProfileSettings {
     embeddingsModel:
       env.MISTRAL_EMBED_MODEL?.trim() || settings.embeddingsModel || DEFAULT_MISTRAL_EMBED_MODEL,
   };
+}
+
+function normalizeMediaAssetKey(key: MediaAssetKey): MediaAssetKey {
+  return { ...key, key: key.key.toLowerCase() };
+}
+
+function bufferToUint8Array(data: Buffer): Uint8Array {
+  return new Uint8Array(data);
 }
 
 // ─── JSON helpers ─────────────────────────────────────────────────────────────
@@ -631,6 +642,55 @@ export class SqliteContentRepository implements ContentRepository {
       .run();
   }
 
+  // ─── media assets ─────────────────────────────────────────────────────────
+
+  async getMediaAsset(key: MediaAssetKey): Promise<MediaAsset | undefined> {
+    const normalized = normalizeMediaAssetKey(key);
+    const row = this.db
+      .select()
+      .from(mediaAssetsTable)
+      .where(
+        and(
+          eq(mediaAssetsTable.kind, normalized.kind),
+          eq(mediaAssetsTable.key, normalized.key),
+          eq(mediaAssetsTable.style, normalized.style),
+        ),
+      )
+      .get();
+    if (!row) return undefined;
+    return {
+      kind: row.kind,
+      key: row.key,
+      style: row.style,
+      mimeType: row.mimeType,
+      data: bufferToUint8Array(row.data),
+      createdAt: row.createdAt,
+    };
+  }
+
+  async putMediaAsset(asset: MediaAsset): Promise<void> {
+    const normalized = normalizeMediaAssetKey(asset);
+    this.db
+      .insert(mediaAssetsTable)
+      .values({
+        kind: normalized.kind,
+        key: normalized.key,
+        style: normalized.style,
+        mimeType: asset.mimeType,
+        data: Buffer.from(asset.data),
+        createdAt: asset.createdAt,
+      })
+      .onConflictDoUpdate({
+        target: [mediaAssetsTable.kind, mediaAssetsTable.key, mediaAssetsTable.style],
+        set: {
+          mimeType: asset.mimeType,
+          data: Buffer.from(asset.data),
+          createdAt: asset.createdAt,
+        },
+      })
+      .run();
+  }
+
   // ─── learning path units ──────────────────────────────────────────────────
 
   async addUnit(unit: NewUnit): Promise<number> {
@@ -706,6 +766,7 @@ export class SqliteContentRepository implements ContentRepository {
     this.db.delete(weaknessTable).where(eq(weaknessTable.userId, this.userId)).run();
     this.db.delete(gamificationTable).where(eq(gamificationTable.userId, this.userId)).run();
     this.db.delete(lexiconCacheTable).run();
+    this.db.delete(mediaAssetsTable).run();
     this.db.delete(unitsTable).where(eq(unitsTable.userId, this.userId)).run();
   }
 

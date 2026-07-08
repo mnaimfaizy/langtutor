@@ -1,4 +1,5 @@
 import {
+  customType,
   doublePrecision,
   index,
   integer,
@@ -18,12 +19,19 @@ import {
   CONTENT_TYPE_VALUES,
   EMBEDDINGS_PROVIDER_VALUES,
   EXPERIENCE_MODE_VALUES,
+  MEDIA_ASSET_KIND_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   UNIT_BUFFER_STATUS_VALUES,
   UNIT_STATUS_VALUES,
   USER_ROLE_VALUES,
 } from "./schema.shared";
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 // Re-export shared constants so cloud code can import from one place.
 export {
@@ -34,6 +42,7 @@ export {
   CONTENT_TYPE_VALUES,
   EMBEDDINGS_PROVIDER_VALUES,
   EXPERIENCE_MODE_VALUES,
+  MEDIA_ASSET_KIND_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   UNIT_BUFFER_STATUS_VALUES,
@@ -93,6 +102,19 @@ export const lexiconCache = pgTable("lexicon_cache", {
   data: text("data").notNull(),
   cachedAt: timestamp("cached_at", { withTimezone: true }).notNull(),
 });
+
+export const mediaAssets = pgTable(
+  "media_assets",
+  {
+    kind: text("kind", { enum: MEDIA_ASSET_KIND_VALUES }).notNull(),
+    key: text("key").notNull(),
+    style: text("style").notNull(),
+    mimeType: text("mime_type").notNull(),
+    data: bytea("data").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.kind, t.key, t.style] })],
+);
 
 // ─── Per-user tables (have userId) ────────────────────────────────────────────
 

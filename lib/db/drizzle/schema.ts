@@ -1,4 +1,5 @@
 import {
+  blob,
   index,
   integer,
   primaryKey,
@@ -16,6 +17,7 @@ export {
   CONTENT_TYPE_VALUES,
   EMBEDDINGS_PROVIDER_VALUES,
   EXPERIENCE_MODE_VALUES,
+  MEDIA_ASSET_KIND_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   UNIT_BUFFER_STATUS_VALUES,
@@ -29,6 +31,7 @@ import {
   CONTENT_TYPE_VALUES,
   EMBEDDINGS_PROVIDER_VALUES,
   EXPERIENCE_MODE_VALUES,
+  MEDIA_ASSET_KIND_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   UNIT_BUFFER_STATUS_VALUES,
@@ -99,6 +102,20 @@ export const lexiconCache = sqliteTable("lexicon_cache", {
   data: text("data").notNull(),
   cachedAt: integer("cached_at", { mode: "timestamp" }).notNull(),
 });
+
+/** Shared image/audio clips — keyed by (kind, word/phrase, style); ADR 0016. */
+export const mediaAssets = sqliteTable(
+  "media_assets",
+  {
+    kind: text("kind", { enum: MEDIA_ASSET_KIND_VALUES }).notNull(),
+    key: text("key").notNull(),
+    style: text("style").notNull(),
+    mimeType: text("mime_type").notNull(),
+    data: blob("data", { mode: "buffer" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.kind, t.key, t.style] })],
+);
 
 // ─── Per-user tables (have userId) ────────────────────────────────────────────
 

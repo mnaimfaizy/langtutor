@@ -14,6 +14,8 @@ import type {
   ErrorEventRecord,
   GamificationState,
   LexiconCacheEntry,
+  MediaAsset,
+  MediaAssetKey,
   Profile,
   ProfileSettings,
   Unit,
@@ -32,6 +34,7 @@ import {
   repoGetDueCards,
   repoGetGamification,
   repoGetLexiconEntry,
+  repoGetMediaAsset,
   repoGetProfile,
   repoGetSettings,
   repoGetUnits,
@@ -39,6 +42,7 @@ import {
   repoImportBackup,
   repoPutContent,
   repoPutLexiconEntry,
+  repoPutMediaAsset,
   repoPutWeakness,
   repoQueryContent,
   repoQueryErrorEvents,
@@ -112,6 +116,12 @@ export class HttpContentRepository implements ContentRepository {
   }
   putLexiconEntry(entry: LexiconCacheEntry): Promise<void> {
     return repoPutLexiconEntry(entry);
+  }
+  getMediaAsset(key: MediaAssetKey): Promise<MediaAsset | undefined> {
+    return repoGetMediaAsset(key);
+  }
+  putMediaAsset(asset: MediaAsset): Promise<void> {
+    return repoPutMediaAsset(asset);
   }
   addUnit(unit: NewUnit): Promise<number> {
     return repoAddUnit(unit);

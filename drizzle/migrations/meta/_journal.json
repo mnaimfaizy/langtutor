@@ -50,6 +50,13 @@
       "when": 1783600000000,
       "tag": "0006_unit_target_vocab",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1783700000000,
+      "tag": "0007_media_assets",
+      "breakpoints": true
     }
   ]
 }

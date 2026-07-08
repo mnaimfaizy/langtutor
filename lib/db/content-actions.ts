@@ -15,6 +15,8 @@ import type {
   ErrorEventRecord,
   GamificationState,
   LexiconCacheEntry,
+  MediaAsset,
+  MediaAssetKey,
   Profile,
   ProfileSettings,
   Unit,
@@ -116,6 +118,14 @@ export async function repoGetLexiconEntry(word: string): Promise<LexiconCacheEnt
 
 export async function repoPutLexiconEntry(entry: LexiconCacheEntry): Promise<void> {
   return (await getServerContentRepository()).putLexiconEntry(entry);
+}
+
+export async function repoGetMediaAsset(key: MediaAssetKey): Promise<MediaAsset | undefined> {
+  return (await getServerContentRepository()).getMediaAsset(key);
+}
+
+export async function repoPutMediaAsset(asset: MediaAsset): Promise<void> {
+  return (await getServerContentRepository()).putMediaAsset(asset);
 }
 
 export async function repoAddUnit(unit: NewUnit): Promise<number> {
