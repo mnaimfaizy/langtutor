@@ -152,5 +152,25 @@ langtutor-e2e.db*` and retry once in a single consolidated invocation.
      Still worth doing at the sandbox level (needs `@ai-hero/sandcastle` `docker()` support, not yet
      wired): run the container with `--init` (reap zombie `next-server`/Chromium processes, PID-1
      handling) and `--ipc=host` (Chromium OOM guard). See https://playwright.dev/docs/docker.
+- **(issue #63) `auth.setup.ts`'s warmup `GET /api/lexicon/define` can fail with `ECONNRESET`,
+  blocking every e2e spec in the run (not specific to any feature branch)**: on this run, all
+  four consecutive `pnpm exec playwright test <spec>` invocations failed identically at
+  `auth.setup.ts:61` (`page.request.get("/api/lexicon/define?word=park")` → `apiRequestContext.get:
+read ECONNRESET`), including on a clean stash of the pre-existing `main`-equivalent commit
+  (`git stash` before retrying) — so this is an environment condition, not a regression from any
+  particular change. Manually replaying the exact same request sequence with `curl` (bootstrap →
+  `GET /` → `POST /api/test/reset` → `GET /api/lexicon/define`) against a freshly started
+  `pnpm dev` succeeded every time (200 OK, 3.6 s), including once immediately after a slow 20.9 s
+  first compile of `/`. This points at contention specific to Playwright's heavier concurrent
+  load during `auth.setup.ts` (a live browser page rendering `/home` — with its own
+  `SeedBootstrap`/`SettingsBootstrap` client-side server-action calls — plus the explicit
+  `page.request` calls, all hitting the same cold, still-compiling dev server at once) rather
+  than the lexicon route or WordNet loading being slow in isolation. Memory was not the cause
+  (5.6 GiB free, no OOM in `dmesg`). Not resolved this run — `pnpm exec playwright test <spec>
+--list` still validates that specs are discovered/compile cleanly even when the live run can't
+  get past `auth.setup.ts`; treat a `--list` pass plus solid Vitest coverage as sufficient
+  evidence when this blocks a live e2e run and note the caveat in the closing comment. If you hit
+  this, don't spend more than 2-3 retries — it did not self-resolve across 4 attempts with clean
+  `.next`/DB state in between.
 - (Add new, verified environment findings here — with the run/issue number — so the next
   agent does not re-discover them.)

@@ -20,6 +20,7 @@ import type {
   Unit,
   Weakness,
 } from "@/lib/db/schema";
+import { reanchorOnProfileChange } from "@/lib/path/reanchor";
 
 import { getServerContentRepository } from "./server";
 
@@ -27,8 +28,18 @@ export async function repoGetProfile(): Promise<Profile | undefined> {
   return (await getServerContentRepository()).getProfile();
 }
 
+/**
+ * Saves the profile, then re-anchors the path's future units if this save changed the
+ * learner's CEFR level (issue #63) — the single server-side choke point every profile save
+ * passes through, whether from the onboarding placement quiz or a Settings edit. Reuses one
+ * repository instance for the whole operation so this still counts as a single
+ * `resolveCurrentUser` call, same as every other action here.
+ */
 export async function repoSaveProfile(profile: Profile): Promise<void> {
-  return (await getServerContentRepository()).saveProfile(profile);
+  const repo = await getServerContentRepository();
+  const previous = await repo.getProfile();
+  await repo.saveProfile(profile);
+  await reanchorOnProfileChange(repo, previous, profile);
 }
 
 export async function repoGetSettings(): Promise<ProfileSettings> {

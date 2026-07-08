@@ -23,7 +23,9 @@ const ACTIVITY_KIND_ORDER: readonly ActivityKind[] = [
   "speaking",
 ];
 
-function backboneActivities(): UnitActivityRef[] {
+/** A fresh, unplanned/unbuffered activity slot list — also reused by re-anchoring (issue #63)
+ * to reset a future unit back to a backbone placeholder. */
+export function backboneActivities(): UnitActivityRef[] {
   return ACTIVITY_KIND_ORDER.map((skill) => ({ skill }));
 }
 
