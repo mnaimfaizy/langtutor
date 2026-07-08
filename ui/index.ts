@@ -17,6 +17,12 @@ export * from "./progress-ring";
 export * from "./badge";
 export * from "./avatar";
 export { Mascot, type MascotProps, type MascotRegister, type MascotState } from "./mascot";
+export {
+  CollectibleToast,
+  CollectibleToastHost,
+  type CollectibleToastHostProps,
+  type CollectibleToastProps,
+} from "./collectible-toast";
 export * from "./stat";
 export * from "./tts-button";
 export * from "./skeleton";

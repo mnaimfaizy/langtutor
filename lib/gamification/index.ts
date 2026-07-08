@@ -1,5 +1,11 @@
 export { ACHIEVEMENT_DEFS, checkNewAchievements } from "./achievements";
 export type { AchievementDef } from "./achievements";
+export {
+  COLLECTIBLE_DEFS,
+  getCollectibleDefForUnitIndex,
+  grantCollectibleForUnit,
+} from "./collectibles";
+export type { CollectibleDef } from "./collectibles";
 export { applyReview } from "./apply-review";
 export type { ApplyReviewResult, ReviewSummary } from "./apply-review";
 export type {

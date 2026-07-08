@@ -5,6 +5,7 @@ import { getCurrentExperienceMode } from "@/lib/db/server";
 import { SITE_URL } from "@/lib/config/site";
 import { paletteBootstrapScript } from "@/lib/theme";
 import "./globals.css";
+import { CollectibleGrantBootstrap } from "./collectible-grant-bootstrap";
 import { MotionProvider } from "./motion-provider";
 import { PageTransition } from "./page-transition";
 import { SeedBootstrap } from "./seed-bootstrap";
@@ -60,6 +61,7 @@ export default async function RootLayout({
           <MotionProvider>
             <SettingsBootstrap />
             <SeedBootstrap />
+            <CollectibleGrantBootstrap />
             <SiteHeader />
             <PageTransition>{children}</PageTransition>
           </MotionProvider>
