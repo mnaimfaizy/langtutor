@@ -1,7 +1,7 @@
 import type { ContentRepository } from "@/lib/db";
 
 import type { CelebrationEvent } from "./celebration-event";
-import { applyCelebrationToQuests, rolloverDailyQuests } from "./quests";
+import { applyCelebrationToQuests, rolloverDailyQuests, rolloverWeeklyQuests } from "./quests";
 import { localDateString } from "./streak";
 
 type QuestRepo = Pick<ContentRepository, "getQuestState" | "saveQuestState">;
@@ -13,7 +13,8 @@ type QuestRepo = Pick<ContentRepository, "getQuestState" | "saveQuestState">;
 export async function recordCelebration(repo: QuestRepo, event: CelebrationEvent): Promise<void> {
   const today = localDateString(event.at);
   const current = await repo.getQuestState();
-  const rolled = rolloverDailyQuests(current, today);
+  const dailyRolled = rolloverDailyQuests(current, today);
+  const rolled = rolloverWeeklyQuests(dailyRolled, today);
   const updated = applyCelebrationToQuests(rolled, event);
   await repo.saveQuestState(updated);
 }

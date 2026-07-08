@@ -136,11 +136,13 @@ function parseQuestEntries(json: string): QuestProgressEntry[] {
     questId: string;
     progress: number;
     completedAt: string | null;
+    lastCountedDay?: string | null;
   }>;
   return raw.map((e) => ({
     questId: e.questId,
     progress: e.progress,
     completedAt: e.completedAt ? new Date(e.completedAt) : null,
+    lastCountedDay: e.lastCountedDay ?? null,
   }));
 }
 
@@ -150,6 +152,7 @@ function serializeQuestEntries(entries: QuestProgressEntry[]): string {
       questId: e.questId,
       progress: e.progress,
       completedAt: e.completedAt ? e.completedAt.toISOString() : null,
+      ...(e.lastCountedDay != null ? { lastCountedDay: e.lastCountedDay } : {}),
     })),
   );
 }

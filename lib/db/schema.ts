@@ -170,6 +170,8 @@ export interface QuestProgressEntry {
   progress: number;
   /** Set when the quest target is met for the current period; null while in progress. */
   completedAt: Date | null;
+  /** Last local calendar day that incremented progress (active-day weekly quests). */
+  lastCountedDay?: string | null;
 }
 
 /** Per-user quest progress (singleton row). Daily/weekly rollover slices read and write this. */
