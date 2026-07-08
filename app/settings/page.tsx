@@ -107,6 +107,11 @@ export default function SettingsPage() {
   const [ttsBusy, setTtsBusy] = useState(false);
   const [ttsBanner, setTtsBanner] = useState<Banner>(null);
 
+  // Celebration sound state (issue #81)
+  const [soundMuted, setSoundMuted] = useState(false);
+  const [soundBusy, setSoundBusy] = useState(false);
+  const [soundBanner, setSoundBanner] = useState<Banner>(null);
+
   useEffect(() => {
     let active = true;
     void Promise.all([getContentRepository().getProfile(), getSettingsRole()]).then(
@@ -127,6 +132,7 @@ export default function SettingsPage() {
         setProfileGoals(profile?.goals ?? []);
         setExperienceMode(profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE);
         setEnablePreA1(s.enablePreA1 ?? false);
+        setSoundMuted(s.soundMuted ?? false);
         setTtsRate(s.ttsRate ?? 1);
         setTtsVoiceUri(s.ttsVoiceUri ?? "");
         setTtsLang(s.ttsLang ?? "");
@@ -350,6 +356,22 @@ export default function SettingsPage() {
       });
     } finally {
       setTtsBusy(false);
+    }
+  }
+
+  async function handleSaveSound() {
+    setSoundBusy(true);
+    setSoundBanner(null);
+    try {
+      await saveUserPrefs({ soundMuted });
+      setSoundBanner({ tone: "ok", text: "Sound settings saved." });
+    } catch (error) {
+      setSoundBanner({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Save failed",
+      });
+    } finally {
+      setSoundBusy(false);
     }
   }
 
@@ -716,6 +738,46 @@ export default function SettingsPage() {
               role="status"
             >
               {ttsBanner.text}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6" data-testid="celebration-sound-section">
+        <CardTitle>Celebration sounds</CardTitle>
+        <CardDescription>
+          Short chimes when you finish a session or level up. Turn off if you prefer a quieter
+          experience.
+        </CardDescription>
+        <CardContent className="space-y-4">
+          <label className="text-foreground flex cursor-pointer items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              data-testid="sound-muted-checkbox"
+              checked={soundMuted}
+              disabled={!loaded || soundBusy}
+              onChange={(e) => setSoundMuted(e.target.checked)}
+              className="border-border accent-accent mt-0.5 size-4 shrink-0 rounded"
+            />
+            <span>Mute celebration sounds</span>
+          </label>
+
+          <div className="pt-1">
+            <Button
+              data-testid="btn-save-sound"
+              onClick={() => void handleSaveSound()}
+              disabled={!loaded || soundBusy}
+            >
+              Save sound settings
+            </Button>
+          </div>
+
+          {soundBanner && (
+            <p
+              className={cn("text-sm", soundBanner.tone === "ok" ? "text-success" : "text-danger")}
+              role="status"
+            >
+              {soundBanner.text}
             </p>
           )}
         </CardContent>

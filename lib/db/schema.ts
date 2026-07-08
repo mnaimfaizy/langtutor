@@ -52,6 +52,8 @@ export interface ProfileSettings {
   ttsLang?: string;
   /** Adult-mode opt-in for pre-A1 placeholder units on the path (ADR 0016, issue #66). */
   enablePreA1?: boolean;
+  /** When true, celebration sound effects are silenced (issue #81). */
+  soundMuted?: boolean;
 }
 
 /**

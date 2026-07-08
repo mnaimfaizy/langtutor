@@ -3,6 +3,7 @@
 import * as React from "react";
 import { AnimatePresence, motion, useReducedMotion, useSpring, useTransform } from "framer-motion";
 
+import { useCelebrationSoundOnMount } from "@/lib/audio/use-celebration-sound";
 import type { ReviewCompleteCelebration } from "@/lib/gamification/celebration-event";
 import { resolveMotionPreset } from "@/lib/motion";
 import { cn } from "./cn";
@@ -99,6 +100,7 @@ export function CelebrationOverlay({
   const reducedMotion = useReducedMotion() ?? false;
   const celebrate = resolveMotionPreset("celebrate", reducedMotion);
   const confetti = React.useMemo(() => (reducedMotion ? [] : buildConfetti()), [reducedMotion]);
+  useCelebrationSoundOnMount("session-complete");
 
   React.useEffect(() => {
     const timer = window.setTimeout(onComplete, OVERLAY_DURATION_MS);
@@ -198,6 +200,7 @@ export function LevelUpOverlay({
   const reducedMotion = useReducedMotion() ?? false;
   const celebrate = resolveMotionPreset("celebrate", reducedMotion);
   const confetti = React.useMemo(() => (reducedMotion ? [] : buildConfetti()), [reducedMotion]);
+  useCelebrationSoundOnMount("level-up");
 
   React.useEffect(() => {
     const timer = window.setTimeout(onComplete, LEVEL_UP_DURATION_MS);

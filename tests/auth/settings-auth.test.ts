@@ -128,6 +128,18 @@ describe("saveUserPrefs", () => {
     expect(saved.embeddingsProvider).toBeUndefined();
   });
 
+  it("persists soundMuted preference for a standard user", async () => {
+    vi.mocked(resolveCurrentUser).mockResolvedValue(STANDARD);
+    const mockRepo = makeMockRepo(EXISTING_SETTINGS);
+    vi.mocked(getServerContentRepository).mockResolvedValue(mockRepo as never);
+
+    await saveUserPrefs({ soundMuted: true });
+
+    const saved = mockRepo.saveSettings.mock.calls[0][0] as Record<string, unknown>;
+    expect(saved.soundMuted).toBe(true);
+    expect(saved.macLlmBaseUrl).toBeUndefined();
+  });
+
   it("preserves mac fields in profile when admin saves TTS prefs", async () => {
     vi.mocked(resolveCurrentUser).mockResolvedValue(ADMIN);
     const mockRepo = makeMockRepo(EXISTING_SETTINGS);

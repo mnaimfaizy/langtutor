@@ -19,6 +19,7 @@ const ProfileRowSchema = z.object({
     ttsVoiceUri: z.string().optional(),
     ttsLang: z.string().optional(),
     enablePreA1: z.boolean().optional(),
+    soundMuted: z.boolean().optional(),
   }),
 });
 
