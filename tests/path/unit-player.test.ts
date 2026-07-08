@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ContentRepository, NewUnit, Unit } from "@/lib/db";
+import type { ContentRepository, NewUnit, QuestState, Unit } from "@/lib/db";
 import { onUnitCompleted } from "@/lib/path/unit-events";
 import { completeUnitActivity } from "@/lib/path/unit-player";
 
@@ -9,9 +9,9 @@ import { completeUnitActivity } from "@/lib/path/unit-player";
  * itself. */
 const noopReplenish = async () => {};
 
-/** Minimal in-memory stand-in — only the two methods completeUnitActivity touches are real. */
+/** Minimal in-memory stand-in — only the methods completeUnitActivity touches are real. */
 function makeFakeRepo(initial: Unit[]): ContentRepository & { units: Unit[] } {
-  const state = { units: initial.slice() };
+  const state = { units: initial.slice(), questState: undefined as QuestState | undefined };
   return {
     units: state.units,
     async getUnits() {
@@ -21,6 +21,12 @@ function makeFakeRepo(initial: Unit[]): ContentRepository & { units: Unit[] } {
       const idx = state.units.findIndex((u) => u.id === id);
       if (idx === -1) return;
       state.units[idx] = { ...state.units[idx]!, ...changes };
+    },
+    async getQuestState() {
+      return state.questState;
+    },
+    async saveQuestState(next: QuestState) {
+      state.questState = next;
     },
   } as unknown as ContentRepository & { units: Unit[] };
 }

@@ -6,7 +6,12 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import type { Achievement, Card as CardRow } from "@/lib/db";
-import { ACHIEVEMENT_DEFS, applyReview, localDateString } from "@/lib/gamification";
+import {
+  ACHIEVEMENT_DEFS,
+  applyReview,
+  localDateString,
+  recordCelebration,
+} from "@/lib/gamification";
 import { completeUnitActivity } from "@/lib/path/unit-player";
 import { getContentRepository } from "@/lib/registry";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
@@ -146,6 +151,13 @@ export function ReviewSession() {
           now,
         });
         await repo.saveGamification(newState);
+        await recordCelebration(repo, {
+          kind: "review-complete",
+          cardCount: total,
+          xpEarned,
+          leveledUp,
+          at: now,
+        });
         setResult({ xpEarned, leveledUp, newLevel: newState.level, newAchievements });
         setPhase("summary");
       } else {

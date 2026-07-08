@@ -10,4 +10,12 @@ export type {
 } from "./celebration-event";
 export { localDateString, updateStreak } from "./streak";
 export type { StreakUpdate } from "./streak";
+export {
+  DAILY_QUEST_DEFS,
+  applyCelebrationToQuests,
+  getDailyQuestDef,
+  rolloverDailyQuests,
+} from "./quests";
+export type { DailyQuestDef, DailyQuestKind } from "./quests";
+export { recordCelebration } from "./record-celebration";
 export { LEVEL_THRESHOLDS, XP_PER_CARD, earnXp, xpLevelRingBounds, xpToLevel } from "./xp";

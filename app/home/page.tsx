@@ -10,6 +10,7 @@ import {
   PencilIcon,
   RepeatIcon,
 } from "../icons";
+import { DailyQuests } from "./daily-quests";
 import { LearningPath } from "./learning-path";
 
 const skills = [
@@ -65,6 +66,8 @@ export default function Home() {
         </p>
 
         <LearningPath />
+
+        <DailyQuests />
 
         <div className="mt-8 flex flex-wrap gap-3">
           {primaryActions.map(({ href, label, testId, variant }) => (

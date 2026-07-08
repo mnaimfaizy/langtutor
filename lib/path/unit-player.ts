@@ -6,6 +6,7 @@
  * experiences when the learner finishes an activity inside a unit.
  */
 import type { ContentRepository, Unit } from "@/lib/db";
+import { recordCelebration } from "@/lib/gamification";
 
 import { replenishPathBuffer } from "./replenish";
 import { emitUnitCompleted } from "./unit-events";
@@ -43,7 +44,15 @@ export async function completeUnitActivity(
 
   if (status !== "completed") return;
 
-  emitUnitCompleted({ unitId: unit.id, unitIndex: unit.index, completedAt: new Date() });
+  const completedAt = new Date();
+  emitUnitCompleted({ unitId: unit.id, unitIndex: unit.index, completedAt });
+
+  await recordCelebration(repo, {
+    kind: "unit-complete",
+    unitId: unit.id,
+    unitIndex: unit.index,
+    at: completedAt,
+  });
 
   const next = nextUnitToUnlock(units, unit);
   if (next) {
