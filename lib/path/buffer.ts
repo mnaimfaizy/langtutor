@@ -30,6 +30,7 @@ export function isActivityReady(activity: UnitActivityRef): boolean {
     activity.skill === "review" ||
     activity.skill === "alphabet" ||
     activity.skill === "phonics" ||
+    activity.skill === "listen-tap" ||
     activity.contentId !== undefined
   );
 }

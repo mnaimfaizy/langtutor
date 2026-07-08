@@ -39,6 +39,7 @@ describe("seedPreA1Units", () => {
     expect(units[0]?.activities).toEqual([{ skill: "alphabet" }]);
     expect(units[1]?.activities).toEqual([{ skill: "phonics" }]);
     expect(units[2]?.activities).toHaveLength(5);
+    expect(units[3]?.activities).toEqual([{ skill: "listen-tap" }]);
   });
 });
 

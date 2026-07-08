@@ -101,6 +101,7 @@ const ActivityKindSchema = z.union([
   z.literal("review"),
   z.literal("alphabet"),
   z.literal("phonics"),
+  z.literal("listen-tap"),
 ]);
 
 const UnitActivityRefSchema = z.object({

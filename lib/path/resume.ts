@@ -52,6 +52,10 @@ export async function resolveUnitResumeTarget(
     return { href: `/phonics${query}`, activityIndex };
   }
 
+  if (activity.skill === "listen-tap") {
+    return { href: `/listen-tap${query}`, activityIndex };
+  }
+
   if (activity.contentId !== undefined) {
     return { href: `/${activity.skill}/${activity.contentId}${query}`, activityIndex };
   }
