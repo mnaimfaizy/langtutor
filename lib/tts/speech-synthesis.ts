@@ -3,6 +3,16 @@ export interface TtsOptions {
   voiceUri?: string;
 }
 
+/** Orpheus English voices — voiceURI values match Groq voice ids for {@link resolveTtsOptions}. */
+export const GROQ_ORPHEUS_VOICES = [
+  { voiceURI: "autumn" },
+  { voiceURI: "diana" },
+  { voiceURI: "hannah" },
+  { voiceURI: "austin" },
+  { voiceURI: "daniel" },
+  { voiceURI: "troy" },
+] as const;
+
 /**
  * Maps TtsOptions + a voice list to resolved values ready to apply to a
  * SpeechSynthesisUtterance. Pure function — no browser globals, fully testable in Node.
