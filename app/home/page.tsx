@@ -9,6 +9,7 @@ import {
   MicIcon,
   PencilIcon,
   RepeatIcon,
+  TrophyIcon,
 } from "../icons";
 import { DailyQuests } from "./daily-quests";
 import { LearningPath } from "./learning-path";
@@ -45,6 +46,7 @@ const primaryActions = [
 const secondaryActions = [
   { href: "/review", label: "Review cards", testId: "btn-start-review", icon: RepeatIcon },
   { href: "/deck", label: "Add words", testId: "btn-manage-deck", icon: LayersIcon },
+  { href: "/collection", label: "Collection", testId: "btn-collection", icon: TrophyIcon },
   { href: "/diagnostics", label: "Diagnostics", testId: "btn-diagnostics", icon: ActivityIcon },
 ];
 

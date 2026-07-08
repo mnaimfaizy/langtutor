@@ -29,6 +29,7 @@ export {
   type CollectibleToastHostProps,
   type CollectibleToastProps,
 } from "./collectible-toast";
+export { CollectibleCard, type CollectibleCardProps } from "./collectible-card";
 export * from "./stat";
 export * from "./tts-button";
 export * from "./skeleton";

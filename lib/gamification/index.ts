@@ -6,6 +6,8 @@ export {
   grantCollectibleForUnit,
 } from "./collectibles";
 export type { CollectibleDef } from "./collectibles";
+export { buildCollectionCatalogue, resolveCollectionEarned } from "./collection";
+export type { CollectionEarnedState, CollectionItem, CollectionItemKind } from "./collection";
 export { applyReview } from "./apply-review";
 export type { ApplyReviewResult, ReviewSummary } from "./apply-review";
 export type {

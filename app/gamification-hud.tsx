@@ -1,13 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
-import { FlameIcon } from "@/app/icons";
+import { FlameIcon, TrophyIcon } from "@/app/icons";
 import type { GamificationState } from "@/lib/db";
 import { xpLevelRingBounds } from "@/lib/gamification";
 import { getContentRepository } from "@/lib/registry";
-import { ProgressRing, cn } from "@/ui";
+import { ProgressRing, buttonClassName, cn } from "@/ui";
 
 export function GamificationHud() {
   const [state, setState] = useState<GamificationState | null>(null);
@@ -69,6 +70,20 @@ export function GamificationHud() {
       >
         {state.xp} XP
       </div>
+
+      <Link
+        href="/collection"
+        data-testid="hud-collection"
+        aria-label="View collection"
+        title="Collection"
+        className={buttonClassName({
+          variant: "ghost",
+          size: "sm",
+          className: "text-muted hover:text-foreground size-7 shrink-0 p-0",
+        })}
+      >
+        <TrophyIcon className="size-4" />
+      </Link>
     </div>
   );
 }
