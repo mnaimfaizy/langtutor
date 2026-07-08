@@ -152,3 +152,43 @@ export function SmileIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** Marks a locked path node — dormant/not-yet-available unit (issue #62). */
+export function LockIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+
+/** Marks a completed path node (issue #62). */
+export function CheckIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+/** Marks the chapter-complete milestone on the path (issue #62). */
+export function TrophyIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" />
+      <path d="M8 5H5a2 2 0 0 0 0 4h1M16 5h3a2 2 0 0 1 0 4h-1" />
+      <path d="M12 13v3M9 20h6M10 20v-2.5a2 2 0 0 1 4 0V20" />
+    </svg>
+  );
+}
+
+/** The next-activity affordance icon on the current path node (issue #62). */
+export function FlagIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M5 3v18" />
+      <path d="M5 4h13l-3 4 3 4H5" />
+    </svg>
+  );
+}

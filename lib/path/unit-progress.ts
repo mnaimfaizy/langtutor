@@ -54,3 +54,20 @@ export function nextUnitToUnlock(units: readonly Unit[], completedUnit: Unit): U
   const next = units.find((u) => u.index === completedUnit.index + 1);
   return next && next.status === "locked" ? next : null;
 }
+
+/**
+ * The learner's single "current" unit on the path (issue #62 — visual journey), i.e. the
+ * node the journey's one-tap continue affordance resumes and the node rendering treats as
+ * prominent. Prefers an `in-progress` unit (already started) over the next `available` one
+ * (not yet started) — at most one of each can exist at a time under the unlock state machine
+ * above, but preferring in-progress is also correct if that ever changes. Returns null when
+ * every unit is `locked`/`completed` (nothing to resume — e.g. the whole seeded path is done,
+ * or the buffer hasn't unlocked anything yet).
+ */
+export function currentUnit(units: readonly Unit[]): Unit | null {
+  return (
+    units.find((u) => u.status === "in-progress") ??
+    units.find((u) => u.status === "available") ??
+    null
+  );
+}

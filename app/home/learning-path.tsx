@@ -1,39 +1,39 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
-import type { Unit, UnitStatus } from "@/lib/db";
+import { DEFAULT_EXPERIENCE_MODE, type ExperienceMode, type Unit } from "@/lib/db";
+import { groupUnitsByChapter } from "@/lib/path/chapters";
 import { replenishPathBuffer } from "@/lib/path/replenish";
 import { loadPathIfEmpty } from "@/lib/path/seed";
+import { currentUnit } from "@/lib/path/unit-progress";
 import { getContentRepository } from "@/lib/registry";
-import { Badge, Card } from "@/ui";
+import { PathChapterMilestone } from "./path-chapter-milestone";
+import { PathContinue } from "./path-continue";
+import { PathNode } from "./path-node";
 
-const STATUS_LABEL: Record<UnitStatus, string> = {
-  locked: "Locked",
-  available: "Start",
-  "in-progress": "Continue",
-  completed: "Completed",
-};
-
-const STATUS_BADGE_VARIANT: Record<UnitStatus, "neutral" | "accent" | "success"> = {
-  locked: "neutral",
-  available: "accent",
-  "in-progress": "accent",
-  completed: "success",
+const MODE_HEADING: Record<ExperienceMode, string> = {
+  kid: "Your adventure map",
+  adult: "Your learning path",
 };
 
 /**
- * Minimal path rendering (issue #57): the ordered unit list with locked/available status
- * styling. Seeds the backbone path from the learner's profile on first visit — deterministic,
- * offline, no LLM call (ADR 0015). Renders nothing until units are loaded so it never flashes
- * an empty state on a fresh account. Once the backbone is visible, kicks off a best-effort
- * path-buffer replenishment pass (session-start trigger, ADR 0015, issue #61 — plans unplanned
- * future units, issue #58, and pre-generates their activity content, issue #61) and re-renders
- * with whatever it managed to fill in.
+ * The home path as a visual journey (ADR 0015/0017, issue #62) — replacing the minimal list
+ * from #57. Renders one shared component tree in both experience modes ("two renders, one
+ * system"): `PathNode` and `PathChapterMilestone` read `mode` and switch register (adventure-
+ * map/kid vs premium/adult) via classNames and copy, never a forked component tree. Palette
+ * tokens (ADR 0017) do the rest of the visual differentiation automatically.
+ *
+ * Seeds the backbone path from the learner's profile on first visit — deterministic, offline,
+ * no LLM call (ADR 0015). Renders nothing until units are loaded so it never flashes an empty
+ * state on a fresh account. Once the backbone is visible, kicks off a best-effort path-buffer
+ * replenishment pass (session-start trigger, ADR 0015, issue #61 — plans unplanned future
+ * units, issue #58, and pre-generates their activity content, issue #61) and re-renders with
+ * whatever it managed to fill in.
  */
 export function LearningPath() {
   const [units, setUnits] = useState<Unit[] | null>(null);
+  const [mode, setMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
 
   useEffect(() => {
     let active = true;
@@ -42,6 +42,8 @@ export function LearningPath() {
     void (async () => {
       const profile = await repo.getProfile();
       const anchorLevel = profile?.cefrLevel ?? "A1";
+      if (active) setMode(profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE);
+
       await loadPathIfEmpty(repo, anchorLevel);
       const loaded = await repo.getUnits();
       if (active) setUnits(loaded);
@@ -57,50 +59,40 @@ export function LearningPath() {
 
   if (!units || units.length === 0) return null;
 
-  return (
-    <section data-testid="learning-path" className="mt-10 w-full">
-      <h2 className="text-foreground text-lg font-semibold tracking-tight">Your learning path</h2>
-      <ol className="mt-4 flex flex-col gap-2">
-        {units.map((unit) => {
-          const locked = unit.status === "locked";
-          const card = (
-            <Card
-              data-testid={`unit-${unit.index}`}
-              data-status={unit.status}
-              data-unit-id={unit.id}
-              className={
-                locked
-                  ? "opacity-60"
-                  : "hover:border-accent/40 hover:shadow-glow transition-[colors,box-shadow]"
-              }
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-foreground text-sm font-semibold">{unit.title}</p>
-                  <p className="text-muted mt-1 text-xs leading-5">{unit.teacherNote}</p>
-                </div>
-                <Badge variant={STATUS_BADGE_VARIANT[unit.status]} size="sm">
-                  {STATUS_LABEL[unit.status]}
-                </Badge>
-              </div>
-            </Card>
-          );
+  const chapters = groupUnitsByChapter(units);
+  const current = currentUnit(units);
 
-          return (
-            <li key={unit.id}>
-              {locked ? (
-                card
-              ) : (
-                <Link
-                  href={`/path/${unit.id}`}
-                  className="focus-visible:ring-accent focus-visible:ring-offset-background block rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                >
-                  {card}
-                </Link>
-              )}
-            </li>
-          );
-        })}
+  return (
+    <section data-testid="learning-path" data-experience-mode={mode} className="mt-10 w-full">
+      <h2 className="text-foreground text-lg font-semibold tracking-tight">{MODE_HEADING[mode]}</h2>
+
+      {current && (
+        <div className="mt-4">
+          <PathContinue unit={current} mode={mode} />
+        </div>
+      )}
+
+      <ol className="mt-4 flex flex-col gap-2">
+        {chapters.map((chapter, chapterIndex) => (
+          <li key={chapter.cefr}>
+            <ol className="flex flex-col gap-2">
+              {chapter.units.map((unit) => (
+                <li key={unit.id}>
+                  <PathNode unit={unit} mode={mode} isCurrent={unit.id === current?.id} />
+                </li>
+              ))}
+            </ol>
+            {chapter.isComplete && (
+              <div className="mt-2">
+                <PathChapterMilestone
+                  cefr={chapter.cefr}
+                  nextCefr={chapters[chapterIndex + 1]?.cefr}
+                  mode={mode}
+                />
+              </div>
+            )}
+          </li>
+        ))}
       </ol>
     </section>
   );

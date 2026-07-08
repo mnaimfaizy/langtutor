@@ -4,31 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import type { ActivityKind, Unit } from "@/lib/db";
-import { generateActivityContent } from "@/lib/path/activity-content";
+import type { Unit } from "@/lib/db";
+import { resolveUnitResumeTarget } from "@/lib/path/resume";
 import { firstPendingActivityIndex } from "@/lib/path/unit-progress";
 import { getContentRepository } from "@/lib/registry";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
 import { Badge, BackLink, Button, Card } from "@/ui";
-import { BookIcon, HeadphonesIcon, MicIcon, PencilIcon, RepeatIcon } from "../../icons";
+import { ACTIVITY_ICON, ACTIVITY_LABEL } from "../activity-display";
 
 type Phase = "loading" | "ready" | "notFound" | "generating" | "error" | "paused";
-
-const ACTIVITY_LABEL: Record<ActivityKind, string> = {
-  review: "Vocabulary review",
-  reading: "Reading",
-  writing: "Writing",
-  listening: "Listening",
-  speaking: "Speaking",
-};
-
-const ACTIVITY_ICON: Record<ActivityKind, typeof BookIcon> = {
-  review: RepeatIcon,
-  reading: BookIcon,
-  writing: PencilIcon,
-  listening: HeadphonesIcon,
-  speaking: MicIcon,
-};
 
 export function UnitView({ id }: { id: number }) {
   const router = useRouter();
@@ -61,44 +45,20 @@ export function UnitView({ id }: { id: number }) {
   }, [id]);
 
   /**
-   * Starts the review activity directly (it needs no unit-specific content — it operates on
-   * the learner's global SRS deck) or lazily generates-then-caches this activity's content
-   * (a passage for reading/listening/speaking, a writing prompt for writing) the first time
-   * it's opened, storing the resulting `contentId` back on the unit so re-entering resumes
-   * the same content instead of regenerating it (issue #59, extended to all module types by
-   * issue #60). A unit that the path-buffer replenishment pass already generated ahead of time
-   * (ADR 0015, issue #61) skips generation entirely via the `contentId !== undefined` branch —
-   * that's the whole point of the buffer. If generation is still needed and fails (unreachable
-   * provider), the unit view falls back to the graceful-pause state instead of an inline error.
+   * Resolves and navigates to the unit's first pending activity via the shared
+   * `resolveUnitResumeTarget` (issue #62) — review goes straight to the SRS deck, a
+   * buffer-generated activity deep-links straight to its cached content, and anything else
+   * is lazily generated-then-cached first (issue #59, extended to all module types by issue
+   * #60). If generation is needed and fails (unreachable provider), falls back to the
+   * graceful-pause state instead of an inline error (ADR 0015, issue #61).
    */
-  async function startActivity(activityIndex: number) {
+  async function startActivity() {
     if (!unit) return;
-    const activity = unit.activities[activityIndex];
-    if (!activity) return;
-
-    const query = `?unit=${unit.id}&activity=${activityIndex}`;
-
-    if (activity.skill === "review") {
-      router.push(`/review${query}`);
-      return;
-    }
-
-    if (activity.contentId !== undefined) {
-      router.push(`/${activity.skill}/${activity.contentId}${query}`);
-      return;
-    }
 
     setPhase("generating");
     try {
-      const repo = getContentRepository();
-      const contentId = await generateActivityContent(repo, unit, activity.skill);
-
-      const activities = unit.activities.map((a, i) =>
-        i === activityIndex ? { ...a, contentId } : a,
-      );
-      await repo.updateUnit(unit.id, { activities });
-
-      router.push(`/${activity.skill}/${contentId}${query}`);
+      const target = await resolveUnitResumeTarget(getContentRepository(), unit);
+      if (target) router.push(target.href);
     } catch {
       // The generation call itself is the authoritative reachability signal — a failure here
       // always means the graceful-pause state (ADR 0015, issue #61), not just an inline error.
@@ -257,7 +217,7 @@ export function UnitView({ id }: { id: number }) {
                         variant="gradient"
                         size="sm"
                         disabled={phase === "generating" || isDisabled}
-                        onClick={() => void startActivity(i)}
+                        onClick={() => void startActivity()}
                       >
                         {phase === "generating"
                           ? "Preparing…"

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Unit, UnitActivityRef } from "@/lib/db";
 import {
   completeActivity,
+  currentUnit,
   firstPendingActivityIndex,
   isUnitComplete,
   nextUnitToUnlock,
@@ -119,5 +120,29 @@ describe("nextUnitToUnlock", () => {
     const completed = unit({ id: 1, index: 0 });
     const next = unit({ id: 2, index: 1, status: "available" });
     expect(nextUnitToUnlock([completed, next], completed)).toBeNull();
+  });
+});
+
+describe("currentUnit", () => {
+  it("prefers an in-progress unit over an available one", () => {
+    const inProgress = unit({ id: 1, index: 0, status: "in-progress" });
+    const available = unit({ id: 2, index: 1, status: "available" });
+    expect(currentUnit([inProgress, available])).toBe(inProgress);
+  });
+
+  it("falls back to the next available unit when nothing is in progress", () => {
+    const completed = unit({ id: 1, index: 0, status: "completed" });
+    const available = unit({ id: 2, index: 1, status: "available" });
+    expect(currentUnit([completed, available])).toBe(available);
+  });
+
+  it("returns null when every unit is locked or completed (nothing to resume)", () => {
+    const completed = unit({ id: 1, index: 0, status: "completed" });
+    const locked = unit({ id: 2, index: 1, status: "locked" });
+    expect(currentUnit([completed, locked])).toBeNull();
+  });
+
+  it("returns null for an empty path", () => {
+    expect(currentUnit([])).toBeNull();
   });
 });
