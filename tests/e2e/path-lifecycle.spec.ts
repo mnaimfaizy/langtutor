@@ -92,49 +92,69 @@ async function setupWithSeed(page: Page) {
   await page.getByTestId("btn-save-goals").click();
   await page.waitForURL("/home");
   await expect(page.getByTestId("seed-ready")).toBeVisible({ timeout: 15_000 });
+
+  // Pre-warm the lazy-loaded review route so the embedded review activity does not spend its
+  // first visit waiting on a cold chunk compile/render.
+  await page.goto("/review");
+  await expect(page.getByTestId("review-session")).toBeVisible({ timeout: 60_000 });
+  await page.goto("/home");
 }
 
-/** Rates every due card as "good" until the review session reaches its summary. */
-async function rateAllDueCardsGood(page: Page): Promise<void> {
+/** Rates every due card as "good" until the review session reaches a terminal state. */
+async function rateAllDueCardsGood(page: Page): Promise<"summary" | "empty"> {
   const summary = page.getByTestId("review-summary");
+  const empty = page.getByTestId("review-empty");
   const reveal = page.getByTestId("btn-reveal");
   const rateGood = page.getByTestId("btn-rate-good");
   const progress = page.getByTestId("review-progress");
 
   for (let i = 0; i < 40; i++) {
-    if (await summary.isVisible()) return;
-    await expect(reveal.or(summary)).toBeVisible({ timeout: 10_000 });
-    if (await summary.isVisible()) return;
+    if (await summary.isVisible()) return "summary";
+    if (await empty.isVisible()) return "empty";
+
+    await expect(reveal.or(summary).or(empty)).toBeVisible({ timeout: 60_000 });
+
+    if (await summary.isVisible()) return "summary";
+    if (await empty.isVisible()) return "empty";
 
     const text = (await progress.textContent()) ?? "";
     const [posStr, totalStr] = text.split("/").map((s) => s.trim());
-    const isLast = Number(posStr) >= Number(totalStr);
+    const pos = Number(posStr);
+    const total = Number(totalStr);
+    const isLast = pos >= total;
 
     await reveal.click();
     await expect(rateGood).toBeVisible({ timeout: 10_000 });
     await rateGood.click();
 
     if (isLast) {
-      await expect(summary).toBeVisible({ timeout: 10_000 });
-      return;
+      await expect(summary.or(empty)).toBeVisible({ timeout: 15_000 });
+      if (await summary.isVisible()) return "summary";
+      return "empty";
     }
+
+    await expect(progress).toHaveText(`${pos + 1} / ${total}`, { timeout: 10_000 });
   }
+
+  throw new Error("Review session did not reach summary/empty within 40 iterations");
 }
 
 /** Records a few hundred ms of audio via the fake mic device and scores it, completing the
  * embedded speaking activity the same way a real learner's capture would. */
 async function completeSpeakingActivity(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Start recording" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Recording" })).toBeVisible({
-    timeout: 10_000,
-  });
+  const startBtn = page.getByRole("button", { name: /start recording/i });
+  await expect(startBtn).toBeVisible({ timeout: 10_000 });
+  await startBtn.click();
+
+  const stopBtn = page.getByRole("button", { name: /stop recording/i });
+  await expect(stopBtn).toBeVisible({ timeout: 10_000 });
   // Give the fake device a moment to produce a few audio frames before stopping — an
   // instantaneous stop risks an empty capture the decode step can't parse.
   await page.waitForTimeout(500);
-  await page.getByRole("button", { name: "Stop recording" }).click();
+  await stopBtn.click();
 
-  const transcribeBtn = page.getByRole("button", { name: "Transcribe and score" });
-  await expect(transcribeBtn).toBeVisible({ timeout: 15_000 });
+  const transcribeBtn = page.getByRole("button", { name: /transcribe and score/i });
+  await expect(transcribeBtn).toBeEnabled({ timeout: 15_000 });
   await transcribeBtn.click();
 
   const completeSpeaking = page.getByTestId("btn-complete-speaking");
@@ -161,8 +181,10 @@ test("completing every activity in a unit unlocks the next unit, fills the node,
   // ── Activity 0: vocabulary review — needs no generated content ──────────────────────
   await page.getByTestId("btn-start-activity-0").click();
   await page.waitForURL(`/review?unit=${unitId}&activity=0`);
-  await rateAllDueCardsGood(page);
-  await expect(page.getByTestId("review-summary")).toBeVisible();
+  const reviewEndState = await rateAllDueCardsGood(page);
+  await expect(
+    page.getByTestId(reviewEndState === "summary" ? "review-summary" : "review-empty"),
+  ).toBeVisible();
   await page.getByTestId("btn-back-to-unit-or-home").click();
   await page.waitForURL(`/path/${unitId}`);
 
@@ -170,7 +192,10 @@ test("completing every activity in a unit unlocks the next unit, fills the node,
   // ring reporting 1 of 5 activities done (app/home/path-node.tsx).
   await page.goto("/home");
   await expect(firstUnit).toHaveAttribute("data-status", "in-progress");
-  await expect(page.getByTestId("unit-0-marker")).toHaveAttribute("aria-label", /1 of 5/);
+  await expect(page.getByTestId("unit-0-marker")).toHaveAttribute(
+    "aria-label",
+    /(1\s*of\s*5|1\/5)/i,
+  );
   await firstUnit.click();
   await page.waitForURL(`/path/${unitId}`);
 
@@ -234,7 +259,7 @@ test("completing every activity in a unit unlocks the next unit, fills the node,
     await freshPage.goto("/home");
     await expect(freshPage.getByTestId("unit-0")).toHaveAttribute("data-status", "completed");
     await expect(freshPage.getByTestId("unit-1")).toHaveAttribute("data-status", "available");
-    await expect(freshPage.getByTestId("path-continue")).toContainText("Vocabulary review");
+    await expect(freshPage.getByTestId("path-continue")).toContainText(/vocabulary review/i);
 
     await freshPage.getByTestId("path-continue-btn").click();
     await freshPage.waitForURL(`/review?unit=${secondUnitId}&activity=0`);

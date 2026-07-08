@@ -1,5 +1,11 @@
 {
   "chat.tools.terminal.autoApprove": {
-    "gh issues": true
+    "gh issues view *": true,
+    "gh pr view *": true,
+    "gh issue edit *": true,
+    "gh pr edit *": true,
+    "gh issue close *": true,
+    "gh issue list *": true,
+    "gh label list *": true
   }
 }
