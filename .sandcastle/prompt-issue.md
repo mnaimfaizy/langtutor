@@ -29,9 +29,13 @@ Implement the issue shown above. Follow the acceptance criteria exactly.
 2. **Plan** — decide what to change and why. Keep the change as small as possible.
 3. **Execute** — implement the acceptance criteria. Follow all hard rules in `AGENTS.md`.
 4. **Verify** — run `pnpm verify` (typecheck + lint + format:check + unit tests). Fix any failures before proceeding.
-5. **E2E** — run only the Playwright specs affected by your change (plus any new specs):
-   `pnpm exec playwright test tests/e2e/<spec>.spec.ts`. Follow the e2e policy in
-   `.sandcastle/ENVIRONMENT.md`.
+5. **E2E** — run the affected Playwright specs (plus any new specs) **once**, in a single
+   invocation: `pnpm exec playwright test tests/e2e/a.spec.ts tests/e2e/b.spec.ts`. **Do not retry
+   on failure** — the sandbox has a known, unresolved environment flake (see the E2E policy in
+   `.sandcastle/ENVIRONMENT.md`). If the run fails or can't start: run `pnpm exec playwright test
+--list` to confirm the specs compile, then leave a comment on the issue that e2e **could not be
+   verified in the sandbox and a human must run it** (name the specs, paste the failure). Do not
+   block the commit/close on the e2e run.
 6. **Commit** — make a single git commit referencing the issue number (e.g. `closes #{{ISSUE_NUMBER}}`). End every commit message with a trailer naming the agent and model you are running as, e.g.:
    ```
    Co-Authored-By: <Agent> (<model>) <noreply@sandcastle.local>
