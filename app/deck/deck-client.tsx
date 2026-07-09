@@ -248,106 +248,94 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
             </Link>
 
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
-              <DialogTrigger data-testid="btn-open-add-word">Add a word</DialogTrigger>
-              <DialogContent className="w-[min(90vw,32rem)]">
+              <DialogTrigger data-testid="btn-add-word" size="md">
+                Add word
+              </DialogTrigger>
+              <DialogContent>
                 <DialogTitle>Add a word</DialogTitle>
                 <DialogDescription>
-                  Look up a word in the lexicon and add it to your spaced-repetition deck.
+                  Look up a definition, then add the word to your spaced-repetition deck.
                 </DialogDescription>
-                <AddWordForm className="mt-4" onCardAdded={handleCardAdded} />
-              </DialogContent>
-            </Dialog>
-
-            <Dialog
-              open={editingCard !== null}
-              onOpenChange={(open) => {
-                if (!open) setEditingCard(null);
-              }}
-            >
-              <DialogContent className="w-[min(90vw,32rem)]">
-                {editingCard && <EditCardForm card={editingCard} onSaved={handleCardEdited} />}
-              </DialogContent>
-            </Dialog>
-
-            <Dialog
-              open={cardToDelete !== null}
-              onOpenChange={(open) => {
-                if (!open && !deleting) setCardToDelete(null);
-              }}
-            >
-              <DialogContent>
-                <DialogTitle>Delete card?</DialogTitle>
-                <DialogDescription>
-                  <strong className="text-foreground">&ldquo;{cardToDelete?.word}&rdquo;</strong>{" "}
-                  will be permanently removed from your deck, including its review history and
-                  collection memberships. This cannot be undone.
-                </DialogDescription>
-                <div className="mt-5 flex justify-end gap-3">
-                  <DialogClose disabled={deleting}>Cancel</DialogClose>
-                  <Button
-                    data-testid="deck-card-delete-confirm"
-                    variant="secondary"
-                    onClick={() => void handleDeleteConfirmed()}
-                    disabled={deleting}
-                    className="bg-danger/10 text-danger hover:bg-danger/20 border-danger/30"
-                  >
-                    {deleting ? "Deleting…" : "Delete"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog
-              open={cardToReset !== null}
-              onOpenChange={(open) => {
-                if (!open && !resetting) setCardToReset(null);
-              }}
-            >
-              <DialogContent>
-                <DialogTitle>Reset progress?</DialogTitle>
-                <DialogDescription>
-                  <strong className="text-foreground">&ldquo;{cardToReset?.word}&rdquo;</strong>{" "}
-                  will start over as a new card. Its review history and scheduling will be cleared,
-                  but the word, definition, and examples stay the same.
-                </DialogDescription>
-                <div className="mt-5 flex justify-end gap-3">
-                  <DialogClose disabled={resetting}>Cancel</DialogClose>
-                  <Button
-                    data-testid="deck-card-reset-confirm"
-                    variant="secondary"
-                    onClick={() => void handleResetConfirmed()}
-                    disabled={resetting}
-                    className="bg-danger/10 text-danger hover:bg-danger/20 border-danger/30"
-                  >
-                    {resetting ? "Resetting…" : "Reset progress"}
-                  </Button>
-                </div>
+                <AddWordForm onCardAdded={handleCardAdded} />
               </DialogContent>
             </Dialog>
           </div>
         </div>
 
-        <div className="mt-8" data-testid="deck-browser" data-experience-mode={experienceMode}>
+        <Dialog
+          open={editingCard !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditingCard(null);
+          }}
+        >
+          <DialogContent>
+            {editingCard && <EditCardForm card={editingCard} onSaved={handleCardEdited} />}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={cardToDelete !== null}
+          onOpenChange={(open) => {
+            if (!open && !deleting) setCardToDelete(null);
+          }}
+        >
+          <DialogContent>
+            <DialogTitle>Delete card?</DialogTitle>
+            <DialogDescription>
+              {cardToDelete
+                ? `Remove “${cardToDelete.word}” from your deck? This cannot be undone.`
+                : "Remove this card from your deck? This cannot be undone."}
+            </DialogDescription>
+            <div className="mt-4 flex justify-end gap-2">
+              <DialogClose render={<Button variant="secondary" disabled={deleting} />}>
+                Cancel
+              </DialogClose>
+              <Button
+                data-testid="deck-card-delete-confirm"
+                onClick={() => void handleDeleteConfirmed()}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={cardToReset !== null}
+          onOpenChange={(open) => {
+            if (!open && !resetting) setCardToReset(null);
+          }}
+        >
+          <DialogContent>
+            <DialogTitle>Reset progress?</DialogTitle>
+            <DialogDescription>
+              {cardToReset
+                ? `Clear review history for “${cardToReset.word}” and treat it as new? The word stays in your deck.`
+                : "Clear review history for this card and treat it as new? The word stays in your deck."}
+            </DialogDescription>
+            <div className="mt-4 flex justify-end gap-2">
+              <DialogClose render={<Button variant="secondary" disabled={resetting} />}>
+                Cancel
+              </DialogClose>
+              <Button
+                data-testid="deck-card-reset-confirm"
+                onClick={() => void handleResetConfirmed()}
+                disabled={resetting}
+              >
+                {resetting ? "Resetting…" : "Reset"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <div className="mt-10" data-testid="deck-browser" data-experience-mode={experienceMode}>
           {cards.length === 0 ? (
             <p className="text-muted text-sm" data-testid="deck-empty">
-              No words in your deck yet. Add your first word to get started.
+              No cards yet. Add a word to start building your deck.
             </p>
           ) : (
             <>
-              <label className="sr-only" htmlFor="deck-search">
-                Search deck
-              </label>
-              <Input
-                id="deck-search"
-                data-testid="deck-search-input"
-                type="search"
-                placeholder="Search by word or definition…"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                className="mb-4 max-w-md"
-                aria-label="Search deck by word or definition"
-              />
-
               <CollectionsPanel
                 collections={collections}
                 collectionFilter={collectionFilter}
@@ -357,9 +345,23 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                 onDeleteCollection={deleteCollection}
               />
 
+              <div className="mb-6">
+                <label htmlFor="deck-search" className="sr-only">
+                  Search deck
+                </label>
+                <Input
+                  id="deck-search"
+                  data-testid="deck-search"
+                  type="search"
+                  placeholder="Search by word or definition…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
               <div className="mb-6 space-y-4">
                 <div>
-                  <p className="text-foreground mb-2 text-sm font-medium">CEFR level</p>
+                  <p className="text-foreground mb-2 text-sm font-medium">CEFR</p>
                   <div className="flex flex-wrap gap-2">
                     {CEFR_LEVELS.map((level) => (
                       <SelectPill
@@ -376,26 +378,24 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                 </div>
 
                 <div>
-                  <p className="text-foreground mb-2 text-sm font-medium">Mastery state</p>
+                  <p className="text-foreground mb-2 text-sm font-medium">Mastery</p>
                   <div className="flex flex-wrap gap-2">
-                    {MASTERY_FILTERS.map((mastery) => (
+                    {MASTERY_FILTERS.map((label) => (
                       <SelectPill
-                        key={mastery}
-                        data-testid={`deck-filter-mastery-${mastery}`}
-                        selected={masteryFilter === mastery}
-                        onClick={() =>
-                          setMasteryFilter((current) => toggleFilter(current, mastery))
-                        }
+                        key={label}
+                        data-testid={`deck-filter-mastery-${label}`}
+                        selected={masteryFilter === label}
+                        onClick={() => setMasteryFilter((current) => toggleFilter(current, label))}
                         className="rounded-lg px-3 py-1.5"
                       >
-                        {masteryLabelDisplay(mastery)}
+                        {masteryLabelDisplay(label)}
                       </SelectPill>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-foreground mb-2 text-sm font-medium">Due status</p>
+                  <p className="text-foreground mb-2 text-sm font-medium">Due</p>
                   <div className="flex flex-wrap gap-2">
                     {DUE_FILTERS.map(({ value, label }) => (
                       <SelectPill
@@ -444,7 +444,7 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                   No cards match your search or filters.
                 </p>
               ) : (
-                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {displayCards.map((card) => (
                     <li key={card.id}>
                       <DeckBrowserCard
