@@ -54,7 +54,11 @@ export function LearningPath() {
       const loaded = await repo.getUnits();
       if (active) setUnits(loaded);
 
-      await replenishPathBuffer(repo);
+      await replenishPathBuffer(repo, undefined, undefined, async () => {
+        // Surface teacher plans as soon as they're persisted — don't wait for content
+        // generation / embeddings, which can be slow or hang when the Mac is unreachable.
+        if (active) setUnits(await repo.getUnits());
+      });
       if (active) setUnits(await repo.getUnits());
     })();
 

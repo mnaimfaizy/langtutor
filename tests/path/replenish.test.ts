@@ -100,6 +100,41 @@ describe("replenishPathBuffer — planning", () => {
 
     await expect(replenishPathBuffer(repo)).resolves.toBeUndefined();
   });
+
+  it("invokes onAfterPlan after planning is persisted and before content generation", async () => {
+    const repo = makeFakeRepo([
+      unit({
+        id: 1,
+        targetVocab: [],
+        activities: [activity({ skill: "review" }), activity({ skill: "reading" })],
+      }),
+    ]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          plans: [
+            { unitId: 1, title: "Talking About Now", teacherNote: "note", targetVocab: ["now"] },
+          ],
+        }),
+      ),
+    );
+
+    const order: string[] = [];
+    const generate = vi.fn(async () => {
+      order.push("generate");
+      return 1;
+    }) as unknown as GenerateActivityContentFn;
+
+    await replenishPathBuffer(repo, 3, generate, async () => {
+      order.push("after-plan");
+      expect((await repo.getUnits())[0]?.title).toBe("Talking About Now");
+    });
+
+    expect(order[0]).toBe("after-plan");
+    expect(order).toContain("generate");
+    expect(order.indexOf("after-plan")).toBeLessThan(order.indexOf("generate"));
+  });
 });
 
 // ── content-generation step ─────────────────────────────────────────────────────

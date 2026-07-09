@@ -93,14 +93,20 @@ async function bufferUnitContent(
  * @depth future units. Always resolves — never throws, never rejects — so callers can fire it
  * without awaiting (unit completion) or await it in a background effect that already rendered
  * (session start) without either path ever blocking or erroring the UI.
+ *
+ * @param onAfterPlan optional hook fired after planning is persisted and before content
+ *   generation. Session-start UI uses this to re-render teacher titles/notes immediately —
+ *   content generation (and any slow embeddings) must not gate the planned metadata.
  */
 export async function replenishPathBuffer(
   repo: ContentRepository,
   depth: number = PATH_BUFFER_DEPTH,
   generate: GenerateActivityContentFn = generateActivityContent,
+  onAfterPlan?: () => void | Promise<void>,
 ): Promise<void> {
   try {
     await planUnplannedUnits(repo);
+    await onAfterPlan?.();
 
     const units = await repo.getUnits();
     const { toGenerateContent } = decideReplenishment(units, depth);
