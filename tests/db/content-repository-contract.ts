@@ -316,6 +316,21 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
         expect((await repo.getCard(cardId))?.word).toBe("survivor");
       });
 
+      it("deleting a card removes it from all collection memberships", async () => {
+        const collectionA = await repo.addCollection({ name: "Set A", kind: "user" });
+        const collectionB = await repo.addCollection({ name: "Set B", kind: "unit" });
+        const cardId = await repo.addCard(makeCard("ephemeral", "A2"));
+        await repo.addCardToCollection(collectionA, cardId);
+        await repo.addCardToCollection(collectionB, cardId);
+
+        await repo.deleteCard(cardId);
+
+        expect(await repo.getCard(cardId)).toBeUndefined();
+        expect(await repo.getCollectionCards(collectionA)).toEqual([]);
+        expect(await repo.getCollectionCards(collectionB)).toEqual([]);
+        expect((await repo.getCollections()).map((c) => c.cardCount).sort()).toEqual([0, 0]);
+      });
+
       it("unsuspendCard clears the suspended flag", async () => {
         const id = await repo.addCard(makeCard("back-in-queue", "A1", new Date(0)));
         await repo.suspendCard(id);

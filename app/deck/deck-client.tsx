@@ -26,6 +26,7 @@ import {
   CardDescription,
   CardTitle,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -112,6 +113,8 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
   const [cards, setCards] = useState<DeckCardItem[]>(initialCards);
   const [addOpen, setAddOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<DeckCardItem | null>(null);
+  const [cardToDelete, setCardToDelete] = useState<DeckCardItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [cefrFilter, setCefrFilter] = useState<Cefr | null>(null);
   const [masteryFilter, setMasteryFilter] = useState<MasteryLabel | null>(null);
@@ -133,6 +136,21 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
     void refreshCards();
     setEditingCard(null);
   }, [refreshCards]);
+
+  const handleDeleteConfirmed = useCallback(async () => {
+    if (!cardToDelete) return;
+
+    setDeleting(true);
+    try {
+      await getContentRepository().deleteCard(cardToDelete.id);
+      setCardToDelete(null);
+      await refreshCards();
+    } catch {
+      // keep dialog open so the learner can retry or cancel
+    } finally {
+      setDeleting(false);
+    }
+  }, [cardToDelete, refreshCards]);
 
   const filters = useMemo<DeckCardFilters>(
     () => ({ cefr: cefrFilter, mastery: masteryFilter, due: dueFilter }),
@@ -190,6 +208,34 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
             >
               <DialogContent className="w-[min(90vw,32rem)]">
                 {editingCard && <EditCardForm card={editingCard} onSaved={handleCardEdited} />}
+              </DialogContent>
+            </Dialog>
+
+            <Dialog
+              open={cardToDelete !== null}
+              onOpenChange={(open) => {
+                if (!open && !deleting) setCardToDelete(null);
+              }}
+            >
+              <DialogContent>
+                <DialogTitle>Delete card?</DialogTitle>
+                <DialogDescription>
+                  <strong className="text-foreground">&ldquo;{cardToDelete?.word}&rdquo;</strong>{" "}
+                  will be permanently removed from your deck, including its review history and
+                  collection memberships. This cannot be undone.
+                </DialogDescription>
+                <div className="mt-5 flex justify-end gap-3">
+                  <DialogClose disabled={deleting}>Cancel</DialogClose>
+                  <Button
+                    data-testid="deck-card-delete-confirm"
+                    variant="secondary"
+                    onClick={() => void handleDeleteConfirmed()}
+                    disabled={deleting}
+                    className="bg-danger/10 text-danger hover:bg-danger/20 border-danger/30"
+                  >
+                    {deleting ? "Deleting…" : "Delete"}
+                  </Button>
+                </div>
               </DialogContent>
             </Dialog>
           </div>
@@ -316,6 +362,15 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                                 onClick={() => setEditingCard(card)}
                               >
                                 Edit
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                data-testid={`deck-card-delete-${card.id}`}
+                                onClick={() => setCardToDelete(card)}
+                                aria-label={`Delete ${card.word}`}
+                              >
+                                Delete
                               </Button>
                             </div>
                           </div>
