@@ -1,12 +1,13 @@
 import type { Card } from "@/lib/db";
-import { repoGetAllCards } from "@/lib/db/content-actions";
+import { deckWordImageKey } from "@/lib/deck/card-image";
+import { repoGetAllCards, repoGetMediaAsset } from "@/lib/db/content-actions";
 
 import { DeckClient, type DeckCardItem } from "./deck-client";
 
 export const metadata = { title: "Deck — Lang-Tutor" };
 export const dynamic = "force-dynamic";
 
-function toDeckCardItem(card: Card): DeckCardItem {
+function toDeckCardItem(card: Card, hasApprovedImage: boolean): DeckCardItem {
   return {
     id: card.id,
     word: card.word,
@@ -18,12 +19,27 @@ function toDeckCardItem(card: Card): DeckCardItem {
     createdAtIso: card.createdAt.toISOString(),
     lastReviewIso: card.fsrs.lastReview?.toISOString(),
     suspended: card.suspended,
+    hasApprovedImage,
   };
 }
 
-export default async function DeckPage() {
+async function loadDeckCards(): Promise<DeckCardItem[]> {
   const cards = await repoGetAllCards();
-  const items = cards.map(toDeckCardItem);
+  const uniqueWords = [...new Set(cards.map((card) => card.word))];
+  const imageWords = new Set<string>();
+
+  await Promise.all(
+    uniqueWords.map(async (word) => {
+      const asset = await repoGetMediaAsset(deckWordImageKey(word));
+      if (asset) imageWords.add(word.toLowerCase());
+    }),
+  );
+
+  return cards.map((card) => toDeckCardItem(card, imageWords.has(card.word.toLowerCase())));
+}
+
+export default async function DeckPage() {
+  const items = await loadDeckCards();
 
   return <DeckClient initialCards={items} />;
 }

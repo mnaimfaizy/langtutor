@@ -39,3 +39,5 @@ export type {
 } from "./filter-deck-cards";
 export { sortDeckCards } from "./sort-deck-cards";
 export type { DeckSortableCard, DeckSortMode } from "./sort-deck-cards";
+export { deckWordImageKey, deckWordImageUrl, resolveDeckCardLayout } from "./card-image";
+export type { DeckCardLayout } from "./card-image";

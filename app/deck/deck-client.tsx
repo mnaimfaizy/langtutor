@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { Cefr } from "@/lib/db";
-import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
+import type { Cefr, ExperienceMode } from "@/lib/db";
+import { DEFAULT_EXPERIENCE_MODE } from "@/lib/db";
 import {
   applyDeckCardFilters,
   filterDeckCardsByCollection,
@@ -13,19 +13,10 @@ import {
   type DeckDueStatusFilter,
   type DeckSortMode,
 } from "@/lib/deck";
-import {
-  formatNextDue,
-  masteryLabelDisplay,
-  masteryLabelFromState,
-  type MasteryLabel,
-} from "@/lib/srs";
+import { masteryLabelDisplay, type MasteryLabel } from "@/lib/srs";
 import { getContentRepository } from "@/lib/registry";
 import {
-  Badge,
   Button,
-  Card,
-  CardDescription,
-  CardTitle,
   Dialog,
   DialogClose,
   DialogContent,
@@ -34,15 +25,14 @@ import {
   DialogTrigger,
   Input,
   SelectPill,
-  type BadgeVariant,
-  cn,
 } from "@/ui";
 
 import { AddWordForm } from "./add-word-form";
-import { CardCollectionsMenu } from "./card-collections-menu";
+import { DeckBrowserCard } from "./deck-browser-card";
 import { CollectionsPanel } from "./collections-panel";
 import { EditCardForm } from "./edit-card-form";
 import { useDeckCollections } from "./use-deck-collections";
+import { useDeckCardImages } from "./use-deck-card-images";
 
 /** Serializable card row passed from the server component. */
 export interface DeckCardItem {
@@ -56,14 +46,9 @@ export interface DeckCardItem {
   createdAtIso: string;
   lastReviewIso?: string;
   suspended?: boolean;
+  /** Server-hint: approved kid illustration exists for this word (refreshed client-side). */
+  hasApprovedImage?: boolean;
 }
-
-const MASTERY_BADGE_VARIANT: Record<MasteryLabel, BadgeVariant> = {
-  new: "neutral",
-  learning: "accent",
-  review: "success",
-  relearning: "warning",
-};
 
 const CEFR_LEVELS: Cefr[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
@@ -82,11 +67,6 @@ const SORT_OPTIONS: { value: DeckSortMode; label: string }[] = [
 
 function toggleFilter<T>(current: T | null, value: T): T | null {
   return current === value ? null : value;
-}
-
-function definitionSnippet(definition: string, maxLen = 120): string {
-  if (definition.length <= maxLen) return definition;
-  return `${definition.slice(0, maxLen).trimEnd()}…`;
 }
 
 function toDeckCardItem(card: {
@@ -127,7 +107,9 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
   const [masteryFilter, setMasteryFilter] = useState<MasteryLabel | null>(null);
   const [dueFilter, setDueFilter] = useState<DeckDueStatusFilter | null>(null);
   const [sortMode, setSortMode] = useState<DeckSortMode>("due");
+  const [experienceMode, setExperienceMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
   const now = useMemo(() => new Date(), []);
+  const hasApprovedImage = useDeckCardImages(cards);
   const {
     collections,
     membershipByCollection,
@@ -140,6 +122,19 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
     deleteCollection,
     setCardInCollection,
   } = useDeckCollections();
+
+  useEffect(() => {
+    let active = true;
+    void getContentRepository()
+      .getProfile()
+      .then((profile) => {
+        if (!active) return;
+        setExperienceMode(profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const refreshCards = useCallback(async () => {
     const all = await getContentRepository().getAllCards();
@@ -324,7 +319,7 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
           </div>
         </div>
 
-        <div className="mt-8" data-testid="deck-browser">
+        <div className="mt-8" data-testid="deck-browser" data-experience-mode={experienceMode}>
           {cards.length === 0 ? (
             <p className="text-muted text-sm" data-testid="deck-empty">
               No words in your deck yet. Add your first word to get started.
@@ -432,96 +427,24 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                 </p>
               ) : (
                 <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {displayCards.map((card) => {
-                    const mastery = masteryLabelFromState(card.fsrsState);
-                    const due = new Date(card.dueIso);
-                    return (
-                      <li key={card.id}>
-                        <Card
-                          data-testid={`deck-card-${card.id}`}
-                          className={cn(card.suspended && "opacity-60")}
-                        >
-                          <div className="space-y-2">
-                            <div className="flex items-start justify-between gap-2">
-                              <CardTitle className="text-base">{card.word}</CardTitle>
-                              <Badge
-                                variant={CEFR_BADGE_VARIANT[card.cefr]}
-                                size="sm"
-                                className="shrink-0"
-                              >
-                                {card.cefr}
-                              </Badge>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <CardCollectionsMenu
-                                cardId={card.id}
-                                word={card.word}
-                                collections={collections}
-                                membershipByCollection={membershipByCollection}
-                                onSetCardInCollection={setCardInCollection}
-                              />
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                data-testid={`deck-card-suspend-${card.id}`}
-                                onClick={() => void handleSuspendToggle(card)}
-                                disabled={suspendingId === card.id}
-                                aria-label={
-                                  card.suspended ? `Unsuspend ${card.word}` : `Suspend ${card.word}`
-                                }
-                              >
-                                {suspendingId === card.id
-                                  ? "…"
-                                  : card.suspended
-                                    ? "Unsuspend"
-                                    : "Suspend"}
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                data-testid={`deck-card-reset-${card.id}`}
-                                onClick={() => setCardToReset(card)}
-                                aria-label={`Reset progress for ${card.word}`}
-                              >
-                                Reset
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                data-testid={`deck-card-edit-${card.id}`}
-                                onClick={() => setEditingCard(card)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                data-testid={`deck-card-delete-${card.id}`}
-                                onClick={() => setCardToDelete(card)}
-                                aria-label={`Delete ${card.word}`}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
-                          <CardDescription>{definitionSnippet(card.definition)}</CardDescription>
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <Badge variant={MASTERY_BADGE_VARIANT[mastery]} size="sm">
-                              {masteryLabelDisplay(mastery)}
-                            </Badge>
-                            {card.suspended && (
-                              <Badge variant="neutral" size="sm">
-                                Suspended
-                              </Badge>
-                            )}
-                            <span className="text-muted text-xs tabular-nums">
-                              {formatNextDue(due, now)}
-                            </span>
-                          </div>
-                        </Card>
-                      </li>
-                    );
-                  })}
+                  {displayCards.map((card) => (
+                    <li key={card.id}>
+                      <DeckBrowserCard
+                        card={card}
+                        experienceMode={experienceMode}
+                        hasApprovedImage={hasApprovedImage(card.word)}
+                        now={now}
+                        collections={collections}
+                        membershipByCollection={membershipByCollection}
+                        onSetCardInCollection={setCardInCollection}
+                        suspendingId={suspendingId}
+                        onSuspendToggle={(item) => void handleSuspendToggle(item)}
+                        onReset={setCardToReset}
+                        onEdit={setEditingCard}
+                        onDelete={setCardToDelete}
+                      />
+                    </li>
+                  ))}
                 </ul>
               )}
             </>
