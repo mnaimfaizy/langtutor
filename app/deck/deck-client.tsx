@@ -115,6 +115,7 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
   const [editingCard, setEditingCard] = useState<DeckCardItem | null>(null);
   const [cardToDelete, setCardToDelete] = useState<DeckCardItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [suspendingId, setSuspendingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [cefrFilter, setCefrFilter] = useState<Cefr | null>(null);
   const [masteryFilter, setMasteryFilter] = useState<MasteryLabel | null>(null);
@@ -151,6 +152,26 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
       setDeleting(false);
     }
   }, [cardToDelete, refreshCards]);
+
+  const handleSuspendToggle = useCallback(
+    async (card: DeckCardItem) => {
+      setSuspendingId(card.id);
+      try {
+        const repo = getContentRepository();
+        if (card.suspended) {
+          await repo.unsuspendCard(card.id);
+        } else {
+          await repo.suspendCard(card.id);
+        }
+        await refreshCards();
+      } catch {
+        // leave card state unchanged on failure
+      } finally {
+        setSuspendingId(null);
+      }
+    },
+    [refreshCards],
+  );
 
   const filters = useMemo<DeckCardFilters>(
     () => ({ cefr: cefrFilter, mastery: masteryFilter, due: dueFilter }),
@@ -355,6 +376,22 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                               <Badge variant={CEFR_BADGE_VARIANT[card.cefr]} size="sm">
                                 {card.cefr}
                               </Badge>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                data-testid={`deck-card-suspend-${card.id}`}
+                                onClick={() => void handleSuspendToggle(card)}
+                                disabled={suspendingId === card.id}
+                                aria-label={
+                                  card.suspended ? `Unsuspend ${card.word}` : `Suspend ${card.word}`
+                                }
+                              >
+                                {suspendingId === card.id
+                                  ? "…"
+                                  : card.suspended
+                                    ? "Unsuspend"
+                                    : "Suspend"}
+                              </Button>
                               <Button
                                 variant="secondary"
                                 size="sm"
