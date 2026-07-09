@@ -11,6 +11,7 @@ import {
   masteryLabelFromState,
   type MasteryLabel,
 } from "@/lib/srs";
+import { filterDeckCards } from "@/lib/deck";
 import { getContentRepository } from "@/lib/registry";
 import {
   Badge,
@@ -22,6 +23,7 @@ import {
   DialogDescription,
   DialogTitle,
   DialogTrigger,
+  Input,
   type BadgeVariant,
   cn,
 } from "@/ui";
@@ -73,6 +75,7 @@ function toDeckCardItem(card: {
 export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
   const [cards, setCards] = useState<DeckCardItem[]>(initialCards);
   const [addOpen, setAddOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const now = useMemo(() => new Date(), []);
 
   const refreshCards = useCallback(async () => {
@@ -93,6 +96,11 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
     () =>
       [...cards].sort((a, b) => a.word.localeCompare(b.word, undefined, { sensitivity: "base" })),
     [cards],
+  );
+
+  const filteredCards = useMemo(
+    () => filterDeckCards(sortedCards, searchQuery),
+    [sortedCards, searchQuery],
   );
 
   return (
@@ -136,41 +144,63 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
               No words in your deck yet. Add your first word to get started.
             </p>
           ) : (
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {sortedCards.map((card) => {
-                const mastery = masteryLabelFromState(card.fsrsState);
-                const due = new Date(card.dueIso);
-                return (
-                  <li key={card.id}>
-                    <Card
-                      data-testid={`deck-card-${card.id}`}
-                      className={cn(card.suspended && "opacity-60")}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-base">{card.word}</CardTitle>
-                        <Badge variant={CEFR_BADGE_VARIANT[card.cefr]} size="sm">
-                          {card.cefr}
-                        </Badge>
-                      </div>
-                      <CardDescription>{definitionSnippet(card.definition)}</CardDescription>
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <Badge variant={MASTERY_BADGE_VARIANT[mastery]} size="sm">
-                          {masteryLabelDisplay(mastery)}
-                        </Badge>
-                        {card.suspended && (
-                          <Badge variant="neutral" size="sm">
-                            Suspended
-                          </Badge>
-                        )}
-                        <span className="text-muted text-xs tabular-nums">
-                          {formatNextDue(due, now)}
-                        </span>
-                      </div>
-                    </Card>
-                  </li>
-                );
-              })}
-            </ul>
+            <>
+              <label className="sr-only" htmlFor="deck-search">
+                Search deck
+              </label>
+              <Input
+                id="deck-search"
+                data-testid="deck-search-input"
+                type="search"
+                placeholder="Search by word or definition…"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="mb-4 max-w-md"
+                aria-label="Search deck by word or definition"
+              />
+
+              {filteredCards.length === 0 ? (
+                <p className="text-muted text-sm" data-testid="deck-search-empty">
+                  No cards match your search.
+                </p>
+              ) : (
+                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredCards.map((card) => {
+                    const mastery = masteryLabelFromState(card.fsrsState);
+                    const due = new Date(card.dueIso);
+                    return (
+                      <li key={card.id}>
+                        <Card
+                          data-testid={`deck-card-${card.id}`}
+                          className={cn(card.suspended && "opacity-60")}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="text-base">{card.word}</CardTitle>
+                            <Badge variant={CEFR_BADGE_VARIANT[card.cefr]} size="sm">
+                              {card.cefr}
+                            </Badge>
+                          </div>
+                          <CardDescription>{definitionSnippet(card.definition)}</CardDescription>
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <Badge variant={MASTERY_BADGE_VARIANT[mastery]} size="sm">
+                              {masteryLabelDisplay(mastery)}
+                            </Badge>
+                            {card.suspended && (
+                              <Badge variant="neutral" size="sm">
+                                Suspended
+                              </Badge>
+                            )}
+                            <span className="text-muted text-xs tabular-nums">
+                              {formatNextDue(due, now)}
+                            </span>
+                          </div>
+                        </Card>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </>
           )}
         </div>
       </div>
