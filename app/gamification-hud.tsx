@@ -47,7 +47,9 @@ export function GamificationHud() {
         }
         className={cn(
           "border-warning/30 bg-warning/10 text-warning flex items-center gap-1 rounded-full border px-2 py-0.5",
-          state.streakCount > 0 && !streakAtRisk && "shadow-warning/40 shadow-[0_0_10px_-2px]",
+          state.streakCount > 0 &&
+            !streakAtRisk &&
+            "motion-safe:shadow-warning/40 motion-safe:shadow-[0_0_10px_-2px]",
           streakAtRisk && "border-warning/20 bg-warning/5 text-warning/55 opacity-75",
         )}
       >
