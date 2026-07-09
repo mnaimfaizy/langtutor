@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
 import type { Cefr } from "@/lib/db";
@@ -107,16 +108,26 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
             </p>
           </div>
 
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
-            <DialogTrigger data-testid="btn-open-add-word">Add a word</DialogTrigger>
-            <DialogContent className="w-[min(90vw,32rem)]">
-              <DialogTitle>Add a word</DialogTitle>
-              <DialogDescription>
-                Look up a word in the lexicon and add it to your spaced-repetition deck.
-              </DialogDescription>
-              <AddWordForm className="mt-4" onCardAdded={handleCardAdded} />
-            </DialogContent>
-          </Dialog>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Link
+              href="/deck/stats"
+              data-testid="link-deck-stats"
+              className="text-accent text-sm font-medium underline underline-offset-4"
+            >
+              View stats
+            </Link>
+
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger data-testid="btn-open-add-word">Add a word</DialogTrigger>
+              <DialogContent className="w-[min(90vw,32rem)]">
+                <DialogTitle>Add a word</DialogTitle>
+                <DialogDescription>
+                  Look up a word in the lexicon and add it to your spaced-repetition deck.
+                </DialogDescription>
+                <AddWordForm className="mt-4" onCardAdded={handleCardAdded} />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="mt-8" data-testid="deck-browser">

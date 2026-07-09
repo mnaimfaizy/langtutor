@@ -51,13 +51,23 @@ test.describe("phone-width layout: deck, diagnostics, and admin", () => {
     page,
   }) => {
     await page.goto("/deck");
-    await expect(page.getByRole("heading", { name: "Add words", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Your deck", level: 1 })).toBeVisible();
     await expectNoHorizontalScroll(page);
 
+    await page.getByTestId("btn-open-add-word").click();
     const wordInput = page.getByTestId("word-input");
     await expect(wordInput).toBeVisible();
     const box = await wordInput.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET_PX);
+  });
+
+  test("deck stats page renders without horizontal overflow and shows due forecast", async ({
+    page,
+  }) => {
+    await page.goto("/deck/stats");
+    await expect(page.getByRole("heading", { name: "Deck stats", level: 1 })).toBeVisible();
+    await expect(page.getByTestId("deck-stats-forecast")).toBeVisible();
+    await expectNoHorizontalScroll(page);
   });
 
   test("diagnostics page renders without horizontal overflow and skill tabs are usable", async ({
