@@ -41,8 +41,8 @@ export async function GET(request: Request) {
 
   try {
     const repo = await getServerContentRepository();
-    const synthesizer = await getTtsSynthesizer();
-    const asset = await resolveWordAudio(repo, synthesizer, word, style);
+    // Lazy factory: store hits must not require GROQ_API_KEY.
+    const asset = await resolveWordAudio(repo, () => getTtsSynthesizer(), word, style);
 
     return new Response(Buffer.from(asset.data), {
       headers: {

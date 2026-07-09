@@ -48,8 +48,10 @@ describe("resolveWordAudio", () => {
     });
 
     const synthesizer = new MockTtsSynthesizer();
-    const resolved = await resolveWordAudio(repo, synthesizer, "cat");
+    const factory = vi.fn(async () => synthesizer);
+    const resolved = await resolveWordAudio(repo, factory, "cat");
 
+    expect(factory).not.toHaveBeenCalled();
     expect(synthesizer.calls).toHaveLength(0);
     expect(resolved.data).toEqual(new Uint8Array([7]));
   });

@@ -40,8 +40,7 @@ export async function regenerateMediaAsset(key: MediaAssetKey): Promise<MediaAss
   await requireAdmin();
   const parsed = MediaAssetKeySchema.parse(key);
   const repo = await getServerContentRepository();
-  const generator = await getImageGenerator();
-  const asset = await regenerateWordImage(repo, generator, parsed.key, parsed.style);
+  const asset = await regenerateWordImage(repo, () => getImageGenerator(), parsed.key, parsed.style);
   const { data: _data, ...record } = asset;
   return record;
 }

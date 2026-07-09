@@ -75,4 +75,24 @@ describe("resolveMediaAsset", () => {
     expect(producer).not.toHaveBeenCalled();
     expect(resolved).toEqual(makeAsset(7));
   });
+
+  it("dedupes concurrent misses for the same key to a single producer call", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const producer = vi.fn(async () => {
+      await gate;
+      return makeAsset(42, "approved");
+    });
+
+    const first = resolveMediaAsset(repo, KEY, producer);
+    const second = resolveMediaAsset(repo, KEY, producer);
+    release();
+    const [a, b] = await Promise.all([first, second]);
+
+    expect(producer).toHaveBeenCalledTimes(1);
+    expect(a).toEqual(makeAsset(42, "approved"));
+    expect(b).toEqual(makeAsset(42, "approved"));
+  });
 });
