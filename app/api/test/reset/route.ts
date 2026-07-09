@@ -3,21 +3,25 @@ import { env } from "@/lib/config/env";
 import { getDrizzleClient } from "@/lib/db/drizzle/client";
 import {
   cards,
+  collectibleGrants,
   content,
   errorEvents,
   gamification,
   lexiconCache,
   profiles,
+  questState,
   units,
   weakness,
 } from "@/lib/db/drizzle/schema";
 import {
   cards as postgresCards,
+  collectibleGrants as postgresCollectibleGrants,
   content as postgresContent,
   errorEvents as postgresErrorEvents,
   gamification as postgresGamification,
   lexiconCache as postgresLexiconCache,
   profiles as postgresProfiles,
+  questState as postgresQuestState,
   units as postgresUnits,
   weakness as postgresWeakness,
 } from "@/lib/db/drizzle/schema.postgres";
@@ -29,7 +33,8 @@ import { getServerContentRepository } from "@/lib/db/server";
  *
  * Resets SQLite to a known clean-but-seeded baseline so each e2e test starts
  * from the same state. We delete all per-user data (profile, cards, error
- * events, gamification, weakness) plus all content and the global lexicon
+ * events, gamification, quest state, collectible grants, weakness) plus all
+ * content and the global lexicon
  * cache, then re-seed the canonical starter set (passages, prompts, cards)
  * synchronously on the server.
  *
@@ -62,6 +67,8 @@ export async function POST() {
     await db.delete(postgresCards);
     await db.delete(postgresErrorEvents);
     await db.delete(postgresGamification);
+    await db.delete(postgresQuestState);
+    await db.delete(postgresCollectibleGrants);
     await db.delete(postgresWeakness);
     await db.delete(postgresLexiconCache);
     await db.delete(postgresContent);
@@ -73,6 +80,8 @@ export async function POST() {
     db.delete(cards).run();
     db.delete(errorEvents).run();
     db.delete(gamification).run();
+    db.delete(questState).run();
+    db.delete(collectibleGrants).run();
     db.delete(weakness).run();
     db.delete(lexiconCache).run();
     db.delete(content).run();

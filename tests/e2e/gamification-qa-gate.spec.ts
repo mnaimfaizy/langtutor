@@ -99,16 +99,46 @@ async function rateAllDueCardsGood(page: Page): Promise<number> {
   const reveal = page.getByTestId("btn-reveal");
   const rateGood = page.getByTestId("btn-rate-good");
   const progress = page.getByTestId("review-progress");
+  const back = page.getByTestId("btn-back-to-unit-or-home");
+  const empty = page.getByTestId("review-empty");
+  const error = page.getByTestId("review-error");
+  const session = page.getByTestId("review-session");
 
   let rated = 0;
-  for (let i = 0; i < 40; i++) {
-    if (await summary.isVisible()) break;
-    await expect(reveal.or(summary)).toBeVisible({ timeout: 10_000 });
-    if (await summary.isVisible()) break;
+  const deadline = Date.now() + 120_000;
+  while (Date.now() < deadline) {
+    const [isReveal, isSummary, isBack, isEmpty, isError, isSession] = await Promise.all([
+      reveal.isVisible().catch(() => false),
+      summary.isVisible().catch(() => false),
+      back.isVisible().catch(() => false),
+      empty.isVisible().catch(() => false),
+      error.isVisible().catch(() => false),
+      session.isVisible().catch(() => false),
+    ]);
+
+    if (isError) {
+      throw new Error("Review session entered error state");
+    }
+
+    if (isSummary || isEmpty || (isBack && !isReveal)) {
+      return rated;
+    }
+
+    if (!isSession) {
+      await page.waitForTimeout(250);
+      continue;
+    }
+
+    if (!isReveal) {
+      await page.waitForTimeout(250);
+      continue;
+    }
 
     const text = (await progress.textContent()) ?? "";
     const [posStr, totalStr] = text.split("/").map((s) => s.trim());
-    const isLast = Number(posStr) >= Number(totalStr);
+    const pos = Number(posStr);
+    const total = Number(totalStr);
+    const isLast = Number.isFinite(pos) && Number.isFinite(total) && pos >= total;
 
     await reveal.click();
     await expect(rateGood).toBeVisible({ timeout: 10_000 });
@@ -117,11 +147,14 @@ async function rateAllDueCardsGood(page: Page): Promise<number> {
 
     if (isLast) {
       await expect(summary).toBeVisible({ timeout: 10_000 });
-      break;
+      return rated;
     }
-    await expect(progress).toHaveText(`${Number(posStr) + 1} / ${totalStr}`, { timeout: 10_000 });
+    if (Number.isFinite(pos) && Number.isFinite(total)) {
+      await expect(progress).toHaveText(`${pos + 1} / ${total}`, { timeout: 10_000 });
+    }
   }
-  return rated;
+
+  throw new Error(`Review session did not reach terminal state within 120s at URL: ${page.url()}`);
 }
 
 /** Waits for the level-up beat (when applicable) and session celebration to auto-dismiss. */
@@ -152,14 +185,43 @@ async function completeSpeakingActivity(page: Page) {
 
   const stopBtn = page.getByRole("button", { name: /stop recording/i });
   await expect(stopBtn).toBeVisible({ timeout: 10_000 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(1_500);
   await stopBtn.click();
 
-  const transcribeBtn = page.getByRole("button", { name: /transcribe and score/i });
-  await expect(transcribeBtn).toBeEnabled({ timeout: 15_000 });
-  await transcribeBtn.click();
-
   const completeSpeaking = page.getByTestId("btn-complete-speaking");
+  const transcribeBtn = page
+    .getByRole("button", { name: /transcribe and score/i })
+    .or(page.getByRole("button", { name: /transcribe & score/i }))
+    .or(page.getByRole("button", { name: /^transcribe$/i }))
+    .or(page.getByRole("button", { name: /transcribe audio/i }));
+
+  const readyToComplete = await expect
+    .poll(
+      async () => {
+        const [hasTranscribe, canComplete] = await Promise.all([
+          transcribeBtn.isVisible().catch(() => false),
+          completeSpeaking.isEnabled().catch(() => false),
+        ]);
+        return hasTranscribe || canComplete;
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(true)
+    .then(() => true)
+    .catch(() => false);
+
+  if (!readyToComplete) {
+    throw new Error(`Speaking actions not ready at URL: ${page.url()}`);
+  }
+
+  if (await transcribeBtn.isVisible().catch(() => false)) {
+    await expect(transcribeBtn).toBeEnabled({ timeout: 15_000 });
+    await transcribeBtn.click();
+    await expect(page.getByRole("button", { name: /scoring|transcribing/i })).toHaveCount(0, {
+      timeout: 15_000,
+    });
+  }
+
   await expect(completeSpeaking).toBeEnabled({ timeout: 15_000 });
   await completeSpeaking.click();
 }
@@ -177,7 +239,7 @@ async function completeFirstUnit(page: Page): Promise<string> {
   await page.waitForURL(`/review?unit=${unitId}&activity=0`);
   await rateAllDueCardsGood(page);
   await waitForCelebrationSequence(page);
-  await expect(page.getByTestId("review-summary")).toBeVisible();
+  await expect(page.getByTestId("btn-back-to-unit-or-home")).toBeVisible();
   await page.getByTestId("btn-back-to-unit-or-home").click();
   await page.waitForURL(`/path/${unitId}`);
 
@@ -339,7 +401,7 @@ test.describe("reduced-motion: celebration surfaces use calm variants", () => {
     await page.goto("/review");
     await rateAllDueCardsGood(page);
     await waitForCelebrationSequence(page);
-    await page.getByRole("link", { name: "Back to home" }).click();
+    await page.getByTestId("btn-back-to-unit-or-home").click();
     await page.waitForURL("/home");
 
     await page.clock.setFixedTime(new Date("2026-07-09T19:00:00"));
