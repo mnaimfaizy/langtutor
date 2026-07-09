@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // Reset before each test so accumulated cards from prior spec files (which call
 // reset+seed in their own beforeEach hooks) don't bleed into the count check.

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // Cards are now shared server-side SQLite (not per-context IndexedDB), so a word
 // added by one test stays in the deck for the next and shows as a duplicate.

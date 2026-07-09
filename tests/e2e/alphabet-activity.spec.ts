@@ -2,7 +2,7 @@
  * Issue #71 — alphabet activity in the first pre-A1 unit. Walks through all 26 letters
  * with media-store audio and illustrations, then marks the slot done via the unit player.
  */
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 const BATCH_SIZE = 6;
 const ALPHABET_LENGTH = 26;
@@ -28,7 +28,7 @@ test.beforeEach(async ({ request, page }) => {
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-async function signUpKid(page: import("@playwright/test").Page): Promise<void> {
+async function signUpKid(page: Page): Promise<void> {
   const email = `alphabet-kid-${Date.now()}@example.com`;
   await page.goto("/sign-up");
   await page.getByTestId("signup-mode-btn-kid").click();
@@ -40,7 +40,7 @@ async function signUpKid(page: import("@playwright/test").Page): Promise<void> {
   await page.waitForURL("/onboarding");
 }
 
-async function completeOnboardingToHome(page: import("@playwright/test").Page): Promise<void> {
+async function completeOnboardingToHome(page: Page): Promise<void> {
   await page.goto("/onboarding");
   await page.getByTestId("quiz-start-btn").click();
   for (let i = 0; i < BATCH_SIZE; i++) {

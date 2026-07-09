@@ -21,7 +21,7 @@
  * single-user local-first PWA.
  */
 
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // Ensure each test starts with a fresh seed and restores the network afterwards.
 test.afterEach(async ({ context }) => {

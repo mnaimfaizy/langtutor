@@ -7,8 +7,7 @@
 
 import { readFile } from "node:fs/promises";
 
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword — see onboarding.spec.ts
 

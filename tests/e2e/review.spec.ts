@@ -1,5 +1,4 @@
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 // setupWithSeed() navigates to /onboarding which requires an empty profile.
 // Reset before each test so prior tests' saved profiles don't cause redirects.

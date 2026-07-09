@@ -1,5 +1,4 @@
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 // Issue #64 — QA gate: mode/palette sweep for the guided path's own screens (the journey/home,
 // the unit player, and the offline graceful-pause state) across all four palettes (kid/adult ×

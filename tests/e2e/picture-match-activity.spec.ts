@@ -2,8 +2,7 @@
  * Issue #74 — picture-match activity in the third pre-A1 unit. Supports picture→word and
  * word→picture rounds with media-store images/audio, then marks the slot done via the unit player.
  */
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 import { PICTURE_MATCH_ROUNDS } from "@/lib/picture-match/vocab";
 

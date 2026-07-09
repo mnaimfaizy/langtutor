@@ -4,7 +4,7 @@
  * anonymous-vs-authenticated root redirect itself) with content and layout checks specific
  * to the landing page.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // Anonymous visitor — the marketing page never renders for a signed-in session.
 test.use({ storageState: { cookies: [], origins: [] } });

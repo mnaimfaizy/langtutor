@@ -5,12 +5,12 @@
  * the chosen palette + copy register. Existing login e2e (auth-gate.spec.ts) is unaffected —
  * post-login routing to /home is untouched.
  */
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 // Auth screens are reached before sign-in — drop the shared session storage state.
 test.use({ storageState: { cookies: [], origins: [] } });
 
-async function signUp(page: import("@playwright/test").Page, mode: "kid" | "adult"): Promise<void> {
+async function signUp(page: Page, mode: "kid" | "adult"): Promise<void> {
   const email = `signup-${mode}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
 
   await page.goto("/sign-up");

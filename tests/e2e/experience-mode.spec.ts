@@ -3,7 +3,7 @@
  * Verifies the Settings toggle switches the root palette live and that the choice
  * survives a reload (i.e. the server-rendered bootstrap picks up the stored mode).
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test.beforeEach(async ({ request }) => {
   await request.post("/api/test/reset");

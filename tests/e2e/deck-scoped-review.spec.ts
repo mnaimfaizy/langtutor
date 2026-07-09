@@ -1,5 +1,4 @@
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 test.beforeEach(async ({ request }) => {
   await request.post("/api/test/reset");

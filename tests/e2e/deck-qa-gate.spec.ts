@@ -7,8 +7,8 @@
  * tests/e2e/cross-palette-smoke.spec.ts, tests/e2e/learning-path.spec.ts (teacher plan mock),
  * tests/e2e/path-lifecycle.spec.ts (unit completion).
  */
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
+import { MOCK_PASSAGE, overridePathPlan } from "./stub-mac-apis";
 
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword — see onboarding.spec.ts
 
@@ -20,21 +20,6 @@ const UNIT_TITLE = "Talking About Home";
 const UNIT_NOTE = "Practice everyday words about home and school.";
 const UNIT_VOCAB = ["house", "school", "happy", "big"];
 
-const MOCK_PASSAGE = {
-  title: "Everyday Habits",
-  body: "Every day, Sam wakes up early and drinks a cup of tea. He walks to work because the office is close to his house. At lunch, he eats a sandwich with his friends. In the evening, he reads a book before he goes to sleep. Sam likes his simple daily routine because it helps him feel calm and ready for each new day.",
-};
-
-const MOCK_PROMPT = {
-  title: "Your Daily Routine",
-  instruction: "Write a few sentences describing your typical morning routine.",
-};
-
-const MOCK_FEEDBACK = {
-  overallScore: 8,
-  structuralGrade: "Good",
-  corrections: [],
-};
 
 interface Palette {
   name: "adult-light" | "adult-dark" | "kid-bright" | "kid-dark";
@@ -56,48 +41,10 @@ test.use({
   },
 });
 
-test.beforeEach(async ({ request, page }) => {
+test.beforeEach(async ({ request }) => {
   test.setTimeout(300_000);
   await request.post("/api/test/reset");
-
-  await page.route("**/api/reading/generate", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ passage: MOCK_PASSAGE }),
-    });
-  });
-  await page.route("**/api/writing/generate", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ prompt: MOCK_PROMPT }),
-    });
-  });
-  await page.route("**/api/writing/feedback", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ feedback: MOCK_FEEDBACK }),
-    });
-  });
-  await page.route("**/api/stt/transcribe", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ transcript: MOCK_PASSAGE.body }),
-    });
-  });
-  // Path-buffer replenishment awaits embeddings after each generate. Without a mock, an
-  // unreachable Mac leaves those fetches hanging and can starve other same-origin calls
-  // (notably getDueCards during the unit's review activity).
-  await page.route("**/api/llm/embeddings", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ embeddings: [[0.1, 0.2, 0.3]] }),
-    });
-  });
+  // Mac-facing APIs are stubbed by tests/e2e/fixtures.ts (stubMacApis).
 });
 
 /** Completes onboarding and waits for the seed to be ready. */
@@ -294,8 +241,10 @@ async function completeFirstUnit(page: Page): Promise<void> {
   const unitId = await firstUnit.getAttribute("data-unit-id");
   expect(unitId).toBeTruthy();
 
-  await firstUnit.click();
-  await page.waitForURL(`/path/${unitId}`);
+  // Prefer a direct navigation: after a teacher-plan refresh the path node can re-render
+  // while replenish is still running, and a click race occasionally never reaches /path/:id.
+  await page.goto(`/path/${unitId}`);
+  await expect(page.getByTestId("unit-title")).toBeVisible({ timeout: 60_000 });
 
   await page.getByTestId("btn-start-activity-0").click();
   await page.waitForURL(`/review?unit=${unitId}&activity=0`);
@@ -471,37 +420,30 @@ test("deck overhaul: browse, filter, sort, edit, suspend, reset, collections, sc
 test("deck overhaul: unit-vocab auto-collection appears after completing a planned unit", async ({
   page,
 }) => {
-  // Intercept before onboarding so the first home visit applies the canned plan
-  // (same pattern as tests/e2e/learning-path.spec.ts). Registering after setupWithSeed
-  // races a second replenish pass against content generation / embeddings.
-  await page.route("**/api/path/plan", async (route) => {
-    await page.waitForSelector('[data-testid="unit-0"]', { timeout: 5000 }).catch(() => undefined);
-    const unitId = await page.evaluate(() => {
-      const el = document.querySelector('[data-testid="unit-0"]');
-      const raw = el?.getAttribute("data-unit-id");
-      return raw ? Number(raw) : null;
-    });
+  // Land on home with the default empty-plan stub first so unit-0 exists, then replace
+  // the plan route with a canned payload (overridePathPlan unroutes the fixture stub).
+  await setupWithSeed(page);
+  const unitId = Number(await page.getByTestId("unit-0").getAttribute("data-unit-id"));
+  expect(Number.isFinite(unitId)).toBe(true);
 
+  await overridePathPlan(page, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        plans:
-          unitId == null
-            ? []
-            : [
-                {
-                  unitId,
-                  title: UNIT_TITLE,
-                  teacherNote: UNIT_NOTE,
-                  targetVocab: UNIT_VOCAB,
-                },
-              ],
+        plans: [
+          {
+            unitId,
+            title: UNIT_TITLE,
+            teacherNote: UNIT_NOTE,
+            targetVocab: UNIT_VOCAB,
+          },
+        ],
       }),
     });
   });
 
-  await setupWithSeed(page);
+  await page.goto("/home");
   await expect(page.getByTestId("unit-0").getByText(UNIT_TITLE)).toBeVisible();
 
   await completeFirstUnit(page);

@@ -1,5 +1,4 @@
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 // Issue #61 — path buffer + offline grace. Exercises the full story end to end:
 //   1. A unit activity the buffer already pre-generated (mocked as an earlier successful

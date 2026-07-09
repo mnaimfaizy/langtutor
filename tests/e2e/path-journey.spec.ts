@@ -1,5 +1,4 @@
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 // Issue #62 — visual journey (adventure map / premium path, node fill, continue,
 // chapter-complete). Covers the issue's own e2e checklist: node state reflects unit status,

@@ -54,10 +54,33 @@ describe("resolveWordImage", () => {
     });
 
     const generator = new MockImageGenerator();
-    const resolved = await resolveWordImage(repo, generator, "cat");
+    const factory = vi.fn(async () => generator);
+    const resolved = await resolveWordImage(repo, factory, "cat");
 
+    expect(factory).not.toHaveBeenCalled();
     expect(generator.calls).toHaveLength(0);
     expect(resolved?.data).toEqual(new Uint8Array([7]));
+  });
+
+  it("does not invoke a generator factory for pending cache hits", async () => {
+    await repo.putMediaAsset({
+      kind: "image",
+      key: "dog",
+      style: "kid-illustration",
+      data: new Uint8Array([3]),
+      mimeType: "image/png",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      source: "generated",
+      approvalStatus: "pending",
+    });
+
+    const factory = vi.fn(async () => {
+      throw new Error("NVIDIA should not be contacted for pending hits");
+    });
+    const resolved = await resolveWordImage(repo, factory, "dog");
+
+    expect(factory).not.toHaveBeenCalled();
+    expect(resolved).toBeUndefined();
   });
 
   it("does not return pending cache hits to learners", async () => {

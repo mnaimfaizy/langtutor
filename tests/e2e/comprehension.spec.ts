@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // Learner data now lives in shared server-side SQLite (not per-context IndexedDB),
 // so state leaks between tests. Reset before each to restore isolation.

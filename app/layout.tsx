@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { SerwistProvider } from "@serwist/turbopack/react";
 import { getCurrentExperienceMode } from "@/lib/db/server";
 import { SITE_URL } from "@/lib/config/site";
 import { paletteBootstrapScript } from "@/lib/theme";
@@ -8,6 +7,7 @@ import "./globals.css";
 import { CollectibleGrantBootstrap } from "./collectible-grant-bootstrap";
 import { MotionProvider } from "./motion-provider";
 import { PageTransition } from "./page-transition";
+import { PwaProvider } from "./pwa-provider";
 import { SeedBootstrap } from "./seed-bootstrap";
 import { SettingsBootstrap } from "./settings-bootstrap";
 import { SiteHeader } from "./site-header";
@@ -57,7 +57,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: paletteBootstrapScript(experienceMode) }} />
       </head>
       <body className="flex min-h-full flex-col">
-        <SerwistProvider swUrl="/serwist/sw.js">
+        <PwaProvider>
           <MotionProvider>
             <SettingsBootstrap />
             <SeedBootstrap />
@@ -65,7 +65,7 @@ export default async function RootLayout({
             <SiteHeader />
             <PageTransition>{children}</PageTransition>
           </MotionProvider>
-        </SerwistProvider>
+        </PwaProvider>
       </body>
     </html>
   );

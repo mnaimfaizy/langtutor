@@ -1,5 +1,5 @@
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
+import { MOCK_PASSAGE, MOCK_PROMPT } from "./stub-mac-apis";
 
 // Issue #59 — unit player tracer (review + reading wired end-to-end); issue #60 widens the
 // backbone to all five module types (see lib/path/backbone-planner.ts) and gives listening,
@@ -9,53 +9,11 @@ import { expect, test } from "@playwright/test";
 // writing, matching the issue's e2e acceptance criterion.
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword — see onboarding.spec.ts
 
-const MOCK_PASSAGE = {
-  title: "Everyday Habits",
-  body: "Every day, Sam wakes up early and drinks a cup of tea. He walks to work because the office is close to his house. At lunch, he eats a sandwich with his friends. In the evening, he reads a book before he goes to sleep. Sam likes his simple daily routine because it helps him feel calm and ready for each new day.",
-};
 
-const MOCK_PROMPT = {
-  title: "Your Daily Routine",
-  instruction: "Write a few sentences describing your typical morning routine.",
-};
-
-const MOCK_FEEDBACK = {
-  overallScore: 8,
-  structuralGrade: "Good",
-  corrections: [],
-};
-
-test.beforeEach(async ({ request, page }) => {
-  // /path/[id], /reading/[id], /listening/[id], and /writing/[id] are dynamic routes not
-  // pre-warmed by tests/e2e/auth.setup.ts, so this spec pays several cold Turbopack compiles
-  // (10-30 s each, see .sandcastle/ENVIRONMENT.md) on top of the activity flows themselves —
-  // give it more headroom than the 60 s default.
+test.beforeEach(async ({ request }) => {
   test.setTimeout(180_000);
   await request.post("/api/test/reset");
-  // Each embedded activity generates its content lazily via the same endpoints the standalone
-  // modules use — mock them so no Mac is required (same pattern as tests/e2e/reading.spec.ts
-  // and tests/e2e/dictation.spec.ts).
-  await page.route("**/api/reading/generate", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ passage: MOCK_PASSAGE }),
-    });
-  });
-  await page.route("**/api/writing/generate", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ prompt: MOCK_PROMPT }),
-    });
-  });
-  await page.route("**/api/writing/feedback", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ feedback: MOCK_FEEDBACK }),
-    });
-  });
+  // Mac-facing APIs are stubbed by tests/e2e/fixtures.ts (stubMacApis).
 });
 
 /** Completes onboarding, anchoring the path at A1, and waits for the seed (due cards). */

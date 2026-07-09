@@ -3,26 +3,11 @@
  * quests → collection), reduced-motion sweep across every celebration surface, and a
  * four-palette × two-experience-mode visual sweep for HUD / mascot / collection.
  */
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
+import { MOCK_PASSAGE } from "./stub-mac-apis";
 
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword — see onboarding.spec.ts
 
-const MOCK_PASSAGE = {
-  title: "Everyday Habits",
-  body: "Every day, Sam wakes up early and drinks a cup of tea. He walks to work because the office is close to his house. At lunch, he eats a sandwich with his friends. In the evening, he reads a book before he goes to sleep. Sam likes his simple daily routine because it helps him feel calm and ready for each new day.",
-};
-
-const MOCK_PROMPT = {
-  title: "Your Daily Routine",
-  instruction: "Write a few sentences describing your typical morning routine.",
-};
-
-const MOCK_FEEDBACK = {
-  overallScore: 8,
-  structuralGrade: "Good",
-  corrections: [],
-};
 
 interface Palette {
   name: "adult-light" | "adult-dark" | "kid-bright" | "kid-dark";
@@ -44,37 +29,10 @@ test.use({
   },
 });
 
-test.beforeEach(async ({ request, page }) => {
+test.beforeEach(async ({ request }) => {
   test.setTimeout(240_000);
   await request.post("/api/test/reset");
-  await page.route("**/api/reading/generate", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ passage: MOCK_PASSAGE }),
-    });
-  });
-  await page.route("**/api/writing/generate", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ prompt: MOCK_PROMPT }),
-    });
-  });
-  await page.route("**/api/writing/feedback", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ feedback: MOCK_FEEDBACK }),
-    });
-  });
-  await page.route("**/api/stt/transcribe", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ transcript: MOCK_PASSAGE.body }),
-    });
-  });
+  // Mac-facing APIs are stubbed by tests/e2e/fixtures.ts (stubMacApis).
 });
 
 /** Completes onboarding and waits for the seed to be ready. */

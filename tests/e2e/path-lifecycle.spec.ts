@@ -1,5 +1,5 @@
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
+import { MOCK_PASSAGE, stubMacApis } from "./stub-mac-apis";
 
 import { AUTH_FILE } from "./auth-constants";
 
@@ -15,21 +15,6 @@ import { AUTH_FILE } from "./auth-constants";
 // tests/e2e/offline.spec.ts (network-mocking pattern), tests/e2e/onboarding.spec.ts (seed flow).
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword — see onboarding.spec.ts
 
-const MOCK_PASSAGE = {
-  title: "Everyday Habits",
-  body: "Every day, Sam wakes up early and drinks a cup of tea. He walks to work because the office is close to his house. At lunch, he eats a sandwich with his friends. In the evening, he reads a book before he goes to sleep. Sam likes his simple daily routine because it helps him feel calm and ready for each new day.",
-};
-
-const MOCK_PROMPT = {
-  title: "Your Daily Routine",
-  instruction: "Write a few sentences describing your typical morning routine.",
-};
-
-const MOCK_FEEDBACK = {
-  overallScore: 8,
-  structuralGrade: "Good",
-  corrections: [],
-};
 
 // Speaking's own passage is generated via the same /api/reading/generate endpoint as reading
 // and listening (lib/path/activity-content.ts's PASSAGE_ACTIVITY_KINDS) — one mock covers all
@@ -42,40 +27,13 @@ test.use({
   },
 });
 
-test.beforeEach(async ({ request, page }) => {
+test.beforeEach(async ({ request }) => {
   // /path/[id], /reading/[id], /listening/[id], /writing/[id], and /speaking/[id] are dynamic
   // routes not pre-warmed by auth.setup.ts, so this spec pays several cold Turbopack compiles
   // on top of five full activity flows — give it more headroom than the 60 s default.
   test.setTimeout(240_000);
   await request.post("/api/test/reset");
-  await page.route("**/api/reading/generate", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ passage: MOCK_PASSAGE }),
-    });
-  });
-  await page.route("**/api/writing/generate", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ prompt: MOCK_PROMPT }),
-    });
-  });
-  await page.route("**/api/writing/feedback", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ feedback: MOCK_FEEDBACK }),
-    });
-  });
-  await page.route("**/api/stt/transcribe", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ transcript: MOCK_PASSAGE.body }),
-    });
-  });
+  // Mac-facing APIs are stubbed by tests/e2e/fixtures.ts (stubMacApis).
 });
 
 /** Completes onboarding, anchoring the path at A1, and waits for the seed (due cards). */
@@ -253,9 +211,14 @@ test("completing every activity in a unit unlocks the next unit, fills the node,
   // cookie, simulating quitting and reopening the app entirely. Progress is server-persisted
   // (SQLite via the HttpContentRepository, lib/registry.ts), so it must be intact with no
   // client-side state carried over.
-  const freshContext = await browser.newContext({ storageState: AUTH_FILE });
+  const freshContext = await browser.newContext({
+    storageState: AUTH_FILE,
+    // Manual contexts do not inherit playwright.config `use`.
+    serviceWorkers: "block",
+  });
   try {
     const freshPage = await freshContext.newPage();
+    await stubMacApis(freshPage);
     await freshPage.goto("/home");
     await expect(freshPage.getByTestId("unit-0")).toHaveAttribute("data-status", "completed");
     await expect(freshPage.getByTestId("unit-1")).toHaveAttribute("data-status", "available");

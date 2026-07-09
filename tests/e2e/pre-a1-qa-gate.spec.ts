@@ -3,8 +3,8 @@
  * ImageGenerator unreachable, admin approval visibility, kid-mode palette sweep across
  * all four activity types, and handoff from the last pre-A1 unit into unit 0.
  */
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
+import { stubMacApis } from "./stub-mac-apis";
 
 import { ALPHABET_ENTRIES } from "@/lib/alphabet/vocab";
 import { LISTEN_TAP_ROUNDS } from "@/lib/listen-tap/vocab";
@@ -203,27 +203,58 @@ test("seeded pack images render while the image generator is unreachable", async
   await page.getByTestId("btn-alphabet-listen").click();
 });
 
-test("pending asset is hidden from learners until admin approval", async ({ browser, request }) => {
+test("pending asset is hidden from learners until admin approval", async ({ browser }) => {
   test.setTimeout(480_000);
 
   let kidContext: Awaited<ReturnType<typeof browser.newContext>> | undefined;
   let adminContext: Awaited<ReturnType<typeof browser.newContext>> | undefined;
 
-  await request.post("/api/test/media-asset", {
-    data: { action: "put-pending", key: "apple" },
+  // This file clears storageState (kid signup), so the default `request` fixture is
+  // unauthenticated — put-pending would 302 to /login and leave the curated-pack
+  // apple approved (no Approve button). Seed via an admin-authed context instead.
+  const seedContext = await browser.newContext({
+    storageState: AUTH_FILE,
+    serviceWorkers: "block",
   });
+  try {
+    const seedPage = await seedContext.newPage();
+    const putPending = await seedPage.request.post("/api/test/media-asset", {
+      data: { action: "put-pending", key: "apple" },
+    });
+    expect(putPending.ok()).toBe(true);
+  } finally {
+    await seedContext.close();
+  }
 
   try {
     kidContext = await browser.newContext({
       storageState: { cookies: [], origins: [] },
       permissions: ["microphone"],
+      // Manual contexts do not inherit playwright.config `use` — must block SW
+      // so stubMacApis page.route handlers actually intercept /api/llm/*.
+      serviceWorkers: "block",
     });
     const kidPage = await kidContext.newPage();
+    await stubMacApis(kidPage);
     await kidPage.route("**/api/audio/resolve**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "audio/wav",
         body: TINY_WAV,
+      });
+    });
+    // Match beforeEach: pack words hit the real store; everything else 502.
+    await kidPage.route("**/api/image/resolve**", async (route) => {
+      const url = new URL(route.request().url());
+      const word = (url.searchParams.get("word") ?? "").toLowerCase();
+      if (PACK_WORDS.has(word)) {
+        await route.continue();
+        return;
+      }
+      await route.fulfill({
+        status: 502,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Image resolution failed" }),
       });
     });
 
@@ -234,8 +265,12 @@ test("pending asset is hidden from learners until admin approval", async ({ brow
     await expect(kidPage.getByTestId("alphabet-letter")).toHaveText("A");
     await expectImageNotLoaded(kidPage, "alphabet-picture");
 
-    adminContext = await browser.newContext({ storageState: AUTH_FILE });
+    adminContext = await browser.newContext({
+      storageState: AUTH_FILE,
+      serviceWorkers: "block",
+    });
     const adminPage = await adminContext.newPage();
+    await stubMacApis(adminPage);
     await adminPage.goto("/admin/media");
     await expect(adminPage.getByRole("heading", { name: "Media review" })).toBeVisible();
     await expect(adminPage.getByText("apple", { exact: true })).toBeVisible();
@@ -260,12 +295,19 @@ test("pending asset is hidden from learners until admin approval", async ({ brow
         // ignore teardown-time context close errors
       }
     }
+    const restoreContext = await browser.newContext({
+      storageState: AUTH_FILE,
+      serviceWorkers: "block",
+    });
     try {
-      await request.post("/api/test/media-asset", {
+      const restorePage = await restoreContext.newPage();
+      await restorePage.request.post("/api/test/media-asset", {
         data: { action: "restore-pack", key: "apple" },
       });
     } catch {
       // request context may be disposed if the test runner is tearing down
+    } finally {
+      await restoreContext.close();
     }
   }
 });

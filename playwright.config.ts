@@ -26,6 +26,9 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
+    // Serwist's NetworkOnly handlers for /api/llm|stt|… bypass Playwright's
+    // page.route and hit the real Mac. Block the SW so stubMacApis can isolate.
+    serviceWorkers: "block",
     // Emulate prefers-reduced-motion so framer-motion (via MotionConfig
     // reducedMotion="user") skips transform/layout transitions — card/page
     // changes settle without racing the runner's clicks.
@@ -68,6 +71,9 @@ export default defineConfig({
     env: {
       ...process.env,
       LANGTUTOR_DB_PATH: "./langtutor-e2e.db",
+      // Disables Serwist registration (see app/pwa-provider.tsx) so Playwright's
+      // serviceWorkers:block + page.route Mac stubs are not bypassed by the SW.
+      NEXT_PUBLIC_E2E: "1",
     },
   },
 });

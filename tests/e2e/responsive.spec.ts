@@ -3,14 +3,14 @@
  * and home hub. Verifies phone-width layouts stay usable: no horizontal scroll and
  * touch targets meet a reasonable minimum size.
  */
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 const PHONE_VIEWPORT = { width: 375, height: 812 };
 const TABLET_VIEWPORT = { width: 768, height: 1024 };
 const DESKTOP_VIEWPORT = { width: 1440, height: 900 };
 const MIN_TOUCH_TARGET_PX = 36;
 
-async function expectNoHorizontalScroll(page: import("@playwright/test").Page) {
+async function expectNoHorizontalScroll(page: Page) {
   const hasHorizontalScroll = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   );

@@ -3,7 +3,7 @@
  * placeholder units; adult learners opt in via Settings. Handoff into A1 reuses the
  * existing unlock state machine (unit -1 complete → unit 0 available).
  */
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 const BATCH_SIZE = 6;
 
@@ -11,7 +11,7 @@ test.beforeEach(async ({ request }) => {
   await request.post("/api/test/reset");
 });
 
-async function completeOnboardingToHome(page: import("@playwright/test").Page): Promise<void> {
+async function completeOnboardingToHome(page: Page): Promise<void> {
   await page.goto("/onboarding");
   await page.getByTestId("quiz-start-btn").click();
   for (let i = 0; i < BATCH_SIZE; i++) {
@@ -25,7 +25,7 @@ async function completeOnboardingToHome(page: import("@playwright/test").Page): 
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-async function signUpKid(page: import("@playwright/test").Page): Promise<void> {
+async function signUpKid(page: Page): Promise<void> {
   const email = `prea1-kid-${Date.now()}@example.com`;
   await page.goto("/sign-up");
   await page.getByTestId("signup-mode-btn-kid").click();

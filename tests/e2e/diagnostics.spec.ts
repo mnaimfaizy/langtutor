@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // errorEvents are now shared server-side SQLite (not per-context IndexedDB), so
 // mistakes logged by earlier specs persist. Reset so the empty state is real.

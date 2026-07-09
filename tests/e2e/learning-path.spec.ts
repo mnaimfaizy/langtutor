@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
+import { overridePathPlan } from "./stub-mac-apis";
 
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword — see onboarding.spec.ts
 
@@ -54,35 +55,8 @@ test("a canned teacher plan updates the unit's title and note on home", async ({
   const PLANNED_TITLE = "Talking About Right Now";
   const PLANNED_NOTE = "This unit helps you describe things happening at this very moment.";
 
-  // Respond with a plan for whichever unit is currently rendered at index 0 — read its real
-  // id out of the DOM rather than assuming a fixed value, since ids aren't reset between runs.
-  await page.route("**/api/path/plan", async (route) => {
-    await page.waitForSelector('[data-testid="unit-0"]', { timeout: 5000 }).catch(() => undefined);
-    const unitId = await page.evaluate(() => {
-      const el = document.querySelector('[data-testid="unit-0"]');
-      const raw = el?.getAttribute("data-unit-id");
-      return raw ? Number(raw) : null;
-    });
-
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        plans:
-          unitId == null
-            ? []
-            : [
-                {
-                  unitId,
-                  title: PLANNED_TITLE,
-                  teacherNote: PLANNED_NOTE,
-                  targetVocab: ["now", "currently", "today", "watching"],
-                },
-              ],
-      }),
-    });
-  });
-
+  // First home visit uses the fixture's empty-plan stub so unit-0 is in the DOM with a
+  // stable id; then override the plan route and revisit so the canned plan applies.
   await page.goto("/onboarding");
   await page.getByTestId("quiz-start-btn").click();
   for (let i = 0; i < BATCH_SIZE; i++) {
@@ -95,6 +69,27 @@ test("a canned teacher plan updates the unit's title and note on home", async ({
 
   const firstUnit = page.getByTestId("unit-0");
   await expect(firstUnit).toBeVisible();
+  const unitId = Number(await firstUnit.getAttribute("data-unit-id"));
+  expect(Number.isFinite(unitId)).toBe(true);
+
+  await overridePathPlan(page, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        plans: [
+          {
+            unitId,
+            title: PLANNED_TITLE,
+            teacherNote: PLANNED_NOTE,
+            targetVocab: ["now", "currently", "today", "watching"],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/home");
   await expect(firstUnit.getByText(PLANNED_TITLE)).toBeVisible();
   await expect(firstUnit.getByText(PLANNED_NOTE)).toBeVisible();
 });

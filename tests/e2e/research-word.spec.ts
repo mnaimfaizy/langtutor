@@ -8,7 +8,7 @@
  * Research button — no mocking of the lexicon route is needed.
  */
 
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 // The lexicon cache is now global server-side SQLite (not per-context IndexedDB):
 // a word researched by one test stays cached for the next, hiding the Research
@@ -36,7 +36,7 @@ const MOCK_DEFINITION = {
   audioUrl: null,
 };
 
-async function goToPassage(page: import("@playwright/test").Page) {
+async function goToPassage(page: Page) {
   await page.route("**/api/reading/generate", async (route) => {
     await route.fulfill({
       status: 200,

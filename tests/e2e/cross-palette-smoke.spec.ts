@@ -4,8 +4,7 @@
  * adult-dark and kid-bright palettes (the two palettes exercised by this smoke suite —
  * see cross-palette-a11y.spec.ts for the full four-palette contrast/motion/focus checks).
  */
-import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 type SmokePalette = {
   name: "adult-dark" | "kid-bright";

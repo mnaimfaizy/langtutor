@@ -7,8 +7,7 @@
  * resolve the adult-light/adult-dark family; kid palettes only exist post-sign-up). Also
  * proves the sign-up mode step is completable end-to-end using only the keyboard.
  */
-import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 import { contrastRatio } from "../../lib/theme/contrast";
 import type { Rgb } from "../../lib/theme/contrast";

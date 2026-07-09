@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 const MOCK_PASSAGE = {
   title: "A Morning Walk",
@@ -16,7 +16,7 @@ const MOCK_QUESTIONS = {
   ],
 };
 
-async function seedPassage(page: import("@playwright/test").Page) {
+async function seedPassage(page: Page) {
   await page.route("**/api/reading/generate", async (route) => {
     await route.fulfill({
       status: 200,

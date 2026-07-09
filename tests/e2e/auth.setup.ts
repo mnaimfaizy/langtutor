@@ -2,6 +2,7 @@ import { expect, test as setup } from "@playwright/test";
 
 export { ADMIN_EMAIL, ADMIN_PASSWORD, AUTH_FILE } from "./auth-constants";
 import { ADMIN_EMAIL, ADMIN_PASSWORD, AUTH_FILE } from "./auth-constants";
+import { stubMacApis } from "./stub-mac-apis";
 
 // Routes visited to pre-warm Turbopack compilation before tests start.
 // Without this, the first request to each route triggers on-demand compilation,
@@ -27,6 +28,10 @@ setup("authenticate as admin", async ({ page }) => {
   // compile takes 10-30 s and this setup visits ~15 routes, which blows the
   // default 60 s budget. On a normal host it finishes well under a minute.
   setup.setTimeout(300_000);
+
+  // Auth setup navigates authenticated pages (warmup) — stub Mac APIs so it never
+  // hits a live Ollama/Whisper endpoint during compile warmup.
+  await stubMacApis(page);
 
   const bootstrapped = await page.request.post("/api/auth/bootstrap", {
     data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
@@ -59,7 +64,7 @@ setup("authenticate as admin", async ({ page }) => {
   // before parallel tests start. These are not page navigations, so they don't
   // appear in WARMUP_ROUTES — they need an explicit request.
   await page.request.get("/api/lexicon/define?word=park");
-  await page.request.get("/api/llm/health");
+  // /api/llm/health is stubbed above via page.route; skip a real Mac ping here.
 
   // Pre-warm Turbopack: visit each route so page components and server-action
   // modules are compiled before tests start.

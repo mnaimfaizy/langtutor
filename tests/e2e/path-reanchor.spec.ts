@@ -1,26 +1,17 @@
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 // Issue #63 — the teacher re-plans future units when the learner's CEFR level changes.
 // Exercises the full story end to end: a level change via Settings re-anchors not-yet-
 // reached (locked) units to the new backbone, while an in-progress unit and its content
 // are left byte-for-byte untouched, and the learner's position on the path doesn't reset.
 //
-// `/api/path/plan` is mocked to always return no plans — re-anchoring itself never calls
-// the LLM (it just resets a unit back to an unplanned backbone placeholder), so this keeps
-// unit titles deterministic without depending on a reachable Mac. Prior art:
-// tests/e2e/learning-path.spec.ts (issue #58's same mocking pattern), tests/e2e/path-buffer.spec.ts.
+// `/api/path/plan` defaults to `{ plans: [] }` via stubMacApis — re-anchoring itself never
+// calls the LLM (it just resets a unit back to an unplanned backbone placeholder), so unit
+// titles stay deterministic without a reachable Mac.
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword — see onboarding.spec.ts
 
-test.beforeEach(async ({ request, page }) => {
+test.beforeEach(async ({ request }) => {
   await request.post("/api/test/reset");
-  await page.route("**/api/path/plan", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ plans: [] }),
-    });
-  });
 });
 
 /** Completes onboarding, anchoring the path at A1, and waits for the seed (due cards). */

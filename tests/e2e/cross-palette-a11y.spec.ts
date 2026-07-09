@@ -4,7 +4,7 @@
  * remaining Definition-of-Done checks for PRD #36: token-pair contrast in all four
  * palettes, calm variants under `prefers-reduced-motion`, and visible keyboard focus.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 import { contrastRatio, meetsWcagAa } from "../../lib/theme/contrast";
 import type { Rgb } from "../../lib/theme/contrast";

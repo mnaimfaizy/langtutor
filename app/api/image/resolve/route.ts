@@ -41,8 +41,8 @@ export async function GET(request: Request) {
 
   try {
     const repo = await getServerContentRepository();
-    const generator = await getImageGenerator();
-    const asset = await resolveWordImage(repo, generator, word, style);
+    // Lazy factory: approved/pending store hits must not require NVIDIA_NIM_API_KEY.
+    const asset = await resolveWordImage(repo, () => getImageGenerator(), word, style);
     if (!asset) {
       return Response.json({ error: "Image not available" }, { status: 404 });
     }

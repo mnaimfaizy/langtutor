@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("collection screen lists creatures and achievements", async ({ page }) => {
   await page.goto("/collection");

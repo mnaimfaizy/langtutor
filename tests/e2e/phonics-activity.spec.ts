@@ -2,7 +2,7 @@
  * Issue #72 — phonics activity in the second pre-A1 unit. Plays letter sounds with
  * media-store audio, scores letter-choice taps, then marks the slot done via the unit player.
  */
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 import { ALPHABET_ENTRIES } from "@/lib/alphabet/vocab";
 
@@ -30,7 +30,7 @@ test.beforeEach(async ({ request, page }) => {
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-async function signUpKid(page: import("@playwright/test").Page): Promise<void> {
+async function signUpKid(page: Page): Promise<void> {
   const email = `phonics-kid-${Date.now()}@example.com`;
   await page.goto("/sign-up");
   await page.getByTestId("signup-mode-btn-kid").click();
@@ -42,7 +42,7 @@ async function signUpKid(page: import("@playwright/test").Page): Promise<void> {
   await page.waitForURL("/onboarding");
 }
 
-async function completeOnboardingToHome(page: import("@playwright/test").Page): Promise<void> {
+async function completeOnboardingToHome(page: Page): Promise<void> {
   await page.goto("/onboarding");
   await page.getByTestId("quiz-start-btn").click();
   for (let i = 0; i < BATCH_SIZE; i++) {
@@ -54,7 +54,7 @@ async function completeOnboardingToHome(page: import("@playwright/test").Page): 
   await page.waitForURL("/home");
 }
 
-async function completeAlphabetUnit(page: import("@playwright/test").Page): Promise<void> {
+async function completeAlphabetUnit(page: Page): Promise<void> {
   await page.getByTestId("unit--4").click();
   await page.getByTestId("btn-start-activity-0").click();
   for (let i = 0; i < ALPHABET_LENGTH - 1; i++) {

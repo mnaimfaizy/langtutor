@@ -2,8 +2,7 @@
  * Issue #73 — listen-and-tap activity in the fourth pre-A1 unit. Plays audio with
  * media-store TTS, scores picture-choice taps, then marks the slot done via the unit player.
  */
-import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "./fixtures";
 
 import { LISTEN_TAP_ROUNDS } from "@/lib/listen-tap/vocab";
 import { PICTURE_MATCH_ROUNDS } from "@/lib/picture-match/vocab";

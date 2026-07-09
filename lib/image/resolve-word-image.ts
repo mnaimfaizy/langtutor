@@ -9,12 +9,19 @@ const DEFAULT_STYLE = "kid-illustration";
 const IMAGE_WIDTH = 512;
 const IMAGE_HEIGHT = 512;
 
+/** Concrete generator, or a factory so store hits never need NVIDIA credentials. */
+export type ImageGeneratorSource = ImageGenerator | (() => ImageGenerator | Promise<ImageGenerator>);
+
 function normalizeWord(word: string): string {
   return word.toLowerCase().trim();
 }
 
 function mediaKey(word: string, style: string): MediaAssetKey {
   return { kind: "image", key: normalizeWord(word), style };
+}
+
+async function resolveGenerator(source: ImageGeneratorSource): Promise<ImageGenerator> {
+  return typeof source === "function" ? await source() : source;
 }
 
 async function produceWordImage(
@@ -45,17 +52,23 @@ async function produceWordImage(
  * Resolve a kid-tier word illustration via the shared media store (ADR 0016).
  * On a store miss, calls `generator` once, persists the result as `pending`, and
  * returns the asset only once an admin has approved it.
+ *
+ * Pass a factory `() => getImageGenerator()` from route handlers so approved /
+ * pending cache hits never require NVIDIA credentials (e2e + offline learners).
  */
 export async function resolveWordImage(
   repo: ContentRepository,
-  generator: ImageGenerator,
+  generator: ImageGeneratorSource,
   word: string,
   style: string = DEFAULT_STYLE,
 ): Promise<MediaAsset | undefined> {
   const normalized = normalizeWord(word);
   const key = mediaKey(normalized, style);
 
-  return resolveMediaAsset(repo, key, () => produceWordImage(generator, normalized, style));
+  return resolveMediaAsset(repo, key, async () => {
+    const resolved = await resolveGenerator(generator);
+    return produceWordImage(resolved, normalized, style);
+  });
 }
 
 /**
@@ -63,7 +76,7 @@ export async function resolveWordImage(
  */
 export async function regenerateWordImage(
   repo: ContentRepository,
-  generator: ImageGenerator,
+  generator: ImageGeneratorSource,
   word: string,
   style: string = DEFAULT_STYLE,
 ): Promise<MediaAsset> {
@@ -74,7 +87,10 @@ export async function regenerateWordImage(
   const asset = await resolveMediaAsset(
     repo,
     key,
-    () => produceWordImage(generator, normalized, style),
+    async () => {
+      const resolved = await resolveGenerator(generator);
+      return produceWordImage(resolved, normalized, style);
+    },
     {
       forceRegenerate: true,
     },
