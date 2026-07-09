@@ -5,13 +5,13 @@ import { useCallback, useMemo, useState } from "react";
 
 import type { Cefr } from "@/lib/db";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
+import { applyDeckCardFilters, type DeckCardFilters, type DeckDueStatusFilter } from "@/lib/deck";
 import {
   formatNextDue,
   masteryLabelDisplay,
   masteryLabelFromState,
   type MasteryLabel,
 } from "@/lib/srs";
-import { filterDeckCards } from "@/lib/deck";
 import { getContentRepository } from "@/lib/registry";
 import {
   Badge,
@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
   Input,
+  SelectPill,
   type BadgeVariant,
   cn,
 } from "@/ui";
@@ -47,6 +48,19 @@ const MASTERY_BADGE_VARIANT: Record<MasteryLabel, BadgeVariant> = {
   review: "success",
   relearning: "warning",
 };
+
+const CEFR_LEVELS: Cefr[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
+
+const MASTERY_FILTERS: MasteryLabel[] = ["new", "learning", "review", "relearning"];
+
+const DUE_FILTERS: { value: DeckDueStatusFilter; label: string }[] = [
+  { value: "due", label: "Due now" },
+  { value: "later", label: "Due later" },
+];
+
+function toggleFilter<T>(current: T | null, value: T): T | null {
+  return current === value ? null : value;
+}
 
 function definitionSnippet(definition: string, maxLen = 120): string {
   if (definition.length <= maxLen) return definition;
@@ -76,6 +90,9 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
   const [cards, setCards] = useState<DeckCardItem[]>(initialCards);
   const [addOpen, setAddOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [cefrFilter, setCefrFilter] = useState<Cefr | null>(null);
+  const [masteryFilter, setMasteryFilter] = useState<MasteryLabel | null>(null);
+  const [dueFilter, setDueFilter] = useState<DeckDueStatusFilter | null>(null);
   const now = useMemo(() => new Date(), []);
 
   const refreshCards = useCallback(async () => {
@@ -98,9 +115,14 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
     [cards],
   );
 
+  const filters = useMemo<DeckCardFilters>(
+    () => ({ cefr: cefrFilter, mastery: masteryFilter, due: dueFilter }),
+    [cefrFilter, masteryFilter, dueFilter],
+  );
+
   const filteredCards = useMemo(
-    () => filterDeckCards(sortedCards, searchQuery),
-    [sortedCards, searchQuery],
+    () => applyDeckCardFilters(sortedCards, filters, searchQuery, now),
+    [sortedCards, filters, searchQuery, now],
   );
 
   return (
@@ -159,9 +181,64 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                 aria-label="Search deck by word or definition"
               />
 
+              <div className="mb-6 space-y-4">
+                <div>
+                  <p className="text-foreground mb-2 text-sm font-medium">CEFR level</p>
+                  <div className="flex flex-wrap gap-2">
+                    {CEFR_LEVELS.map((level) => (
+                      <SelectPill
+                        key={level}
+                        data-testid={`deck-filter-cefr-${level}`}
+                        selected={cefrFilter === level}
+                        onClick={() => setCefrFilter((current) => toggleFilter(current, level))}
+                        className="rounded-lg px-3 py-1.5"
+                      >
+                        {level}
+                      </SelectPill>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-foreground mb-2 text-sm font-medium">Mastery state</p>
+                  <div className="flex flex-wrap gap-2">
+                    {MASTERY_FILTERS.map((mastery) => (
+                      <SelectPill
+                        key={mastery}
+                        data-testid={`deck-filter-mastery-${mastery}`}
+                        selected={masteryFilter === mastery}
+                        onClick={() =>
+                          setMasteryFilter((current) => toggleFilter(current, mastery))
+                        }
+                        className="rounded-lg px-3 py-1.5"
+                      >
+                        {masteryLabelDisplay(mastery)}
+                      </SelectPill>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-foreground mb-2 text-sm font-medium">Due status</p>
+                  <div className="flex flex-wrap gap-2">
+                    {DUE_FILTERS.map(({ value, label }) => (
+                      <SelectPill
+                        key={value}
+                        data-testid={`deck-filter-due-${value}`}
+                        selected={dueFilter === value}
+                        onClick={() => setDueFilter((current) => toggleFilter(current, value))}
+                        className="rounded-lg px-3 py-1.5"
+                      >
+                        {label}
+                      </SelectPill>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               {filteredCards.length === 0 ? (
                 <p className="text-muted text-sm" data-testid="deck-search-empty">
-                  No cards match your search.
+                  No cards match your search or filters.
                 </p>
               ) : (
                 <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
