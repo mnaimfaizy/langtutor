@@ -8,6 +8,8 @@ import { DEFAULT_EXPERIENCE_MODE } from "@/lib/db";
 import {
   applyDeckCardFilters,
   filterDeckCardsByCollection,
+  hasDeckBrowserScopeActive,
+  scopedReviewHref,
   sortDeckCards,
   type DeckCardFilters,
   type DeckDueStatusFilter,
@@ -217,6 +219,12 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
     [filteredCards, sortMode],
   );
 
+  const scopeActive = hasDeckBrowserScopeActive(filters, collectionFilter, searchQuery);
+  const scopedReviewUrl = useMemo(
+    () => scopedReviewHref(filteredCards.map((card) => card.id)),
+    [filteredCards],
+  );
+
   return (
     <main className="flex flex-1 flex-col px-4 py-12 sm:px-6 sm:py-16">
       <div className="mx-auto w-full max-w-5xl">
@@ -420,6 +428,16 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                   </div>
                 </div>
               </div>
+
+              {scopeActive && (
+                <div className="mb-6">
+                  <Link href={scopedReviewUrl}>
+                    <Button data-testid="btn-review-these" variant="gradient">
+                      Review these
+                    </Button>
+                  </Link>
+                </div>
+              )}
 
               {filteredCards.length === 0 ? (
                 <p className="text-muted text-sm" data-testid="deck-search-empty">

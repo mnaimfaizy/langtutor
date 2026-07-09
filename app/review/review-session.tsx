@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import type { Achievement, Card as CardRow } from "@/lib/db";
@@ -18,6 +18,7 @@ import type {
   ReviewCompleteCelebration,
 } from "@/lib/gamification/celebration-event";
 import { completeUnitActivity } from "@/lib/path/unit-player";
+import { buildScopedReviewQueue, parseScopedReviewCardIds } from "@/lib/deck";
 import { getContentRepository } from "@/lib/registry";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
 import { resolveMotionPreset } from "@/lib/motion";
@@ -68,6 +69,9 @@ const achievementVariants = {
 
 export function ReviewSession() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const cardsParam = searchParams.get("cards");
+  const scopedCardIds = useMemo(() => parseScopedReviewCardIds(cardsParam), [cardsParam]);
   const reducedMotion = useReducedMotion() ?? false;
   const enter = resolveMotionPreset("enter", reducedMotion);
   const celebrate = resolveMotionPreset("celebrate", reducedMotion);
@@ -110,14 +114,16 @@ export function ReviewSession() {
 
   useEffect(() => {
     let active = true;
+    const now = new Date();
     void getContentRepository()
-      .getDueCards(new Date())
+      .getDueCards(now)
       .then((due) => {
         if (!active) return;
-        if (due.length === 0) {
+        const queue = scopedCardIds ? buildScopedReviewQueue(due, scopedCardIds, now) : due;
+        if (queue.length === 0) {
           setPhase("empty");
         } else {
-          setCards(due);
+          setCards(queue);
           setPhase("reviewing");
         }
       })
@@ -127,7 +133,7 @@ export function ReviewSession() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [cardsParam, scopedCardIds]);
 
   /**
    * Reports the activity done back into path state before returning to the unit — whether
