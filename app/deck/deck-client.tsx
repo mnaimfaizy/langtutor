@@ -7,6 +7,7 @@ import type { Cefr } from "@/lib/db";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
 import {
   applyDeckCardFilters,
+  filterDeckCardsByCollection,
   sortDeckCards,
   type DeckCardFilters,
   type DeckDueStatusFilter,
@@ -38,7 +39,10 @@ import {
 } from "@/ui";
 
 import { AddWordForm } from "./add-word-form";
+import { CardCollectionsMenu } from "./card-collections-menu";
+import { CollectionsPanel } from "./collections-panel";
 import { EditCardForm } from "./edit-card-form";
+import { useDeckCollections } from "./use-deck-collections";
 
 /** Serializable card row passed from the server component. */
 export interface DeckCardItem {
@@ -124,11 +128,24 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
   const [dueFilter, setDueFilter] = useState<DeckDueStatusFilter | null>(null);
   const [sortMode, setSortMode] = useState<DeckSortMode>("due");
   const now = useMemo(() => new Date(), []);
+  const {
+    collections,
+    membershipByCollection,
+    collectionFilter,
+    setCollectionFilter,
+    memberCardIdsForFilter,
+    refreshCollections,
+    createCollection,
+    renameCollection,
+    deleteCollection,
+    setCardInCollection,
+  } = useDeckCollections();
 
   const refreshCards = useCallback(async () => {
     const all = await getContentRepository().getAllCards();
     setCards(all.map(toDeckCardItem));
-  }, []);
+    await refreshCollections();
+  }, [refreshCollections]);
 
   const handleCardAdded = useCallback(() => {
     void refreshCards();
@@ -195,10 +212,10 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
     [cefrFilter, masteryFilter, dueFilter],
   );
 
-  const filteredCards = useMemo(
-    () => applyDeckCardFilters(cards, filters, searchQuery, now),
-    [cards, filters, searchQuery, now],
-  );
+  const filteredCards = useMemo(() => {
+    const afterFacets = applyDeckCardFilters(cards, filters, searchQuery, now);
+    return filterDeckCardsByCollection(afterFacets, memberCardIdsForFilter);
+  }, [cards, filters, searchQuery, now, memberCardIdsForFilter]);
 
   const displayCards = useMemo(
     () => sortDeckCards(filteredCards, sortMode),
@@ -328,6 +345,15 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                 aria-label="Search deck by word or definition"
               />
 
+              <CollectionsPanel
+                collections={collections}
+                collectionFilter={collectionFilter}
+                onCollectionFilterChange={setCollectionFilter}
+                onCreateCollection={createCollection}
+                onRenameCollection={renameCollection}
+                onDeleteCollection={deleteCollection}
+              />
+
               <div className="mb-6 space-y-4">
                 <div>
                   <p className="text-foreground mb-2 text-sm font-medium">CEFR level</p>
@@ -415,12 +441,25 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                           data-testid={`deck-card-${card.id}`}
                           className={cn(card.suspended && "opacity-60")}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <CardTitle className="text-base">{card.word}</CardTitle>
-                            <div className="flex shrink-0 items-center gap-2">
-                              <Badge variant={CEFR_BADGE_VARIANT[card.cefr]} size="sm">
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <CardTitle className="text-base">{card.word}</CardTitle>
+                              <Badge
+                                variant={CEFR_BADGE_VARIANT[card.cefr]}
+                                size="sm"
+                                className="shrink-0"
+                              >
                                 {card.cefr}
                               </Badge>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <CardCollectionsMenu
+                                cardId={card.id}
+                                word={card.word}
+                                collections={collections}
+                                membershipByCollection={membershipByCollection}
+                                onSetCardInCollection={setCardInCollection}
+                              />
                               <Button
                                 variant="secondary"
                                 size="sm"

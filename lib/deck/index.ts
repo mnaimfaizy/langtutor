@@ -1,3 +1,4 @@
+export { buildCollectionMembershipMap, getCardCollectionIds } from "./collection-membership";
 export { buildNewCard, isDuplicate } from "./add-to-deck";
 export { formatExamplesText, parseExamplesText, validateCardDefinition } from "./edit-card";
 export type { CardEditValidation } from "./edit-card";
@@ -26,6 +27,7 @@ export {
   applyDeckCardFilters,
   filterDeckCards,
   filterDeckCardsByCefr,
+  filterDeckCardsByCollection,
   filterDeckCardsByDue,
   filterDeckCardsByMastery,
 } from "./filter-deck-cards";

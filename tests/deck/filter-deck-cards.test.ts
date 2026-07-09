@@ -4,6 +4,7 @@ import {
   applyDeckCardFilters,
   filterDeckCards,
   filterDeckCardsByCefr,
+  filterDeckCardsByCollection,
   filterDeckCardsByDue,
   filterDeckCardsByMastery,
   type DeckFilterableCard,
@@ -102,6 +103,21 @@ describe("filterDeckCardsByDue", () => {
 
   it("filters to cards due later (due > now)", () => {
     expect(filterDeckCardsByDue(CARDS, "later", NOW)).toEqual([CARDS[1], CARDS[3]]);
+  });
+});
+
+describe("filterDeckCardsByCollection", () => {
+  const cardsWithIds = CARDS.map((card, index) => ({ ...card, id: index + 1 }));
+
+  it("returns all cards when no collection is selected", () => {
+    expect(filterDeckCardsByCollection(cardsWithIds, null)).toEqual(cardsWithIds);
+  });
+
+  it("returns only cards in the selected collection", () => {
+    expect(filterDeckCardsByCollection(cardsWithIds, new Set([1, 3]))).toEqual([
+      cardsWithIds[0],
+      cardsWithIds[2],
+    ]);
   });
 });
 

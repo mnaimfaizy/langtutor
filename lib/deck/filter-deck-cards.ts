@@ -64,6 +64,15 @@ export function filterDeckCardsByDue<T extends Pick<DeckFilterableCard, "dueIso"
   });
 }
 
+/** Filters cards to those whose id appears in `memberCardIds`. Pass `null` to show all cards. */
+export function filterDeckCardsByCollection<T extends { id: number }>(
+  cards: T[],
+  memberCardIds: ReadonlySet<number> | null,
+): T[] {
+  if (!memberCardIds) return cards;
+  return cards.filter((card) => memberCardIds.has(card.id));
+}
+
 /** Applies search and facet filters with AND semantics. */
 export function applyDeckCardFilters<T extends DeckFilterableCard>(
   cards: T[],
