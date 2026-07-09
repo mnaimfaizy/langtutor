@@ -68,6 +68,7 @@ test.describe("phone-width layout: deck, diagnostics, and admin", () => {
     await expect(page.getByRole("heading", { name: "Deck stats", level: 1 })).toBeVisible();
     await expect(page.getByTestId("deck-stats-forecast")).toBeVisible();
     await expect(page.getByTestId("deck-stats-heatmap")).toBeVisible();
+    await expect(page.getByTestId("deck-stats-cefr-mastery")).toBeVisible();
     await expectNoHorizontalScroll(page);
   });
 

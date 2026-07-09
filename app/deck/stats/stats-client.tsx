@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useMemo } from "react";
 
+import {
+  CEFR_MASTERY_LABELS,
+  computeCefrMasteryBreakdown,
+  formatCefrMasterySegmentLabel,
+} from "@/lib/deck/cefr-mastery-breakdown";
 import { computeDueForecast, formatForecastDayLabel, FORECAST_DAYS } from "@/lib/deck/due-forecast";
 import {
   activityHeatmapTier,
@@ -10,9 +15,17 @@ import {
   computeReviewActivityHeatmap,
   formatActivityDayLabel,
 } from "@/lib/deck/review-activity-heatmap";
+import { masteryLabelDisplay, type MasteryLabel } from "@/lib/srs";
 import { BackLink, Card, cn } from "@/ui";
 
 import type { StatsCardItem } from "./stats-loader";
+
+const MASTERY_SEGMENT_STYLE: Record<MasteryLabel, string> = {
+  new: "bg-foreground/25",
+  learning: "bg-accent/70",
+  review: "bg-success/70",
+  relearning: "bg-warning/70",
+};
 
 export function StatsClient({ initialCards }: { initialCards: StatsCardItem[] }) {
   const now = useMemo(() => new Date(), []);
@@ -45,6 +58,16 @@ export function StatsClient({ initialCards }: { initialCards: StatsCardItem[] })
     [heatmapDays],
   );
 
+  const cefrBreakdown = useMemo(() => computeCefrMasteryBreakdown(initialCards), [initialCards]);
+  const maxCefrTotal = useMemo(
+    () => Math.max(1, ...cefrBreakdown.map((row) => row.total)),
+    [cefrBreakdown],
+  );
+  const totalVocabulary = useMemo(
+    () => cefrBreakdown.reduce((sum, row) => sum + row.total, 0),
+    [cefrBreakdown],
+  );
+
   const TIER_STYLE: Record<ReturnType<typeof activityHeatmapTier>, string> = {
     0: "border-border border opacity-30",
     1: "bg-success/20 border-success/30 border",
@@ -60,7 +83,7 @@ export function StatsClient({ initialCards }: { initialCards: StatsCardItem[] })
           <BackLink href="/deck" label="Deck" className="mb-4" />
           <h1 className="text-foreground text-2xl font-semibold tracking-tight">Deck stats</h1>
           <p className="text-muted mt-1 text-sm leading-6">
-            Plan review time with a forecast of cards coming due over the next {FORECAST_DAYS} days.
+            Plan review time and track how your vocabulary grows across CEFR levels.
           </p>
         </section>
 
@@ -185,6 +208,97 @@ export function StatsClient({ initialCards }: { initialCards: StatsCardItem[] })
                     />
                   ))}
                   <span className="text-muted">More</span>
+                </div>
+              </>
+            )}
+          </Card>
+        </section>
+
+        <section data-testid="deck-stats-cefr-mastery">
+          <Card className="space-y-5 p-4 sm:p-5">
+            <div>
+              <h2 className="text-foreground text-sm font-medium">Vocabulary by level</h2>
+              <p className="text-muted mt-0.5 text-xs">
+                {totalVocabulary === 0
+                  ? "No active words in your deck yet."
+                  : `${totalVocabulary} active card${totalVocabulary === 1 ? "" : "s"} across A1–C2, split by mastery`}
+              </p>
+            </div>
+
+            {initialCards.length === 0 ? (
+              <p className="text-muted text-sm">
+                Add words to see how your deck fills each CEFR level.
+              </p>
+            ) : (
+              <>
+                <ul className="space-y-3" aria-label="Mastery breakdown by CEFR level">
+                  {cefrBreakdown.map((row) => {
+                    const barWidth =
+                      row.total === 0 ? 0 : Math.max(8, (row.total / maxCefrTotal) * 100);
+                    return (
+                      <li
+                        key={row.level}
+                        className="grid grid-cols-[2.5rem_1fr_2rem] items-center gap-3"
+                      >
+                        <span className="text-muted text-xs font-medium tabular-nums">
+                          {row.level}
+                        </span>
+                        <div className="bg-muted/30 h-6 overflow-hidden rounded-md">
+                          <div
+                            className="flex h-full"
+                            style={{ width: row.total === 0 ? "0%" : `${barWidth}%` }}
+                            role="img"
+                            aria-label={`${row.level}: ${row.total} card${row.total === 1 ? "" : "s"}`}
+                          >
+                            {row.total === 0
+                              ? null
+                              : CEFR_MASTERY_LABELS.map((mastery) => {
+                                  const count = row.counts[mastery];
+                                  if (count === 0) return null;
+                                  const segmentWidth = (count / row.total) * 100;
+                                  const label = formatCefrMasterySegmentLabel(
+                                    row.level,
+                                    mastery,
+                                    count,
+                                  );
+                                  return (
+                                    <div
+                                      key={mastery}
+                                      className={cn(MASTERY_SEGMENT_STYLE[mastery], "h-full")}
+                                      style={{ width: `${segmentWidth}%` }}
+                                      title={label}
+                                      aria-label={label}
+                                      data-testid={`cefr-mastery-${row.level}-${mastery}`}
+                                      role="presentation"
+                                    />
+                                  );
+                                })}
+                          </div>
+                        </div>
+                        <span
+                          className="text-foreground text-right text-xs font-medium tabular-nums"
+                          data-testid={`cefr-mastery-total-${row.level}`}
+                        >
+                          {row.total}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                  {CEFR_MASTERY_LABELS.map((mastery) => (
+                    <span key={mastery} className="inline-flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "inline-block h-3 w-3 rounded-sm",
+                          MASTERY_SEGMENT_STYLE[mastery],
+                        )}
+                        aria-hidden
+                      />
+                      <span className="text-muted">{masteryLabelDisplay(mastery)}</span>
+                    </span>
+                  ))}
                 </div>
               </>
             )}

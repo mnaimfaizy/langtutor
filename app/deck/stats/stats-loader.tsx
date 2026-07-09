@@ -4,8 +4,12 @@ import dynamic from "next/dynamic";
 
 import { Skeleton } from "@/ui/skeleton";
 
+import type { Cefr } from "@/lib/db";
+
 /** Serializable card row passed from the server component. */
 export interface StatsCardItem {
+  cefr: Cefr;
+  fsrsState: number;
   dueIso: string;
   lastReviewIso?: string;
   suspended?: boolean;

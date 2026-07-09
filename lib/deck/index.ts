@@ -12,6 +12,17 @@ export {
 } from "./review-activity-heatmap";
 export type { ActivityHeatmapDay, ReviewActivityCard } from "./review-activity-heatmap";
 export {
+  CEFR_MASTERY_LABELS,
+  CEFR_MASTERY_LEVELS,
+  computeCefrMasteryBreakdown,
+  formatCefrMasterySegmentLabel,
+} from "./cefr-mastery-breakdown";
+export type {
+  CefrMasteryCard,
+  CefrMasteryCounts,
+  CefrMasteryLevelRow,
+} from "./cefr-mastery-breakdown";
+export {
   applyDeckCardFilters,
   filterDeckCards,
   filterDeckCardsByCefr,

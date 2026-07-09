@@ -10,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 function toStatsCardItem(card: Card): StatsCardItem {
   return {
+    cefr: card.cefr,
+    fsrsState: card.fsrs.state,
     dueIso: card.fsrs.due.toISOString(),
     lastReviewIso: card.fsrs.lastReview?.toISOString(),
     suspended: card.suspended,
