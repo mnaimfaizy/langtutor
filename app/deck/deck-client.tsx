@@ -115,6 +115,8 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
   const [editingCard, setEditingCard] = useState<DeckCardItem | null>(null);
   const [cardToDelete, setCardToDelete] = useState<DeckCardItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [cardToReset, setCardToReset] = useState<DeckCardItem | null>(null);
+  const [resetting, setResetting] = useState(false);
   const [suspendingId, setSuspendingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [cefrFilter, setCefrFilter] = useState<Cefr | null>(null);
@@ -152,6 +154,21 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
       setDeleting(false);
     }
   }, [cardToDelete, refreshCards]);
+
+  const handleResetConfirmed = useCallback(async () => {
+    if (!cardToReset) return;
+
+    setResetting(true);
+    try {
+      await getContentRepository().resetCardProgress(cardToReset.id);
+      setCardToReset(null);
+      await refreshCards();
+    } catch {
+      // keep dialog open so the learner can retry or cancel
+    } finally {
+      setResetting(false);
+    }
+  }, [cardToReset, refreshCards]);
 
   const handleSuspendToggle = useCallback(
     async (card: DeckCardItem) => {
@@ -255,6 +272,34 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                     className="bg-danger/10 text-danger hover:bg-danger/20 border-danger/30"
                   >
                     {deleting ? "Deleting…" : "Delete"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog
+              open={cardToReset !== null}
+              onOpenChange={(open) => {
+                if (!open && !resetting) setCardToReset(null);
+              }}
+            >
+              <DialogContent>
+                <DialogTitle>Reset progress?</DialogTitle>
+                <DialogDescription>
+                  <strong className="text-foreground">&ldquo;{cardToReset?.word}&rdquo;</strong>{" "}
+                  will start over as a new card. Its review history and scheduling will be cleared,
+                  but the word, definition, and examples stay the same.
+                </DialogDescription>
+                <div className="mt-5 flex justify-end gap-3">
+                  <DialogClose disabled={resetting}>Cancel</DialogClose>
+                  <Button
+                    data-testid="deck-card-reset-confirm"
+                    variant="secondary"
+                    onClick={() => void handleResetConfirmed()}
+                    disabled={resetting}
+                    className="bg-danger/10 text-danger hover:bg-danger/20 border-danger/30"
+                  >
+                    {resetting ? "Resetting…" : "Reset progress"}
                   </Button>
                 </div>
               </DialogContent>
@@ -391,6 +436,15 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                                   : card.suspended
                                     ? "Unsuspend"
                                     : "Suspend"}
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                data-testid={`deck-card-reset-${card.id}`}
+                                onClick={() => setCardToReset(card)}
+                                aria-label={`Reset progress for ${card.word}`}
+                              >
+                                Reset
                               </Button>
                               <Button
                                 variant="secondary"
