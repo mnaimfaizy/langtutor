@@ -5,7 +5,13 @@ import { useCallback, useMemo, useState } from "react";
 
 import type { Cefr } from "@/lib/db";
 import { CEFR_BADGE_VARIANT } from "@/lib/cefr";
-import { applyDeckCardFilters, type DeckCardFilters, type DeckDueStatusFilter } from "@/lib/deck";
+import {
+  applyDeckCardFilters,
+  sortDeckCards,
+  type DeckCardFilters,
+  type DeckDueStatusFilter,
+  type DeckSortMode,
+} from "@/lib/deck";
 import {
   formatNextDue,
   masteryLabelDisplay,
@@ -39,6 +45,8 @@ export interface DeckCardItem {
   cefr: Cefr;
   fsrsState: number;
   dueIso: string;
+  createdAtIso: string;
+  lastReviewIso?: string;
   suspended?: boolean;
 }
 
@@ -58,6 +66,12 @@ const DUE_FILTERS: { value: DeckDueStatusFilter; label: string }[] = [
   { value: "later", label: "Due later" },
 ];
 
+const SORT_OPTIONS: { value: DeckSortMode; label: string }[] = [
+  { value: "due", label: "Due date" },
+  { value: "recency", label: "Recency" },
+  { value: "alphabet", label: "A–Z" },
+];
+
 function toggleFilter<T>(current: T | null, value: T): T | null {
   return current === value ? null : value;
 }
@@ -72,7 +86,8 @@ function toDeckCardItem(card: {
   word: string;
   definition: string;
   cefr: Cefr;
-  fsrs: { state: number; due: Date };
+  fsrs: { state: number; due: Date; lastReview?: Date };
+  createdAt: Date;
   suspended?: boolean;
 }): DeckCardItem {
   return {
@@ -82,6 +97,8 @@ function toDeckCardItem(card: {
     cefr: card.cefr,
     fsrsState: card.fsrs.state,
     dueIso: card.fsrs.due.toISOString(),
+    createdAtIso: card.createdAt.toISOString(),
+    lastReviewIso: card.fsrs.lastReview?.toISOString(),
     suspended: card.suspended,
   };
 }
@@ -93,15 +110,12 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
   const [cefrFilter, setCefrFilter] = useState<Cefr | null>(null);
   const [masteryFilter, setMasteryFilter] = useState<MasteryLabel | null>(null);
   const [dueFilter, setDueFilter] = useState<DeckDueStatusFilter | null>(null);
+  const [sortMode, setSortMode] = useState<DeckSortMode>("due");
   const now = useMemo(() => new Date(), []);
 
   const refreshCards = useCallback(async () => {
     const all = await getContentRepository().getAllCards();
-    setCards(
-      all
-        .map(toDeckCardItem)
-        .sort((a, b) => a.word.localeCompare(b.word, undefined, { sensitivity: "base" })),
-    );
+    setCards(all.map(toDeckCardItem));
   }, []);
 
   const handleCardAdded = useCallback(() => {
@@ -109,20 +123,19 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
     setAddOpen(false);
   }, [refreshCards]);
 
-  const sortedCards = useMemo(
-    () =>
-      [...cards].sort((a, b) => a.word.localeCompare(b.word, undefined, { sensitivity: "base" })),
-    [cards],
-  );
-
   const filters = useMemo<DeckCardFilters>(
     () => ({ cefr: cefrFilter, mastery: masteryFilter, due: dueFilter }),
     [cefrFilter, masteryFilter, dueFilter],
   );
 
   const filteredCards = useMemo(
-    () => applyDeckCardFilters(sortedCards, filters, searchQuery, now),
-    [sortedCards, filters, searchQuery, now],
+    () => applyDeckCardFilters(cards, filters, searchQuery, now),
+    [cards, filters, searchQuery, now],
+  );
+
+  const displayCards = useMemo(
+    () => sortDeckCards(filteredCards, sortMode),
+    [filteredCards, sortMode],
   );
 
   return (
@@ -161,7 +174,7 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
         </div>
 
         <div className="mt-8" data-testid="deck-browser">
-          {sortedCards.length === 0 ? (
+          {cards.length === 0 ? (
             <p className="text-muted text-sm" data-testid="deck-empty">
               No words in your deck yet. Add your first word to get started.
             </p>
@@ -234,6 +247,23 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                     ))}
                   </div>
                 </div>
+
+                <div>
+                  <p className="text-foreground mb-2 text-sm font-medium">Sort by</p>
+                  <div className="flex flex-wrap gap-2">
+                    {SORT_OPTIONS.map(({ value, label }) => (
+                      <SelectPill
+                        key={value}
+                        data-testid={`deck-sort-${value}`}
+                        selected={sortMode === value}
+                        onClick={() => setSortMode(value)}
+                        className="rounded-lg px-3 py-1.5"
+                      >
+                        {label}
+                      </SelectPill>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {filteredCards.length === 0 ? (
@@ -242,7 +272,7 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                 </p>
               ) : (
                 <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredCards.map((card) => {
+                  {displayCards.map((card) => {
                     const mastery = masteryLabelFromState(card.fsrsState);
                     const due = new Date(card.dueIso);
                     return (

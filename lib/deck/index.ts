@@ -15,3 +15,5 @@ export type {
   DeckFilterableCard,
   DeckSearchableCard,
 } from "./filter-deck-cards";
+export { sortDeckCards } from "./sort-deck-cards";
+export type { DeckSortableCard, DeckSortMode } from "./sort-deck-cards";

@@ -14,15 +14,15 @@ function toDeckCardItem(card: Card): DeckCardItem {
     cefr: card.cefr,
     fsrsState: card.fsrs.state,
     dueIso: card.fsrs.due.toISOString(),
+    createdAtIso: card.createdAt.toISOString(),
+    lastReviewIso: card.fsrs.lastReview?.toISOString(),
     suspended: card.suspended,
   };
 }
 
 export default async function DeckPage() {
   const cards = await repoGetAllCards();
-  const items = cards
-    .map(toDeckCardItem)
-    .sort((a, b) => a.word.localeCompare(b.word, undefined, { sensitivity: "base" }));
+  const items = cards.map(toDeckCardItem);
 
   return <DeckClient initialCards={items} />;
 }
