@@ -22,6 +22,7 @@ export function CardCollectionsMenu({
   const [open, setOpen] = useState(false);
   const [busyCollectionId, setBusyCollectionId] = useState<number | null>(null);
   const memberCollectionIds = new Set(getCardCollectionIds(cardId, membershipByCollection));
+  const editableCollections = collections.filter((collection) => collection.kind === "user");
 
   async function handleToggle(collectionId: number, member: boolean) {
     setBusyCollectionId(collectionId);
@@ -32,7 +33,7 @@ export function CardCollectionsMenu({
     }
   }
 
-  if (collections.length === 0) return null;
+  if (editableCollections.length === 0) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -50,7 +51,7 @@ export function CardCollectionsMenu({
       <PopoverContent className="w-56 p-3">
         <p className="text-foreground mb-2 text-sm font-medium">Add to collection</p>
         <div className="flex flex-col gap-2">
-          {collections.map((collection) => {
+          {editableCollections.map((collection) => {
             const selected = memberCollectionIds.has(collection.id);
             return (
               <SelectPill

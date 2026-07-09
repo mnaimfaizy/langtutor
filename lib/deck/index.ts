@@ -1,4 +1,10 @@
 export { buildCollectionMembershipMap, getCardCollectionIds } from "./collection-membership";
+export {
+  deriveUnitVocabCollections,
+  isDerivedUnitVocabCollection,
+  unitVocabCollectionId,
+} from "./unit-vocab-collections";
+export type { UnitVocabDerivationCard, UnitVocabDerivationResult } from "./unit-vocab-collections";
 export { buildNewCard, isDuplicate } from "./add-to-deck";
 export { formatExamplesText, parseExamplesText, validateCardDefinition } from "./edit-card";
 export type { CardEditValidation } from "./edit-card";

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { buildCollectionMembershipMap } from "@/lib/deck/collection-membership";
+import { buildCollectionMembershipMap, deriveUnitVocabCollections } from "@/lib/deck";
 import type { CollectionSummary } from "@/lib/db";
 import { getContentRepository } from "@/lib/registry";
 
@@ -11,16 +11,29 @@ async function loadCollectionState(): Promise<{
   membershipByCollection: Map<number, Set<number>>;
 }> {
   const repo = getContentRepository();
-  const collections = await repo.getCollections();
+  const [userCollections, cards, units] = await Promise.all([
+    repo.getCollections(),
+    repo.getAllCards(),
+    repo.getUnits(),
+  ]);
   const entries = await Promise.all(
-    collections.map(async (col) => ({
+    userCollections.map(async (col) => ({
       collectionId: col.id,
       cardIds: (await repo.getCollectionCards(col.id)).map((card) => card.id),
     })),
   );
+  const userMembership = buildCollectionMembershipMap(entries);
+  const { collections: unitCollections, membershipByCollection: unitMembership } =
+    deriveUnitVocabCollections(units, cards);
+
+  const membershipByCollection = new Map(userMembership);
+  for (const [collectionId, memberIds] of unitMembership) {
+    membershipByCollection.set(collectionId, memberIds);
+  }
+
   return {
-    collections,
-    membershipByCollection: buildCollectionMembershipMap(entries),
+    collections: [...userCollections, ...unitCollections],
+    membershipByCollection,
   };
 }
 
@@ -76,6 +89,7 @@ export function useDeckCollections() {
 
   const renameCollection = useCallback(
     async (id: number, name: string) => {
+      if (id < 0) return false;
       const trimmed = name.trim();
       if (!trimmed) return false;
       await getContentRepository().renameCollection(id, trimmed);
@@ -87,6 +101,7 @@ export function useDeckCollections() {
 
   const deleteCollection = useCallback(
     async (id: number) => {
+      if (id < 0) return;
       await getContentRepository().deleteCollection(id);
       await refreshCollections();
     },
@@ -95,6 +110,7 @@ export function useDeckCollections() {
 
   const setCardInCollection = useCallback(
     async (collectionId: number, cardId: number, member: boolean) => {
+      if (collectionId < 0) return;
       const repo = getContentRepository();
       if (member) {
         await repo.addCardToCollection(collectionId, cardId);

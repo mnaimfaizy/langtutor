@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { isDerivedUnitVocabCollection } from "@/lib/deck";
 import type { CollectionSummary } from "@/lib/db";
 import {
   Button,
@@ -74,6 +75,8 @@ export function CollectionsPanel({
     }
   }
 
+  const userCollections = collections.filter((collection) => collection.kind === "user");
+
   return (
     <div className="mb-6 space-y-4" data-testid="deck-collections-panel">
       <div>
@@ -133,17 +136,20 @@ export function CollectionsPanel({
               className="rounded-lg px-3 py-1.5"
             >
               {collection.name}
+              {isDerivedUnitVocabCollection(collection) && (
+                <span className="text-muted ml-1 text-xs">(unit vocab)</span>
+              )}
               <span className="text-muted ml-1 tabular-nums">({collection.cardCount})</span>
             </SelectPill>
           ))}
         </div>
       </div>
 
-      {collections.length > 0 && (
+      {userCollections.length > 0 && (
         <div>
           <p className="text-foreground mb-2 text-sm font-medium">Manage collections</p>
           <ul className="space-y-2">
-            {collections.map((collection) => (
+            {userCollections.map((collection) => (
               <li
                 key={collection.id}
                 className="border-border flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2"
