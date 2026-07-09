@@ -7,6 +7,7 @@ import { Skeleton } from "@/ui/skeleton";
 /** Serializable card row passed from the server component. */
 export interface StatsCardItem {
   dueIso: string;
+  lastReviewIso?: string;
   suspended?: boolean;
 }
 

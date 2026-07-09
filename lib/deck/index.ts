@@ -5,6 +5,13 @@ export type { WordData } from "./add-to-deck";
 export { computeDueForecast, formatForecastDayLabel, FORECAST_DAYS } from "./due-forecast";
 export type { DueForecastCard, DueForecastDay } from "./due-forecast";
 export {
+  ACTIVITY_HEATMAP_WEEKS,
+  activityHeatmapTier,
+  computeReviewActivityHeatmap,
+  formatActivityDayLabel,
+} from "./review-activity-heatmap";
+export type { ActivityHeatmapDay, ReviewActivityCard } from "./review-activity-heatmap";
+export {
   applyDeckCardFilters,
   filterDeckCards,
   filterDeckCardsByCefr,

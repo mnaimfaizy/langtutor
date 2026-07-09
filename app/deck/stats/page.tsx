@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 function toStatsCardItem(card: Card): StatsCardItem {
   return {
     dueIso: card.fsrs.due.toISOString(),
+    lastReviewIso: card.fsrs.lastReview?.toISOString(),
     suspended: card.suspended,
   };
 }

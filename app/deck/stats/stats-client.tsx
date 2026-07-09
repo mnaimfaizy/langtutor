@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { computeDueForecast, formatForecastDayLabel, FORECAST_DAYS } from "@/lib/deck/due-forecast";
+import {
+  activityHeatmapTier,
+  ACTIVITY_HEATMAP_WEEKS,
+  computeReviewActivityHeatmap,
+  formatActivityDayLabel,
+} from "@/lib/deck/review-activity-heatmap";
 import { BackLink, Card, cn } from "@/ui";
 
 import type { StatsCardItem } from "./stats-loader";
@@ -17,6 +23,35 @@ export function StatsClient({ initialCards }: { initialCards: StatsCardItem[] })
 
   const maxCount = useMemo(() => Math.max(1, ...forecast.map((d) => d.count)), [forecast]);
   const totalDue = useMemo(() => forecast.reduce((sum, d) => sum + d.count, 0), [forecast]);
+
+  const heatmapDays = useMemo(
+    () => computeReviewActivityHeatmap(initialCards, { weeks: ACTIVITY_HEATMAP_WEEKS, now }),
+    [initialCards, now],
+  );
+  const heatmapWeeks = useMemo(() => {
+    const weeks: (typeof heatmapDays)[] = [];
+    for (const day of heatmapDays) {
+      if (!weeks[day.weekIndex]) weeks[day.weekIndex] = [];
+      weeks[day.weekIndex].push(day);
+    }
+    return weeks;
+  }, [heatmapDays]);
+  const maxActivity = useMemo(
+    () => Math.max(1, ...heatmapDays.filter((d) => !d.isFuture).map((d) => d.count)),
+    [heatmapDays],
+  );
+  const totalReviews = useMemo(
+    () => heatmapDays.filter((d) => !d.isFuture).reduce((sum, d) => sum + d.count, 0),
+    [heatmapDays],
+  );
+
+  const TIER_STYLE: Record<ReturnType<typeof activityHeatmapTier>, string> = {
+    0: "border-border border opacity-30",
+    1: "bg-success/20 border-success/30 border",
+    2: "bg-success/35 border-success/40 border",
+    3: "bg-success/50 border-success/50 border",
+    4: "bg-success/70 border-success/60 border",
+  };
 
   return (
     <main className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
@@ -89,6 +124,69 @@ export function StatsClient({ initialCards }: { initialCards: StatsCardItem[] })
                   );
                 })}
               </ul>
+            )}
+          </Card>
+        </section>
+
+        <section data-testid="deck-stats-heatmap">
+          <Card className="space-y-5 p-4 sm:p-5">
+            <div>
+              <h2 className="text-foreground text-sm font-medium">Review activity</h2>
+              <p className="text-muted mt-0.5 text-xs">
+                {totalReviews === 0
+                  ? `No reviews in the last ${ACTIVITY_HEATMAP_WEEKS} weeks.`
+                  : `${totalReviews} card review${totalReviews === 1 ? "" : "s"} over the last ${ACTIVITY_HEATMAP_WEEKS} weeks`}
+              </p>
+            </div>
+
+            {initialCards.length === 0 ? (
+              <p className="text-muted text-sm">
+                Add words and complete reviews to build your activity history.
+              </p>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <div
+                    className="inline-flex gap-1"
+                    role="img"
+                    aria-label={`Review activity heatmap for the last ${ACTIVITY_HEATMAP_WEEKS} weeks`}
+                  >
+                    {heatmapWeeks.map((week, weekIndex) => (
+                      <div key={weekIndex} className="flex flex-col gap-1">
+                        {week.map((day) => {
+                          const tier = day.isFuture
+                            ? 0
+                            : activityHeatmapTier(day.count, maxActivity);
+                          const label = formatActivityDayLabel(day.date, day.count, day.isFuture);
+                          return (
+                            <div
+                              key={day.date.toISOString()}
+                              title={label || undefined}
+                              aria-label={label || undefined}
+                              className={cn(
+                                "h-3.5 w-3.5 rounded-sm",
+                                day.isFuture ? "opacity-0" : TIER_STYLE[tier],
+                              )}
+                            />
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 text-xs">
+                  <span className="text-muted">Less</span>
+                  {([0, 1, 2, 3, 4] as const).map((tier) => (
+                    <span
+                      key={tier}
+                      className={cn("inline-block h-3 w-3 rounded-sm", TIER_STYLE[tier])}
+                      aria-hidden
+                    />
+                  ))}
+                  <span className="text-muted">More</span>
+                </div>
+              </>
             )}
           </Card>
         </section>
