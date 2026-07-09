@@ -15,7 +15,7 @@ import {
   type DeckDueStatusFilter,
   type DeckSortMode,
 } from "@/lib/deck";
-import { masteryLabelDisplay, type MasteryLabel } from "@/lib/srs";
+import type { MasteryLabel } from "@/lib/srs";
 import { getContentRepository } from "@/lib/registry";
 import {
   Button,
@@ -26,12 +26,11 @@ import {
   DialogTitle,
   DialogTrigger,
   Input,
-  SelectPill,
 } from "@/ui";
 
 import { AddWordForm } from "./add-word-form";
 import { DeckBrowserCard } from "./deck-browser-card";
-import { CollectionsPanel } from "./collections-panel";
+import { DeckFiltersRail } from "./deck-filters-rail";
 import { EditCardForm } from "./edit-card-form";
 import { useDeckCollections } from "./use-deck-collections";
 import { useDeckCardImages } from "./use-deck-card-images";
@@ -50,25 +49,6 @@ export interface DeckCardItem {
   suspended?: boolean;
   /** Server-hint: approved kid illustration exists for this word (refreshed client-side). */
   hasApprovedImage?: boolean;
-}
-
-const CEFR_LEVELS: Cefr[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
-
-const MASTERY_FILTERS: MasteryLabel[] = ["new", "learning", "review", "relearning"];
-
-const DUE_FILTERS: { value: DeckDueStatusFilter; label: string }[] = [
-  { value: "due", label: "Due now" },
-  { value: "later", label: "Due later" },
-];
-
-const SORT_OPTIONS: { value: DeckSortMode; label: string }[] = [
-  { value: "due", label: "Due date" },
-  { value: "recency", label: "Recency" },
-  { value: "alphabet", label: "A–Z" },
-];
-
-function toggleFilter<T>(current: T | null, value: T): T | null {
-  return current === value ? null : value;
 }
 
 function toDeckCardItem(card: {
@@ -110,6 +90,9 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
   const [dueFilter, setDueFilter] = useState<DeckDueStatusFilter | null>(null);
   const [sortMode, setSortMode] = useState<DeckSortMode>("due");
   const [experienceMode, setExperienceMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
+  const [createCollectionOpen, setCreateCollectionOpen] = useState(false);
+  const [createCollectionName, setCreateCollectionName] = useState("");
+  const [creatingCollection, setCreatingCollection] = useState(false);
   const now = useMemo(() => new Date(), []);
   const hasApprovedImage = useDeckCardImages(cards);
   const {
@@ -204,6 +187,19 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
     [refreshCards],
   );
 
+  const handleCreateCollection = useCallback(async () => {
+    setCreatingCollection(true);
+    try {
+      const ok = await createCollection(createCollectionName);
+      if (ok) {
+        setCreateCollectionName("");
+        setCreateCollectionOpen(false);
+      }
+    } finally {
+      setCreatingCollection(false);
+    }
+  }, [createCollection, createCollectionName]);
+
   const filters = useMemo<DeckCardFilters>(
     () => ({ cefr: cefrFilter, mastery: masteryFilter, due: dueFilter }),
     [cefrFilter, masteryFilter, dueFilter],
@@ -227,7 +223,7 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
 
   return (
     <main className="flex flex-1 flex-col px-4 py-12 sm:px-6 sm:py-16">
-      <div className="mx-auto w-full max-w-5xl">
+      <div className="mx-auto w-full max-w-6xl">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-foreground text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -238,7 +234,7 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Link
               href="/deck/stats"
               data-testid="link-deck-stats"
@@ -246,6 +242,49 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
             >
               View stats
             </Link>
+
+            <Dialog
+              open={createCollectionOpen}
+              onOpenChange={(open) => {
+                setCreateCollectionOpen(open);
+                if (!open) setCreateCollectionName("");
+              }}
+            >
+              <DialogTrigger data-testid="deck-collection-create" size="md" variant="secondary">
+                New collection
+              </DialogTrigger>
+              <DialogContent className="w-[min(90vw,24rem)]">
+                <DialogTitle>Create collection</DialogTitle>
+                <DialogDescription>
+                  Group related words under a name like &ldquo;animals&rdquo; or
+                  &ldquo;travel&rdquo;.
+                </DialogDescription>
+                <label className="sr-only" htmlFor="deck-header-collection-create-name">
+                  Collection name
+                </label>
+                <Input
+                  id="deck-header-collection-create-name"
+                  data-testid="deck-collection-create-name"
+                  value={createCollectionName}
+                  onChange={(event) => setCreateCollectionName(event.target.value)}
+                  placeholder="Collection name"
+                  className="mt-4"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") void handleCreateCollection();
+                  }}
+                />
+                <div className="mt-5 flex justify-end gap-3">
+                  <DialogClose disabled={creatingCollection}>Cancel</DialogClose>
+                  <Button
+                    data-testid="deck-collection-create-confirm"
+                    onClick={() => void handleCreateCollection()}
+                    disabled={creatingCollection || createCollectionName.trim().length === 0}
+                  >
+                    {creatingCollection ? "Creating…" : "Create"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
               <DialogTrigger data-testid="btn-add-word" size="md">
@@ -335,110 +374,27 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
               No cards yet. Add a word to start building your deck.
             </p>
           ) : (
-            <>
-              <CollectionsPanel
-                collections={collections}
-                collectionFilter={collectionFilter}
-                onCollectionFilterChange={setCollectionFilter}
-                onCreateCollection={createCollection}
-                onRenameCollection={renameCollection}
-                onDeleteCollection={deleteCollection}
-              />
-
-              <div className="mb-6">
-                <label htmlFor="deck-search" className="sr-only">
-                  Search deck
-                </label>
-                <Input
-                  id="deck-search"
-                  data-testid="deck-search"
-                  type="search"
-                  placeholder="Search by word or definition…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              <div className="mb-6 space-y-4">
-                <div>
-                  <p className="text-foreground mb-2 text-sm font-medium">CEFR</p>
-                  <div className="flex flex-wrap gap-2">
-                    {CEFR_LEVELS.map((level) => (
-                      <SelectPill
-                        key={level}
-                        data-testid={`deck-filter-cefr-${level}`}
-                        selected={cefrFilter === level}
-                        onClick={() => setCefrFilter((current) => toggleFilter(current, level))}
-                        className="rounded-lg px-3 py-1.5"
-                      >
-                        {level}
-                      </SelectPill>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-foreground mb-2 text-sm font-medium">Mastery</p>
-                  <div className="flex flex-wrap gap-2">
-                    {MASTERY_FILTERS.map((label) => (
-                      <SelectPill
-                        key={label}
-                        data-testid={`deck-filter-mastery-${label}`}
-                        selected={masteryFilter === label}
-                        onClick={() => setMasteryFilter((current) => toggleFilter(current, label))}
-                        className="rounded-lg px-3 py-1.5"
-                      >
-                        {masteryLabelDisplay(label)}
-                      </SelectPill>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-foreground mb-2 text-sm font-medium">Due</p>
-                  <div className="flex flex-wrap gap-2">
-                    {DUE_FILTERS.map(({ value, label }) => (
-                      <SelectPill
-                        key={value}
-                        data-testid={`deck-filter-due-${value}`}
-                        selected={dueFilter === value}
-                        onClick={() => setDueFilter((current) => toggleFilter(current, value))}
-                        className="rounded-lg px-3 py-1.5"
-                      >
-                        {label}
-                      </SelectPill>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-foreground mb-2 text-sm font-medium">Sort by</p>
-                  <div className="flex flex-wrap gap-2">
-                    {SORT_OPTIONS.map(({ value, label }) => (
-                      <SelectPill
-                        key={value}
-                        data-testid={`deck-sort-${value}`}
-                        selected={sortMode === value}
-                        onClick={() => setSortMode(value)}
-                        className="rounded-lg px-3 py-1.5"
-                      >
-                        {label}
-                      </SelectPill>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {scopeActive && (
-                <div className="mb-6">
-                  <Link href={scopedReviewUrl}>
-                    <Button data-testid="btn-review-these" variant="gradient">
-                      Review these
-                    </Button>
-                  </Link>
-                </div>
-              )}
-
+            <DeckFiltersRail
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              cefrFilter={cefrFilter}
+              onCefrFilterChange={setCefrFilter}
+              masteryFilter={masteryFilter}
+              onMasteryFilterChange={setMasteryFilter}
+              dueFilter={dueFilter}
+              onDueFilterChange={setDueFilter}
+              sortMode={sortMode}
+              onSortModeChange={setSortMode}
+              collections={collections}
+              collectionFilter={collectionFilter}
+              onCollectionFilterChange={setCollectionFilter}
+              onRenameCollection={renameCollection}
+              onDeleteCollection={deleteCollection}
+              filteredCount={filteredCards.length}
+              totalCount={cards.length}
+              scopeActive={scopeActive}
+              scopedReviewUrl={scopedReviewUrl}
+            >
               {filteredCards.length === 0 ? (
                 <p className="text-muted text-sm" data-testid="deck-search-empty">
                   No cards match your search or filters.
@@ -465,7 +421,7 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                   ))}
                 </ul>
               )}
-            </>
+            </DeckFiltersRail>
           )}
         </div>
       </div>
