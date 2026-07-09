@@ -11,6 +11,7 @@ function toDeckCardItem(card: Card): DeckCardItem {
     id: card.id,
     word: card.word,
     definition: card.definition,
+    examples: card.examples,
     cefr: card.cefr,
     fsrsState: card.fsrs.state,
     dueIso: card.fsrs.due.toISOString(),

@@ -180,6 +180,30 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
         expect(await repo.getCard(id)).toBeUndefined();
       });
 
+      it("updateCard with definition and examples preserves FSRS state", async () => {
+        const due = new Date("2026-06-01T00:00:00.000Z");
+        const reviewed = scheduleCard(
+          initCard(new Date("2025-01-01")),
+          "good",
+          new Date("2025-06-01"),
+        );
+        const id = await repo.addCard({
+          ...makeCard("preserve-fsrs", "B1", due),
+          fsrs: reviewed,
+        });
+        const before = await repo.getCard(id);
+
+        await repo.updateCard(id, {
+          definition: "updated definition",
+          examples: ["New example one.", "New example two."],
+        });
+
+        const after = await repo.getCard(id);
+        expect(after?.definition).toBe("updated definition");
+        expect(after?.examples).toEqual(["New example one.", "New example two."]);
+        expect(after?.fsrs).toEqual(before?.fsrs);
+      });
+
       it("getAllCards returns all stored cards", async () => {
         await repo.addCard(makeCard("apple", "A1"));
         await repo.addCard(makeCard("banana", "A1"));

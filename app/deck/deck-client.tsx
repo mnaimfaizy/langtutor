@@ -21,6 +21,7 @@ import {
 import { getContentRepository } from "@/lib/registry";
 import {
   Badge,
+  Button,
   Card,
   CardDescription,
   CardTitle,
@@ -36,12 +37,14 @@ import {
 } from "@/ui";
 
 import { AddWordForm } from "./add-word-form";
+import { EditCardForm } from "./edit-card-form";
 
 /** Serializable card row passed from the server component. */
 export interface DeckCardItem {
   id: number;
   word: string;
   definition: string;
+  examples: string[];
   cefr: Cefr;
   fsrsState: number;
   dueIso: string;
@@ -85,6 +88,7 @@ function toDeckCardItem(card: {
   id: number;
   word: string;
   definition: string;
+  examples: string[];
   cefr: Cefr;
   fsrs: { state: number; due: Date; lastReview?: Date };
   createdAt: Date;
@@ -94,6 +98,7 @@ function toDeckCardItem(card: {
     id: card.id,
     word: card.word,
     definition: card.definition,
+    examples: card.examples,
     cefr: card.cefr,
     fsrsState: card.fsrs.state,
     dueIso: card.fsrs.due.toISOString(),
@@ -106,6 +111,7 @@ function toDeckCardItem(card: {
 export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
   const [cards, setCards] = useState<DeckCardItem[]>(initialCards);
   const [addOpen, setAddOpen] = useState(false);
+  const [editingCard, setEditingCard] = useState<DeckCardItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [cefrFilter, setCefrFilter] = useState<Cefr | null>(null);
   const [masteryFilter, setMasteryFilter] = useState<MasteryLabel | null>(null);
@@ -121,6 +127,11 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
   const handleCardAdded = useCallback(() => {
     void refreshCards();
     setAddOpen(false);
+  }, [refreshCards]);
+
+  const handleCardEdited = useCallback(() => {
+    void refreshCards();
+    setEditingCard(null);
   }, [refreshCards]);
 
   const filters = useMemo<DeckCardFilters>(
@@ -168,6 +179,17 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                   Look up a word in the lexicon and add it to your spaced-repetition deck.
                 </DialogDescription>
                 <AddWordForm className="mt-4" onCardAdded={handleCardAdded} />
+              </DialogContent>
+            </Dialog>
+
+            <Dialog
+              open={editingCard !== null}
+              onOpenChange={(open) => {
+                if (!open) setEditingCard(null);
+              }}
+            >
+              <DialogContent className="w-[min(90vw,32rem)]">
+                {editingCard && <EditCardForm card={editingCard} onSaved={handleCardEdited} />}
               </DialogContent>
             </Dialog>
           </div>
@@ -283,9 +305,19 @@ export function DeckClient({ initialCards }: { initialCards: DeckCardItem[] }) {
                         >
                           <div className="flex items-start justify-between gap-2">
                             <CardTitle className="text-base">{card.word}</CardTitle>
-                            <Badge variant={CEFR_BADGE_VARIANT[card.cefr]} size="sm">
-                              {card.cefr}
-                            </Badge>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <Badge variant={CEFR_BADGE_VARIANT[card.cefr]} size="sm">
+                                {card.cefr}
+                              </Badge>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                data-testid={`deck-card-edit-${card.id}`}
+                                onClick={() => setEditingCard(card)}
+                              >
+                                Edit
+                              </Button>
+                            </div>
                           </div>
                           <CardDescription>{definitionSnippet(card.definition)}</CardDescription>
                           <div className="mt-3 flex flex-wrap items-center gap-2">
