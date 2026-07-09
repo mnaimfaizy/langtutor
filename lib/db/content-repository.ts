@@ -2,6 +2,8 @@ import type { BackupData } from "../backup/schema";
 import type {
   Card,
   Cefr,
+  CollectionKind,
+  CollectionSummary,
   Content,
   ContentSource,
   ContentType,
@@ -24,6 +26,7 @@ import type {
 
 /** Insert shapes for auto-keyed entities — the numeric `id` is assigned by the store. */
 export type NewCard = Omit<Card, "id">;
+export type NewCollection = { name: string; kind: CollectionKind };
 export type NewContent = Omit<Content, "id">;
 export type NewErrorEvent = Omit<ErrorEventRecord, "id">;
 export type NewUnit = Omit<Unit, "id">;
@@ -82,6 +85,21 @@ export interface ContentRepository extends ContentSink {
   getDueCards(now: Date): Promise<Card[]>;
   updateCard(id: number, changes: Partial<NewCard>): Promise<void>;
   deleteCard(id: number): Promise<void>;
+  /** Excludes suspended cards (issue #90). */
+  suspendCard(id: number): Promise<void>;
+  unsuspendCard(id: number): Promise<void>;
+  /** Re-initialize FSRS via the SRS wrapper — word/definition unchanged. */
+  resetCardProgress(id: number, now?: Date): Promise<void>;
+
+  // deck collections (issue #90)
+  addCollection(collection: NewCollection): Promise<number>;
+  renameCollection(id: number, name: string): Promise<void>;
+  /** Removes the collection and memberships only — member cards are kept. */
+  deleteCollection(id: number): Promise<void>;
+  addCardToCollection(collectionId: number, cardId: number): Promise<void>;
+  removeCardFromCollection(collectionId: number, cardId: number): Promise<void>;
+  getCollections(): Promise<CollectionSummary[]>;
+  getCollectionCards(collectionId: number): Promise<Card[]>;
 
   // content (cached generated/seed)
   putContent(content: NewContent): Promise<number>;

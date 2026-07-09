@@ -57,6 +57,9 @@ export function isDue(state: FsrsState, now = new Date()): boolean {
   return state.due <= now;
 }
 
-export function getDueCards<T extends { fsrs: FsrsState }>(cards: T[], now = new Date()): T[] {
-  return cards.filter((c) => isDue(c.fsrs, now));
+export function getDueCards<T extends { fsrs: FsrsState; suspended?: boolean }>(
+  cards: T[],
+  now = new Date(),
+): T[] {
+  return cards.filter((c) => !c.suspended && isDue(c.fsrs, now));
 }

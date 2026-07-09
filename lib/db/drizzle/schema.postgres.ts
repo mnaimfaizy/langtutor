@@ -1,4 +1,5 @@
 import {
+  boolean,
   customType,
   doublePrecision,
   index,
@@ -22,6 +23,7 @@ import {
   MEDIA_ASSET_APPROVAL_STATUS_VALUES,
   MEDIA_ASSET_KIND_VALUES,
   MEDIA_ASSET_SOURCE_VALUES,
+  COLLECTION_KIND_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   UNIT_BUFFER_STATUS_VALUES,
@@ -47,6 +49,7 @@ export {
   MEDIA_ASSET_APPROVAL_STATUS_VALUES,
   MEDIA_ASSET_KIND_VALUES,
   MEDIA_ASSET_SOURCE_VALUES,
+  COLLECTION_KIND_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   UNIT_BUFFER_STATUS_VALUES,
@@ -154,8 +157,26 @@ export const cards = pgTable(
     dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
     embedding: text("embedding"),
+    suspended: boolean("suspended").notNull().default(false),
   },
   (t) => [index("idx_cards_user_due").on(t.userId, t.dueAt)],
+);
+
+export const collections = pgTable("collections", {
+  id: serial("id").primaryKey(),
+  userId: uuid("user_id").notNull(),
+  name: text("name").notNull(),
+  kind: text("kind", { enum: COLLECTION_KIND_VALUES }).notNull(),
+});
+
+export const cardCollectionMembers = pgTable(
+  "card_collection_members",
+  {
+    userId: uuid("user_id").notNull(),
+    collectionId: integer("collection_id").notNull(),
+    cardId: integer("card_id").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.collectionId, t.cardId] })],
 );
 
 export const errorEvents = pgTable(

@@ -71,6 +71,13 @@
       "when": 1783900000000,
       "tag": "0009_quest_collectibles",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1784000000000,
+      "tag": "0010_deck_collections",
+      "breakpoints": true
     }
   ]
 }

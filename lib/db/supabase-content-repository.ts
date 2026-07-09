@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, lte } from "drizzle-orm";
+import { and, asc, eq, inArray, lte } from "drizzle-orm";
 
 import { env } from "@/lib/config/env";
 
@@ -11,6 +11,7 @@ import type {
   ErrorEventQuery,
   MediaAssetQuery,
   NewCard,
+  NewCollection,
   NewContent,
   NewErrorEvent,
   NewUnit,
@@ -20,7 +21,9 @@ import { withUserRlsScope, type PostgresDrizzleScope } from "./drizzle/postgres-
 import {
   BOOTSTRAP_ADMIN_ID,
   appConfig,
+  cardCollectionMembers as cardCollectionMembersTable,
   cards as cardsTable,
+  collections as collectionsTable,
   content as contentTable,
   errorEvents as errorEventsTable,
   gamification as gamificationTable,
@@ -36,6 +39,7 @@ import type {
   Achievement,
   Card,
   CollectibleGrant,
+  CollectionSummary,
   Content,
   ErrorEventRecord,
   FsrsState,
@@ -52,6 +56,7 @@ import type {
   UnitActivityRef,
   Weakness,
 } from "./schema";
+import { initCard } from "@/lib/srs/fsrs-wrapper";
 
 const APP_CONFIG_ID = 1;
 const DEFAULT_GROQ_CHAT_MODEL = "llama-3.3-70b-versatile";
@@ -171,6 +176,7 @@ type CardRow = {
   dueAt: Date;
   createdAt: Date;
   embedding: string | null;
+  suspended: boolean;
 };
 
 function rowToCard(row: CardRow): Card {
@@ -184,6 +190,7 @@ function rowToCard(row: CardRow): Card {
     fsrs: parseFsrs(row.fsrs),
     createdAt: row.createdAt,
     embedding: row.embedding ? (JSON.parse(row.embedding) as number[]) : undefined,
+    suspended: row.suspended ? true : undefined,
   };
 }
 
@@ -425,6 +432,7 @@ export class SupabaseContentRepository implements ContentRepository {
           dueAt: card.fsrs.due,
           createdAt: card.createdAt,
           embedding: card.embedding ? JSON.stringify(card.embedding) : null,
+          suspended: card.suspended ?? false,
         })
         .returning({ id: cardsTable.id });
       return inserted[0]!.id;
@@ -455,7 +463,13 @@ export class SupabaseContentRepository implements ContentRepository {
       const rows = await db
         .select()
         .from(cardsTable)
-        .where(and(eq(cardsTable.userId, this.userId), lte(cardsTable.dueAt, now)))
+        .where(
+          and(
+            eq(cardsTable.userId, this.userId),
+            lte(cardsTable.dueAt, now),
+            eq(cardsTable.suspended, false),
+          ),
+        )
         .orderBy(asc(cardsTable.dueAt));
       return rows.map(rowToCard);
     });
@@ -473,6 +487,7 @@ export class SupabaseContentRepository implements ContentRepository {
         dueAt?: Date;
         createdAt?: Date;
         embedding?: string | null;
+        suspended?: boolean;
       };
       const patch: CardUpdate = {};
       if (changes.word !== undefined) patch.word = changes.word;
@@ -487,6 +502,7 @@ export class SupabaseContentRepository implements ContentRepository {
       if (changes.createdAt !== undefined) patch.createdAt = changes.createdAt;
       if (changes.embedding !== undefined)
         patch.embedding = changes.embedding ? JSON.stringify(changes.embedding) : null;
+      if (changes.suspended !== undefined) patch.suspended = changes.suspended;
 
       await db
         .update(cardsTable)
@@ -498,8 +514,150 @@ export class SupabaseContentRepository implements ContentRepository {
   async deleteCard(id: number): Promise<void> {
     await this.scoped(async (db) => {
       await db
+        .delete(cardCollectionMembersTable)
+        .where(
+          and(
+            eq(cardCollectionMembersTable.userId, this.userId),
+            eq(cardCollectionMembersTable.cardId, id),
+          ),
+        );
+      await db
         .delete(cardsTable)
         .where(and(eq(cardsTable.id, id), eq(cardsTable.userId, this.userId)));
+    });
+  }
+
+  async suspendCard(id: number): Promise<void> {
+    await this.updateCard(id, { suspended: true });
+  }
+
+  async unsuspendCard(id: number): Promise<void> {
+    await this.updateCard(id, { suspended: false });
+  }
+
+  async resetCardProgress(id: number, now = new Date()): Promise<void> {
+    await this.updateCard(id, { fsrs: initCard(now) });
+  }
+
+  // ─── deck collections ───────────────────────────────────────────────────
+
+  async addCollection(collection: NewCollection): Promise<number> {
+    return this.scoped(async (db) => {
+      const inserted = await db
+        .insert(collectionsTable)
+        .values({
+          userId: this.userId,
+          name: collection.name,
+          kind: collection.kind,
+        })
+        .returning({ id: collectionsTable.id });
+      return inserted[0]!.id;
+    });
+  }
+
+  async renameCollection(id: number, name: string): Promise<void> {
+    await this.scoped(async (db) => {
+      await db
+        .update(collectionsTable)
+        .set({ name })
+        .where(and(eq(collectionsTable.id, id), eq(collectionsTable.userId, this.userId)));
+    });
+  }
+
+  async deleteCollection(id: number): Promise<void> {
+    await this.scoped(async (db) => {
+      await db
+        .delete(cardCollectionMembersTable)
+        .where(
+          and(
+            eq(cardCollectionMembersTable.userId, this.userId),
+            eq(cardCollectionMembersTable.collectionId, id),
+          ),
+        );
+      await db
+        .delete(collectionsTable)
+        .where(and(eq(collectionsTable.id, id), eq(collectionsTable.userId, this.userId)));
+    });
+  }
+
+  async addCardToCollection(collectionId: number, cardId: number): Promise<void> {
+    await this.scoped(async (db) => {
+      const existing = await db
+        .select()
+        .from(cardCollectionMembersTable)
+        .where(
+          and(
+            eq(cardCollectionMembersTable.userId, this.userId),
+            eq(cardCollectionMembersTable.collectionId, collectionId),
+            eq(cardCollectionMembersTable.cardId, cardId),
+          ),
+        )
+        .limit(1);
+      if (existing[0]) return;
+
+      await db.insert(cardCollectionMembersTable).values({
+        userId: this.userId,
+        collectionId,
+        cardId,
+      });
+    });
+  }
+
+  async removeCardFromCollection(collectionId: number, cardId: number): Promise<void> {
+    await this.scoped(async (db) => {
+      await db
+        .delete(cardCollectionMembersTable)
+        .where(
+          and(
+            eq(cardCollectionMembersTable.userId, this.userId),
+            eq(cardCollectionMembersTable.collectionId, collectionId),
+            eq(cardCollectionMembersTable.cardId, cardId),
+          ),
+        );
+    });
+  }
+
+  async getCollections(): Promise<CollectionSummary[]> {
+    return this.scoped(async (db) => {
+      const collectionRows = await db
+        .select()
+        .from(collectionsTable)
+        .where(eq(collectionsTable.userId, this.userId));
+
+      const memberRows = await db
+        .select()
+        .from(cardCollectionMembersTable)
+        .where(eq(cardCollectionMembersTable.userId, this.userId));
+
+      return collectionRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        kind: row.kind,
+        cardCount: memberRows.filter((member) => member.collectionId === row.id).length,
+      }));
+    });
+  }
+
+  async getCollectionCards(collectionId: number): Promise<Card[]> {
+    return this.scoped(async (db) => {
+      const memberRows = await db
+        .select({ cardId: cardCollectionMembersTable.cardId })
+        .from(cardCollectionMembersTable)
+        .where(
+          and(
+            eq(cardCollectionMembersTable.userId, this.userId),
+            eq(cardCollectionMembersTable.collectionId, collectionId),
+          ),
+        );
+
+      if (memberRows.length === 0) return [];
+
+      const cardIds = memberRows.map((row) => row.cardId);
+      const rows = await db
+        .select()
+        .from(cardsTable)
+        .where(and(eq(cardsTable.userId, this.userId), inArray(cardsTable.id, cardIds)));
+      return rows.map(rowToCard);
     });
   }
 
@@ -990,6 +1148,10 @@ export class SupabaseContentRepository implements ContentRepository {
     await this.scoped(async (db) => {
       await db.delete(profilesTable).where(eq(profilesTable.userId, this.userId));
       await db.delete(cardsTable).where(eq(cardsTable.userId, this.userId));
+      await db.delete(collectionsTable).where(eq(collectionsTable.userId, this.userId));
+      await db
+        .delete(cardCollectionMembersTable)
+        .where(eq(cardCollectionMembersTable.userId, this.userId));
       await db.delete(contentTable);
       await db.delete(errorEventsTable).where(eq(errorEventsTable.userId, this.userId));
       await db.delete(weaknessTable).where(eq(weaknessTable.userId, this.userId));

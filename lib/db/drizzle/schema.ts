@@ -20,6 +20,7 @@ export {
   MEDIA_ASSET_APPROVAL_STATUS_VALUES,
   MEDIA_ASSET_KIND_VALUES,
   MEDIA_ASSET_SOURCE_VALUES,
+  COLLECTION_KIND_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   UNIT_BUFFER_STATUS_VALUES,
@@ -36,6 +37,7 @@ import {
   MEDIA_ASSET_APPROVAL_STATUS_VALUES,
   MEDIA_ASSET_KIND_VALUES,
   MEDIA_ASSET_SOURCE_VALUES,
+  COLLECTION_KIND_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   UNIT_BUFFER_STATUS_VALUES,
@@ -163,8 +165,28 @@ export const cards = sqliteTable(
     dueAt: integer("due_at", { mode: "timestamp" }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     embedding: text("embedding"),
+    suspended: integer("suspended", { mode: "boolean" }).notNull().default(false),
   },
   (t) => [index("idx_cards_user_due").on(t.userId, t.dueAt)],
+);
+
+/** Named deck collections — user-created or unit-scoped (issue #90). */
+export const collections = sqliteTable("collections", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  kind: text("kind", { enum: COLLECTION_KIND_VALUES }).notNull(),
+});
+
+/** Many-to-many card membership in deck collections (issue #90). */
+export const cardCollectionMembers = sqliteTable(
+  "card_collection_members",
+  {
+    userId: text("user_id").notNull(),
+    collectionId: integer("collection_id").notNull(),
+    cardId: integer("card_id").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.collectionId, t.cardId] })],
 );
 
 /** Diagnostics error events — one row per tagged mistake. */

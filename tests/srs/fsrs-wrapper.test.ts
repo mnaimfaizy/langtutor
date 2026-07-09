@@ -148,6 +148,11 @@ describe("getDueCards", () => {
     expect(getDueCards([], T0)).toHaveLength(0);
   });
 
+  it("excludes suspended cards even when due", () => {
+    const suspendedDue = { id: 1, fsrs: initCard(T0), suspended: true };
+    expect(getDueCards([suspendedDue], T0)).toHaveLength(0);
+  });
+
   it("returns overdue cards (due date in the past)", () => {
     const overdue = { id: 1, fsrs: initCard(T0) }; // due = T0, checking at T_8DAYS
     expect(getDueCards([overdue], T_8DAYS)).toHaveLength(1);

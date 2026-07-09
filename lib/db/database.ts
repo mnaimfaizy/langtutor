@@ -3,6 +3,7 @@ import type {
   Card,
   Cefr,
   CollectibleGrant,
+  Collection,
   Content,
   ErrorEventRecord,
   GamificationState,
@@ -31,6 +32,15 @@ export type MediaAssetCompoundKey = [MediaAssetKind, string, string];
 /** Compound primary key for the `collectibleGrants` table: (collectibleId, unitId). */
 export type CollectibleGrantKey = [string, number];
 
+/** Compound primary key for `cardCollectionMembers`: (collectionId, cardId). */
+export type CardCollectionMemberKey = [number, number];
+
+/** Stored membership row in `cardCollectionMembers`. */
+export interface CardCollectionMember {
+  collectionId: number;
+  cardId: number;
+}
+
 /**
  * The IndexedDB database for Lang-Tutor — one store per PLAN §4 table.
  *
@@ -55,6 +65,8 @@ export class LangTutorDB extends Dexie {
   lexiconCache!: Table<LexiconCacheEntry, string>;
   mediaAssets!: Table<MediaAsset, MediaAssetCompoundKey>;
   collectibleGrants!: Table<CollectibleGrant, CollectibleGrantKey>;
+  collections!: EntityTable<Collection, "id">;
+  cardCollectionMembers!: Table<CardCollectionMember, CardCollectionMemberKey>;
 
   constructor(name = "lang-tutor") {
     super(name);
@@ -100,6 +112,11 @@ export class LangTutorDB extends Dexie {
     this.version(6).stores({
       questState: "id",
       collectibleGrants: "[collectibleId+unitId]",
+    });
+    // v7: deck collections + card suspend flag (issue #90).
+    this.version(7).stores({
+      collections: "++id, kind",
+      cardCollectionMembers: "[collectionId+cardId], collectionId, cardId",
     });
   }
 }

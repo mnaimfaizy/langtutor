@@ -12,6 +12,7 @@ export const UNIT_BUFFER_STATUS_VALUES = ["empty", "buffered"] as const;
 export const MEDIA_ASSET_KIND_VALUES = ["image", "audio"] as const;
 export const MEDIA_ASSET_SOURCE_VALUES = ["generated", "curated-pack"] as const;
 export const MEDIA_ASSET_APPROVAL_STATUS_VALUES = ["pending", "approved"] as const;
+export const COLLECTION_KIND_VALUES = ["user", "unit"] as const;
 
 export type ChatProvider = (typeof CHAT_PROVIDER_VALUES)[number];
 export type SttProvider = (typeof STT_PROVIDER_VALUES)[number];

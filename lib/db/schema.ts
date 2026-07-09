@@ -91,6 +91,21 @@ export interface FsrsState {
   lastReview?: Date;
 }
 
+/** Deck collection kind — user-created vs. unit-scoped (deck overhaul, issue #90). */
+export type CollectionKind = "user" | "unit";
+
+/** A named deck collection; cards may belong to multiple collections. */
+export interface Collection {
+  id: number;
+  name: string;
+  kind: CollectionKind;
+}
+
+/** {@link Collection} plus membership count for list views. */
+export interface CollectionSummary extends Collection {
+  cardCount: number;
+}
+
 /** Vocab SRS card (PLAN §4 `cards`). */
 export interface Card {
   id: number;
@@ -104,6 +119,8 @@ export interface Card {
   createdAt: Date;
   /** Semantic embedding vector from the configured embed model (Phase 1.6). */
   embedding?: number[];
+  /** When true, excluded from due queries; FSRS snapshot is retained (issue #90). */
+  suspended?: boolean;
 }
 
 /** Cached generated/seed content (PLAN §4 `content`). */

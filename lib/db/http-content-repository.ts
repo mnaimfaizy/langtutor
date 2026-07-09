@@ -5,12 +5,14 @@ import type {
   ErrorEventQuery,
   MediaAssetQuery,
   NewCard,
+  NewCollection,
   NewContent,
   NewErrorEvent,
   NewUnit,
 } from "./content-repository";
 import type {
   Card,
+  CollectionSummary,
   Content,
   ErrorEventRecord,
   CollectibleGrant,
@@ -33,6 +35,16 @@ import {
   repoClear,
   repoDeleteCard,
   repoDeleteMediaAsset,
+  repoSuspendCard,
+  repoUnsuspendCard,
+  repoResetCardProgress,
+  repoAddCollection,
+  repoRenameCollection,
+  repoDeleteCollection,
+  repoAddCardToCollection,
+  repoRemoveCardFromCollection,
+  repoGetCollections,
+  repoGetCollectionCards,
   repoExportBackup,
   repoGetAllCards,
   repoGetCard,
@@ -96,6 +108,36 @@ export class HttpContentRepository implements ContentRepository {
   }
   deleteCard(id: number): Promise<void> {
     return repoDeleteCard(id);
+  }
+  suspendCard(id: number): Promise<void> {
+    return repoSuspendCard(id);
+  }
+  unsuspendCard(id: number): Promise<void> {
+    return repoUnsuspendCard(id);
+  }
+  resetCardProgress(id: number, now?: Date): Promise<void> {
+    return repoResetCardProgress(id, now);
+  }
+  addCollection(collection: NewCollection): Promise<number> {
+    return repoAddCollection(collection);
+  }
+  renameCollection(id: number, name: string): Promise<void> {
+    return repoRenameCollection(id, name);
+  }
+  deleteCollection(id: number): Promise<void> {
+    return repoDeleteCollection(id);
+  }
+  addCardToCollection(collectionId: number, cardId: number): Promise<void> {
+    return repoAddCardToCollection(collectionId, cardId);
+  }
+  removeCardFromCollection(collectionId: number, cardId: number): Promise<void> {
+    return repoRemoveCardFromCollection(collectionId, cardId);
+  }
+  getCollections(): Promise<CollectionSummary[]> {
+    return repoGetCollections();
+  }
+  getCollectionCards(collectionId: number): Promise<Card[]> {
+    return repoGetCollectionCards(collectionId);
   }
   putContent(content: NewContent): Promise<number> {
     return repoPutContent(content);

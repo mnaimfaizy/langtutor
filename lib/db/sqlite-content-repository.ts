@@ -1,4 +1,4 @@
-import { and, asc, eq, lte } from "drizzle-orm";
+import { and, asc, eq, inArray, lte } from "drizzle-orm";
 
 import { env } from "@/lib/config/env";
 
@@ -9,6 +9,7 @@ import type {
   ErrorEventQuery,
   MediaAssetQuery,
   NewCard,
+  NewCollection,
   NewContent,
   NewErrorEvent,
   NewUnit,
@@ -17,7 +18,9 @@ import type { DrizzleClient } from "./drizzle/client";
 import {
   BOOTSTRAP_ADMIN_ID,
   appConfig,
+  cardCollectionMembers as cardCollectionMembersTable,
   cards as cardsTable,
+  collections as collectionsTable,
   content as contentTable,
   errorEvents as errorEventsTable,
   gamification as gamificationTable,
@@ -33,6 +36,7 @@ import type {
   Achievement,
   Card,
   CollectibleGrant,
+  CollectionSummary,
   Content,
   ErrorEventRecord,
   FsrsState,
@@ -49,6 +53,7 @@ import type {
   UnitActivityRef,
   Weakness,
 } from "./schema";
+import { initCard } from "@/lib/srs/fsrs-wrapper";
 
 const APP_CONFIG_ID = 1;
 const DEFAULT_GROQ_CHAT_MODEL = "llama-3.3-70b-versatile";
@@ -168,6 +173,7 @@ type CardRow = {
   dueAt: Date;
   createdAt: Date;
   embedding: string | null;
+  suspended: boolean;
 };
 
 function rowToCard(row: CardRow): Card {
@@ -181,6 +187,7 @@ function rowToCard(row: CardRow): Card {
     fsrs: parseFsrs(row.fsrs),
     createdAt: row.createdAt,
     embedding: row.embedding ? (JSON.parse(row.embedding) as number[]) : undefined,
+    suspended: row.suspended ? true : undefined,
   };
 }
 
@@ -415,6 +422,7 @@ export class SqliteContentRepository implements ContentRepository {
         dueAt: card.fsrs.due,
         createdAt: card.createdAt,
         embedding: card.embedding ? JSON.stringify(card.embedding) : null,
+        suspended: card.suspended ?? false,
       })
       .run();
     return Number(result.lastInsertRowid);
@@ -438,7 +446,13 @@ export class SqliteContentRepository implements ContentRepository {
     const rows = this.db
       .select()
       .from(cardsTable)
-      .where(and(eq(cardsTable.userId, this.userId), lte(cardsTable.dueAt, now)))
+      .where(
+        and(
+          eq(cardsTable.userId, this.userId),
+          lte(cardsTable.dueAt, now),
+          eq(cardsTable.suspended, false),
+        ),
+      )
       .orderBy(asc(cardsTable.dueAt))
       .all();
     return rows.map(rowToCard);
@@ -455,6 +469,7 @@ export class SqliteContentRepository implements ContentRepository {
       dueAt?: Date;
       createdAt?: Date;
       embedding?: string | null;
+      suspended?: boolean;
     };
     const patch: CardUpdate = {};
     if (changes.word !== undefined) patch.word = changes.word;
@@ -469,6 +484,7 @@ export class SqliteContentRepository implements ContentRepository {
     if (changes.createdAt !== undefined) patch.createdAt = changes.createdAt;
     if (changes.embedding !== undefined)
       patch.embedding = changes.embedding ? JSON.stringify(changes.embedding) : null;
+    if (changes.suspended !== undefined) patch.suspended = changes.suspended;
 
     this.db
       .update(cardsTable)
@@ -479,9 +495,149 @@ export class SqliteContentRepository implements ContentRepository {
 
   async deleteCard(id: number): Promise<void> {
     this.db
+      .delete(cardCollectionMembersTable)
+      .where(
+        and(
+          eq(cardCollectionMembersTable.userId, this.userId),
+          eq(cardCollectionMembersTable.cardId, id),
+        ),
+      )
+      .run();
+    this.db
       .delete(cardsTable)
       .where(and(eq(cardsTable.id, id), eq(cardsTable.userId, this.userId)))
       .run();
+  }
+
+  async suspendCard(id: number): Promise<void> {
+    await this.updateCard(id, { suspended: true });
+  }
+
+  async unsuspendCard(id: number): Promise<void> {
+    await this.updateCard(id, { suspended: false });
+  }
+
+  async resetCardProgress(id: number, now = new Date()): Promise<void> {
+    await this.updateCard(id, { fsrs: initCard(now) });
+  }
+
+  // ─── deck collections ───────────────────────────────────────────────────
+
+  async addCollection(collection: NewCollection): Promise<number> {
+    const result = this.db
+      .insert(collectionsTable)
+      .values({
+        userId: this.userId,
+        name: collection.name,
+        kind: collection.kind,
+      })
+      .run();
+    return Number(result.lastInsertRowid);
+  }
+
+  async renameCollection(id: number, name: string): Promise<void> {
+    this.db
+      .update(collectionsTable)
+      .set({ name })
+      .where(and(eq(collectionsTable.id, id), eq(collectionsTable.userId, this.userId)))
+      .run();
+  }
+
+  async deleteCollection(id: number): Promise<void> {
+    this.db
+      .delete(cardCollectionMembersTable)
+      .where(
+        and(
+          eq(cardCollectionMembersTable.userId, this.userId),
+          eq(cardCollectionMembersTable.collectionId, id),
+        ),
+      )
+      .run();
+    this.db
+      .delete(collectionsTable)
+      .where(and(eq(collectionsTable.id, id), eq(collectionsTable.userId, this.userId)))
+      .run();
+  }
+
+  async addCardToCollection(collectionId: number, cardId: number): Promise<void> {
+    const existing = this.db
+      .select()
+      .from(cardCollectionMembersTable)
+      .where(
+        and(
+          eq(cardCollectionMembersTable.userId, this.userId),
+          eq(cardCollectionMembersTable.collectionId, collectionId),
+          eq(cardCollectionMembersTable.cardId, cardId),
+        ),
+      )
+      .get();
+    if (existing) return;
+
+    this.db
+      .insert(cardCollectionMembersTable)
+      .values({
+        userId: this.userId,
+        collectionId,
+        cardId,
+      })
+      .run();
+  }
+
+  async removeCardFromCollection(collectionId: number, cardId: number): Promise<void> {
+    this.db
+      .delete(cardCollectionMembersTable)
+      .where(
+        and(
+          eq(cardCollectionMembersTable.userId, this.userId),
+          eq(cardCollectionMembersTable.collectionId, collectionId),
+          eq(cardCollectionMembersTable.cardId, cardId),
+        ),
+      )
+      .run();
+  }
+
+  async getCollections(): Promise<CollectionSummary[]> {
+    const collectionRows = this.db
+      .select()
+      .from(collectionsTable)
+      .where(eq(collectionsTable.userId, this.userId))
+      .all();
+
+    const memberRows = this.db
+      .select()
+      .from(cardCollectionMembersTable)
+      .where(eq(cardCollectionMembersTable.userId, this.userId))
+      .all();
+
+    return collectionRows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      kind: row.kind,
+      cardCount: memberRows.filter((member) => member.collectionId === row.id).length,
+    }));
+  }
+
+  async getCollectionCards(collectionId: number): Promise<Card[]> {
+    const memberRows = this.db
+      .select({ cardId: cardCollectionMembersTable.cardId })
+      .from(cardCollectionMembersTable)
+      .where(
+        and(
+          eq(cardCollectionMembersTable.userId, this.userId),
+          eq(cardCollectionMembersTable.collectionId, collectionId),
+        ),
+      )
+      .all();
+
+    if (memberRows.length === 0) return [];
+
+    const cardIds = memberRows.map((row) => row.cardId);
+    const rows = this.db
+      .select()
+      .from(cardsTable)
+      .where(and(eq(cardsTable.userId, this.userId), inArray(cardsTable.id, cardIds)))
+      .all();
+    return rows.map(rowToCard);
   }
 
   // ─── content ──────────────────────────────────────────────────────────────
@@ -938,6 +1094,11 @@ export class SqliteContentRepository implements ContentRepository {
   async clear(): Promise<void> {
     this.db.delete(profilesTable).where(eq(profilesTable.userId, this.userId)).run();
     this.db.delete(cardsTable).where(eq(cardsTable.userId, this.userId)).run();
+    this.db.delete(collectionsTable).where(eq(collectionsTable.userId, this.userId)).run();
+    this.db
+      .delete(cardCollectionMembersTable)
+      .where(eq(cardCollectionMembersTable.userId, this.userId))
+      .run();
     this.db.delete(contentTable).run();
     this.db.delete(errorEventsTable).where(eq(errorEventsTable.userId, this.userId)).run();
     this.db.delete(weaknessTable).where(eq(weaknessTable.userId, this.userId)).run();

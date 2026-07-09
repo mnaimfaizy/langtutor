@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { initCard, scheduleCard } from "@/lib/srs/fsrs-wrapper";
+
 import type {
   Cefr,
   ContentRepository,
@@ -206,6 +208,97 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
 
         const due = await repo.getDueCards(cutoff);
         expect(due.map((c) => c.word)).toEqual(["earlier-card", "later-card"]);
+      });
+
+      it("getDueCards excludes suspended cards but keeps their FSRS state", async () => {
+        const cutoff = new Date("2026-06-22T00:00:00.000Z");
+        const id = await repo.addCard(
+          makeCard("suspended-card", "A1", new Date("2026-06-01T00:00:00.000Z")),
+        );
+        const before = await repo.getCard(id);
+        await repo.suspendCard(id);
+
+        expect(await repo.getDueCards(cutoff)).toHaveLength(0);
+        const after = await repo.getCard(id);
+        expect(after?.fsrs).toEqual(before?.fsrs);
+        expect(after?.suspended).toBe(true);
+      });
+
+      it("resetCardProgress reinitializes FSRS to a new-card state", async () => {
+        const T0 = new Date("2025-01-01T12:00:00.000Z");
+        const id = await repo.addCard({
+          ...makeCard("reset-me", "A1", T0),
+          fsrs: scheduleCard(initCard(T0), "easy", T0),
+        });
+
+        await repo.resetCardProgress(id, T0);
+
+        expect((await repo.getCard(id))?.fsrs).toEqual(initCard(T0));
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    describe("deck collections (issue #90)", () => {
+      it("round-trips a collection and lists it with card count", async () => {
+        const id = await repo.addCollection({ name: "Travel words", kind: "user" });
+
+        expect(await repo.getCollections()).toEqual([
+          { id, name: "Travel words", kind: "user", cardCount: 0 },
+        ]);
+      });
+
+      it("renames a collection", async () => {
+        const id = await repo.addCollection({ name: "Old name", kind: "user" });
+        await repo.renameCollection(id, "New name");
+
+        expect((await repo.getCollections())[0]?.name).toBe("New name");
+      });
+
+      it("manages card membership and lists cards in a collection", async () => {
+        const collectionId = await repo.addCollection({ name: "Unit deck", kind: "unit" });
+        const cardA = await repo.addCard(makeCard("alpha", "A1"));
+        const cardB = await repo.addCard(makeCard("beta", "A1"));
+
+        await repo.addCardToCollection(collectionId, cardA);
+        await repo.addCardToCollection(collectionId, cardB);
+        await repo.addCardToCollection(collectionId, cardA);
+
+        expect((await repo.getCollections())[0]?.cardCount).toBe(2);
+        expect((await repo.getCollectionCards(collectionId)).map((c) => c.word).sort()).toEqual([
+          "alpha",
+          "beta",
+        ]);
+      });
+
+      it("removes a card from a collection without deleting the card", async () => {
+        const collectionId = await repo.addCollection({ name: "Subset", kind: "user" });
+        const cardId = await repo.addCard(makeCard("keep-me", "A1"));
+        await repo.addCardToCollection(collectionId, cardId);
+
+        await repo.removeCardFromCollection(collectionId, cardId);
+
+        expect((await repo.getCollections())[0]?.cardCount).toBe(0);
+        expect(await repo.getCard(cardId)).toBeDefined();
+      });
+
+      it("deleting a collection does not delete member cards", async () => {
+        const collectionId = await repo.addCollection({ name: "Temporary", kind: "user" });
+        const cardId = await repo.addCard(makeCard("survivor", "A1"));
+        await repo.addCardToCollection(collectionId, cardId);
+
+        await repo.deleteCollection(collectionId);
+
+        expect(await repo.getCollections()).toHaveLength(0);
+        expect((await repo.getCard(cardId))?.word).toBe("survivor");
+      });
+
+      it("unsuspendCard clears the suspended flag", async () => {
+        const id = await repo.addCard(makeCard("back-in-queue", "A1", new Date(0)));
+        await repo.suspendCard(id);
+        await repo.unsuspendCard(id);
+
+        expect((await repo.getCard(id))?.suspended).toBeFalsy();
+        expect(await repo.getDueCards(new Date())).toHaveLength(1);
       });
     });
 
@@ -608,7 +701,9 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
     describe("clear()", () => {
       it("wipes every table", async () => {
         await repo.saveProfile(makeProfile());
-        await repo.addCard(makeCard("temp", "A1"));
+        const cardId = await repo.addCard(makeCard("temp", "A1"));
+        const collectionId = await repo.addCollection({ name: "temp", kind: "user" });
+        await repo.addCardToCollection(collectionId, cardId);
         await repo.putContent(makeContent("passage", "A1", "x"));
         await repo.putMediaAsset({
           kind: "image",
@@ -639,6 +734,7 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
         expect(await repo.getUnits()).toEqual([]);
         expect(await repo.getQuestState()).toBeUndefined();
         expect(await repo.getCollectibles()).toEqual([]);
+        expect(await repo.getCollections()).toEqual([]);
       });
     });
 

@@ -6,12 +6,14 @@ import type {
   ErrorEventQuery,
   MediaAssetQuery,
   NewCard,
+  NewCollection,
   NewContent,
   NewErrorEvent,
   NewUnit,
 } from "@/lib/db/content-repository";
 import type {
   Card,
+  CollectionSummary,
   Content,
   ErrorEventRecord,
   CollectibleGrant,
@@ -78,6 +80,49 @@ export async function repoUpdateCard(id: number, changes: Partial<NewCard>): Pro
 
 export async function repoDeleteCard(id: number): Promise<void> {
   return (await getServerContentRepository()).deleteCard(id);
+}
+
+export async function repoSuspendCard(id: number): Promise<void> {
+  return (await getServerContentRepository()).suspendCard(id);
+}
+
+export async function repoUnsuspendCard(id: number): Promise<void> {
+  return (await getServerContentRepository()).unsuspendCard(id);
+}
+
+export async function repoResetCardProgress(id: number, now?: Date): Promise<void> {
+  return (await getServerContentRepository()).resetCardProgress(id, now);
+}
+
+export async function repoAddCollection(collection: NewCollection): Promise<number> {
+  return (await getServerContentRepository()).addCollection(collection);
+}
+
+export async function repoRenameCollection(id: number, name: string): Promise<void> {
+  return (await getServerContentRepository()).renameCollection(id, name);
+}
+
+export async function repoDeleteCollection(id: number): Promise<void> {
+  return (await getServerContentRepository()).deleteCollection(id);
+}
+
+export async function repoAddCardToCollection(collectionId: number, cardId: number): Promise<void> {
+  return (await getServerContentRepository()).addCardToCollection(collectionId, cardId);
+}
+
+export async function repoRemoveCardFromCollection(
+  collectionId: number,
+  cardId: number,
+): Promise<void> {
+  return (await getServerContentRepository()).removeCardFromCollection(collectionId, cardId);
+}
+
+export async function repoGetCollections(): Promise<CollectionSummary[]> {
+  return (await getServerContentRepository()).getCollections();
+}
+
+export async function repoGetCollectionCards(collectionId: number): Promise<Card[]> {
+  return (await getServerContentRepository()).getCollectionCards(collectionId);
 }
 
 export async function repoPutContent(content: NewContent): Promise<number> {

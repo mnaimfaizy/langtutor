@@ -6,6 +6,7 @@ import type {
   ErrorEventQuery,
   MediaAssetQuery,
   NewCard,
+  NewCollection,
   NewContent,
   NewErrorEvent,
   NewUnit,
@@ -13,6 +14,7 @@ import type {
 import type {
   Card,
   CollectibleGrant,
+  CollectionSummary,
   Content,
   ErrorEventRecord,
   GamificationState,
@@ -26,6 +28,7 @@ import type {
   Unit,
   Weakness,
 } from "./schema";
+import { initCard } from "@/lib/srs/fsrs-wrapper";
 
 /**
  * Dexie-backed {@link ContentRepository}. Constructed once in `lib/registry.ts`; feature
@@ -76,7 +79,11 @@ export class DexieContentRepository implements ContentRepository {
   }
 
   getDueCards(now: Date): Promise<Card[]> {
-    return this.db.cards.where("fsrs.due").belowOrEqual(now).toArray();
+    return this.db.cards
+      .where("fsrs.due")
+      .belowOrEqual(now)
+      .filter((card) => !card.suspended)
+      .toArray();
   }
 
   async updateCard(id: number, changes: Partial<NewCard>): Promise<void> {
@@ -84,7 +91,64 @@ export class DexieContentRepository implements ContentRepository {
   }
 
   async deleteCard(id: number): Promise<void> {
+    await this.db.cardCollectionMembers.where("cardId").equals(id).delete();
     await this.db.cards.delete(id);
+  }
+
+  async suspendCard(id: number): Promise<void> {
+    await this.updateCard(id, { suspended: true });
+  }
+
+  async unsuspendCard(id: number): Promise<void> {
+    await this.updateCard(id, { suspended: false });
+  }
+
+  async resetCardProgress(id: number, now = new Date()): Promise<void> {
+    await this.updateCard(id, { fsrs: initCard(now) });
+  }
+
+  // deck collections --------------------------------------------------------
+  addCollection(collection: NewCollection): Promise<number> {
+    return this.db.collections.add(collection);
+  }
+
+  async renameCollection(id: number, name: string): Promise<void> {
+    await this.db.collections.update(id, { name });
+  }
+
+  async deleteCollection(id: number): Promise<void> {
+    await this.db.cardCollectionMembers.where("collectionId").equals(id).delete();
+    await this.db.collections.delete(id);
+  }
+
+  async addCardToCollection(collectionId: number, cardId: number): Promise<void> {
+    const existing = await this.db.cardCollectionMembers.get([collectionId, cardId]);
+    if (existing) return;
+    await this.db.cardCollectionMembers.put({ collectionId, cardId });
+  }
+
+  async removeCardFromCollection(collectionId: number, cardId: number): Promise<void> {
+    await this.db.cardCollectionMembers.delete([collectionId, cardId]);
+  }
+
+  async getCollections(): Promise<CollectionSummary[]> {
+    const [collections, members] = await Promise.all([
+      this.db.collections.toArray(),
+      this.db.cardCollectionMembers.toArray(),
+    ]);
+    return collections.map((collection) => ({
+      ...collection,
+      cardCount: members.filter((member) => member.collectionId === collection.id).length,
+    }));
+  }
+
+  async getCollectionCards(collectionId: number): Promise<Card[]> {
+    const memberCardIds = await this.db.cardCollectionMembers
+      .where("collectionId")
+      .equals(collectionId)
+      .toArray();
+    const cards = await Promise.all(memberCardIds.map((member) => this.getCard(member.cardId)));
+    return cards.filter((card): card is Card => card !== undefined);
   }
 
   // content -----------------------------------------------------------------
