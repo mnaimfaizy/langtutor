@@ -44,5 +44,6 @@ Not feature work — upkeep.
 Off the main flow entirely.
 
 - **`/diagnosing-bugs`** — structured 6-phase debug loop for hard bugs and performance regressions.
+- **`/e2e-playwright`** — writing or fixing Playwright e2e without hitting the live Mac / Serwist traps.
 - **`/resolving-merge-conflicts`** — structured approach to in-progress git merge/rebase conflicts.
 - **`/handoff`** — compact the current conversation into a handoff document so a fresh agent can continue.

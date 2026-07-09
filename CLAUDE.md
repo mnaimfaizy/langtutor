@@ -23,6 +23,7 @@ Not sure which to use? Invoke **`/ask-matt`** — it routes to the right skill f
 | `tdd`                           | Building or fixing test-first                         |
 | `triage`                        | Working through incoming GitHub issues                |
 | `diagnosing-bugs`               | Hard bug or performance regression                    |
+| `e2e-playwright`                | Creating or fixing Playwright e2e (Mac stubs, SW)     |
 | `resolving-merge-conflicts`     | In-progress git merge/rebase conflict                 |
 | `handoff`                       | Handing context to the next session/agent             |
 | `seam-discipline`               | Touching the Mac/LLM, lexicon, DB, validation, or STT |
