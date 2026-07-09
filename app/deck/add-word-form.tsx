@@ -21,7 +21,13 @@ type AddStatus = "idle" | "adding" | "added" | "duplicate";
 
 const CEFR_LEVELS: Cefr[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
-export function AddWordForm() {
+export function AddWordForm({
+  className,
+  onCardAdded,
+}: {
+  className?: string;
+  onCardAdded?: () => void;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const reducedMotion = useReducedMotion() ?? false;
   const enter = resolveMotionPreset("enter", reducedMotion);
@@ -94,13 +100,14 @@ export function AddWordForm() {
       setAddStatus("added");
       setQuery("");
       setLookup({ kind: "idle" });
+      onCardAdded?.();
     } catch {
       setAddStatus("idle");
     }
   }
 
   return (
-    <div data-testid="add-word-form" className="mt-8 w-full">
+    <div data-testid="add-word-form" className={cn("w-full", className ?? "mt-8")}>
       <div className="flex gap-2">
         <Input
           ref={inputRef}
