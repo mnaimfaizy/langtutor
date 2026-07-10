@@ -6,11 +6,14 @@ import type { ImageGenerator } from "./image-generator";
 import { buildKidIllustrationPrompt, wordImageSeed } from "./prompts";
 
 const DEFAULT_STYLE = "kid-illustration";
-const IMAGE_WIDTH = 512;
-const IMAGE_HEIGHT = 512;
+/** Hosted NIM FLUX rejects 512; use an allowed square size (see nvidia-sizes.ts). */
+const IMAGE_WIDTH = 1024;
+const IMAGE_HEIGHT = 1024;
 
 /** Concrete generator, or a factory so store hits never need NVIDIA credentials. */
-export type ImageGeneratorSource = ImageGenerator | (() => ImageGenerator | Promise<ImageGenerator>);
+export type ImageGeneratorSource =
+  | ImageGenerator
+  | (() => ImageGenerator | Promise<ImageGenerator>);
 
 function normalizeWord(word: string): string {
   return word.toLowerCase().trim();

@@ -24,8 +24,8 @@ export class MockImageGenerator implements ImageGenerator {
     return {
       data: this.opts.data ?? new Uint8Array([1, 2, 3]),
       mimeType: this.opts.mimeType ?? "image/png",
-      width: options?.width ?? this.opts.width ?? 512,
-      height: options?.height ?? this.opts.height ?? 512,
+      width: options?.width ?? this.opts.width ?? 1024,
+      height: options?.height ?? this.opts.height ?? 1024,
       seed: options?.seed ?? this.opts.seed,
     };
   }

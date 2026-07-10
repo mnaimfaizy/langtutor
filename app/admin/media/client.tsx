@@ -1,9 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import type { MediaAssetKey, MediaAssetRecord } from "@/lib/db/schema";
-import { BackLink, Badge, Button, Card, CardContent, CardDescription, CardTitle, cn } from "@/ui";
+import {
+  BackLink,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardTitle,
+  buttonClassName,
+  cn,
+} from "@/ui";
 
 import {
   approveMediaAsset,
@@ -201,6 +212,21 @@ export function MediaReviewClient({
       <p className="text-muted mt-1 text-sm">
         Admin-only. Approve generated kid illustrations before learners can see them.
       </p>
+      <nav aria-label="Admin sections" className="mt-3 flex flex-wrap gap-2">
+        <Link
+          href="/admin/users"
+          className={buttonClassName({ variant: "ghost", size: "sm" })}
+          data-testid="admin-users-link"
+        >
+          Users
+        </Link>
+        <span
+          className={buttonClassName({ variant: "secondary", size: "sm" })}
+          aria-current="page"
+        >
+          Media review
+        </span>
+      </nav>
 
       {banner && (
         <p

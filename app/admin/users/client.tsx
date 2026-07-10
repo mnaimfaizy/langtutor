@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import type { AuthUser, UserRole } from "@/lib/auth/auth-provider";
@@ -19,6 +20,7 @@ import {
   DialogTitle,
   Input,
   SelectPill,
+  buttonClassName,
   cn,
 } from "@/ui";
 
@@ -84,6 +86,21 @@ export function UsersClient({ initialUsers }: { initialUsers: AuthUser[] }) {
       <BackLink href="/settings" label="Settings" />
       <h1 className="text-foreground mt-2 text-2xl font-semibold">User management</h1>
       <p className="text-muted mt-1 text-sm">Admin-only. Create and manage user accounts.</p>
+      <nav aria-label="Admin sections" className="mt-3 flex flex-wrap gap-2">
+        <span
+          className={buttonClassName({ variant: "secondary", size: "sm" })}
+          aria-current="page"
+        >
+          Users
+        </span>
+        <Link
+          href="/admin/media"
+          className={buttonClassName({ variant: "ghost", size: "sm" })}
+          data-testid="admin-media-link"
+        >
+          Media review
+        </Link>
+      </nav>
 
       <Card className="mt-6">
         <CardTitle>Users</CardTitle>

@@ -21,8 +21,14 @@ const macConfigFields = {
   MISTRAL_API_KEY: z.string().min(1).optional(),
   /** Optional env-first default Mistral embeddings model. */
   MISTRAL_EMBED_MODEL: z.string().min(1).optional(),
-  /** NVIDIA NIM API key — server-only; required for pre-A1 image generation (ADR 0016). */
+  /** NVIDIA NIM API key — server-only; primary pre-A1 image generation (ADR 0016). */
   NVIDIA_NIM_API_KEY: z.string().min(1).optional(),
+  /** Cloudflare Account ID — server-only; Workers AI image fallback (ADR 0016). */
+  CLOUDFLARE_ACCOUNT_ID: z.string().min(1).optional(),
+  /** Cloudflare API token — server-only; Workers AI Read/Edit for image fallback. */
+  CLOUDFLARE_API_TOKEN: z.string().min(1).optional(),
+  /** Image provider: nvidia | cloudflare | auto (NIM then CF on 404/429/5xx). */
+  IMAGE_GENERATOR_PROVIDER: z.enum(["nvidia", "cloudflare", "auto"]).optional(),
 };
 
 const localConfigSchema = z.object({

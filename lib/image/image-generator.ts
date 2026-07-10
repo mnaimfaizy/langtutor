@@ -1,8 +1,9 @@
 import type { ImageGenerateOptions, ImageGenerateResult } from "./types";
 
 /**
- * Image-generation seam (ADR 0016). Feature/server code imports **this interface**; the
- * concrete (`NvidiaNimImageGenerator`) is wired in `lib/image/server.ts`. "Move to a
+ * Image-generation seam (ADR 0016). Feature/server code imports **this interface**;
+ * concretes (`NvidiaNimImageGenerator`, `CloudflareWorkersAiImageGenerator`,
+ * `FallbackImageGenerator`) are wired in `lib/image/server.ts`. "Move to a
  * different image provider later" = swap the concrete there, not at any call site.
  *
  * The concrete only ever runs server-side (route handlers under `app/api/image/*`); the
