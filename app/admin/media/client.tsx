@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogTitle,
+  Input,
   buttonClassName,
   cn,
 } from "@/ui";
@@ -24,7 +25,10 @@ import {
 import {
   approveMediaAsset,
   getMediaAssetPreview,
+  getProactivePromptDraft,
   getRegeneratePromptDraft,
+  listImageCurriculumGaps,
+  proactiveGenerateMediaAsset,
   purgeMediaAsset,
   regenerateMediaAsset,
 } from "./actions";
@@ -235,15 +239,21 @@ function RegenerateDialog({
 export function MediaReviewClient({
   initialPending,
   initialApproved,
+  initialCurriculumGaps,
 }: {
   initialPending: MediaAssetRecord[];
   initialApproved: MediaAssetRecord[];
+  initialCurriculumGaps: string[];
 }) {
   const [pending, setPending] = useState(initialPending);
   const [approved, setApproved] = useState(initialApproved);
+  const [curriculumGaps, setCurriculumGaps] = useState(initialCurriculumGaps);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [banner, setBanner] = useState<Banner>(null);
   const [regenerateTarget, setRegenerateTarget] = useState<RegenerateTarget | null>(null);
+  const [proactiveWord, setProactiveWord] = useState("");
+  const [proactivePrompt, setProactivePrompt] = useState("");
+  const [proactiveBusy, setProactiveBusy] = useState(false);
 
   const runAction = useCallback(
     async (id: string, action: () => Promise<void>, success: string) => {
@@ -346,6 +356,72 @@ export function MediaReviewClient({
     }
   }
 
+  async function refreshCurriculumGaps() {
+    try {
+      const gaps = await listImageCurriculumGaps();
+      setCurriculumGaps(gaps);
+    } catch {
+      // Keep the prior list; banner already covers generate failures.
+    }
+  }
+
+  async function loadProactivePromptForWord(word: string) {
+    const trimmed = word.trim();
+    if (!trimmed) {
+      setProactivePrompt("");
+      return;
+    }
+    try {
+      const draft = await getProactivePromptDraft(trimmed);
+      setProactivePrompt(draft);
+    } catch {
+      setProactivePrompt("");
+    }
+  }
+
+  async function handleProactiveGenerate(word: string, prompt: string) {
+    const trimmed = word.trim();
+    if (!trimmed) {
+      setBanner({ tone: "error", text: "Enter a word to generate." });
+      return;
+    }
+    setProactiveBusy(true);
+    setBusyId(`proactive:${trimmed.toLowerCase()}`);
+    setBanner(null);
+    try {
+      const result = await proactiveGenerateMediaAsset(
+        trimmed,
+        prompt.trim().length > 0 ? prompt : undefined,
+      );
+      if (!result.ok) {
+        setBanner({ tone: "error", text: result.message });
+        return;
+      }
+      const created = result.asset;
+      const id = assetId(created);
+      setPending((prev) => {
+        const without = prev.filter((a) => assetId(a) !== id);
+        return [...without, created];
+      });
+      setCurriculumGaps((prev) => prev.filter((w) => w !== created.key));
+      setProactiveWord("");
+      setProactivePrompt("");
+      setBanner({
+        tone: "ok",
+        text: `Generated "${created.key}" — pending approval before learners can see it.`,
+      });
+      void refreshCurriculumGaps();
+    } catch (err) {
+      setBanner({
+        tone: "error",
+        text: err instanceof Error ? err.message : "Generation failed",
+      });
+    } finally {
+      setProactiveBusy(false);
+      setBusyId(null);
+    }
+  }
+
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
       <BackLink href="/settings" label="Settings" />
@@ -377,10 +453,105 @@ export function MediaReviewClient({
         <p
           className={cn("mt-4 text-sm", banner.tone === "ok" ? "text-success" : "text-danger")}
           role="status"
+          data-testid="media-banner"
         >
           {banner.text}
         </p>
       )}
+
+      <Card className="mt-6" data-testid="media-proactive-generate">
+        <CardTitle>Proactive generate</CardTitle>
+        <CardDescription>
+          Create a pending illustration for a word with no media row yet — no learner miss required.
+        </CardDescription>
+        <CardContent className="space-y-3">
+          <div>
+            <label htmlFor="media-proactive-word" className="text-foreground text-sm font-medium">
+              Word
+            </label>
+            <Input
+              id="media-proactive-word"
+              data-testid="media-proactive-word"
+              value={proactiveWord}
+              onChange={(event) => {
+                const next = event.target.value;
+                setProactiveWord(next);
+              }}
+              onBlur={() => void loadProactivePromptForWord(proactiveWord)}
+              disabled={proactiveBusy}
+              placeholder="e.g. xylophone"
+              className="mt-2"
+            />
+          </div>
+          <div>
+            <label htmlFor="media-proactive-prompt" className="text-foreground text-sm font-medium">
+              Prompt (optional)
+            </label>
+            <p className="text-muted mt-1 text-xs">
+              Leave blank to use the default kid-illustration template, or edit after the word field
+              blurs.
+            </p>
+            <textarea
+              id="media-proactive-prompt"
+              data-testid="media-proactive-prompt"
+              rows={4}
+              value={proactivePrompt}
+              onChange={(event) => setProactivePrompt(event.target.value)}
+              disabled={proactiveBusy}
+              className={cn(TEXTAREA_CLASS, "mt-2")}
+            />
+          </div>
+          <div className="flex justify-end">
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={proactiveBusy || proactiveWord.trim().length === 0}
+              data-testid="media-proactive-submit"
+              onClick={() => void handleProactiveGenerate(proactiveWord, proactivePrompt)}
+            >
+              {proactiveBusy ? "Generating…" : "Generate"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6" data-testid="media-curriculum-gaps">
+        <CardTitle>Curriculum gaps</CardTitle>
+        <CardDescription>
+          Pre-A1 vocabulary missing an image row. Generate one word at a time.
+        </CardDescription>
+        <CardContent>
+          {curriculumGaps.length === 0 ? (
+            <p className="text-muted text-sm" data-testid="media-curriculum-gaps-empty">
+              No missing pre-A1 image words.
+            </p>
+          ) : (
+            <ul className="divide-border divide-y" data-testid="media-curriculum-gaps-list">
+              {curriculumGaps.map((word) => {
+                const gapBusy = busyId === `proactive:${word}`;
+                return (
+                  <li
+                    key={word}
+                    className="flex items-center justify-between gap-3 py-3"
+                    data-testid={`media-gap-${word}`}
+                  >
+                    <span className="text-foreground text-sm font-medium">{word}</span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={proactiveBusy}
+                      data-testid={`media-gap-generate-${word}`}
+                      onClick={() => void handleProactiveGenerate(word, "")}
+                    >
+                      {gapBusy ? "Generating…" : "Generate"}
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="mt-6">
         <CardTitle>Pending review</CardTitle>

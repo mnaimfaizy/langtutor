@@ -108,3 +108,32 @@ export async function regenerateWordImage(
   }
   return asset;
 }
+
+/**
+ * Admin-only: create a pending image for a word with no store row (ADR 0020 / 0026).
+ * Rejects when a row already exists — use {@link regenerateWordImage} instead (ADR 0027).
+ * Optional `promptOverride` reuses the same produce path as regenerate (ADR 0023 / 0024).
+ */
+export async function proactiveGenerateWordImage(
+  repo: ContentRepository,
+  generator: ImageGeneratorSource,
+  word: string,
+  style: string = DEFAULT_STYLE,
+  promptOverride?: string | null,
+): Promise<MediaAsset> {
+  const normalized = normalizeWord(word);
+  if (!normalized) {
+    throw new Error("Word is required");
+  }
+  const key = mediaKey(normalized, style);
+
+  const existing = await repo.getMediaAssetRaw(key);
+  if (existing) {
+    throw new Error(`Image already exists for "${normalized}". Use regenerate instead.`);
+  }
+
+  const resolved = await resolveGenerator(generator);
+  const asset = await produceWordImage(resolved, normalized, style, promptOverride);
+  await repo.putMediaAsset(asset);
+  return asset;
+}
