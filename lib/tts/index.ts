@@ -6,5 +6,6 @@
  */
 export type { TtsOptions } from "./speech-synthesis";
 export { GROQ_ORPHEUS_VOICES, resolveTtsOptions } from "./speech-synthesis";
+export type { AdminAudioGenerateOptions } from "./resolve-word-audio";
 export type { TtsSynthesizer } from "./tts-synthesizer";
 export type { TtsSynthesizeOptions, TtsSynthesizeResult } from "./types";

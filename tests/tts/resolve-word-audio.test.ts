@@ -4,7 +4,11 @@ import { encodeWav } from "@/lib/audio/normalize";
 import { LangTutorDB } from "@/lib/db/database";
 import { DexieContentRepository } from "@/lib/db/dexie-content-repository";
 import { MockTtsSynthesizer } from "@/lib/tts/mock-tts-synthesizer";
-import { resolveWordAudio } from "@/lib/tts/resolve-word-audio";
+import {
+  proactiveGenerateWordAudio,
+  regenerateWordAudio,
+  resolveWordAudio,
+} from "@/lib/tts/resolve-word-audio";
 import {
   TTS_MAX_DURATION_SECONDS,
   applyTtsDurationCap,
@@ -150,6 +154,121 @@ describe("resolveWordAudio", () => {
     expect(synthesizer.calls).toHaveLength(1);
     expect(approved?.data).toEqual(new Uint8Array([9]));
     expect(approved?.approvalStatus).toBe("approved");
+  });
+});
+
+describe("regenerateWordAudio", () => {
+  it("replaces an approved clip with a pending one and forwards TTS knobs", async () => {
+    await repo.putMediaAsset({
+      kind: "audio",
+      key: "apple",
+      style: "default",
+      data: new Uint8Array([1]),
+      mimeType: "audio/wav",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      source: "generated",
+      approvalStatus: "approved",
+      prompt: null,
+    });
+
+    const synthesizer = new MockTtsSynthesizer({ data: new Uint8Array([99]) });
+    const regenerated = await regenerateWordAudio(repo, synthesizer, "Apple", "default", {
+      rate: 1.3,
+      voiceUri: "diana",
+    });
+
+    expect(synthesizer.calls).toHaveLength(1);
+    expect(synthesizer.calls[0]?.text).toBe("apple");
+    expect(synthesizer.calls[0]?.options).toEqual({ rate: 1.3, voiceUri: "diana" });
+    expect(regenerated.data).toEqual(new Uint8Array([99]));
+    expect(regenerated.approvalStatus).toBe("pending");
+    expect(regenerated.source).toBe("generated");
+    expect(await repo.getMediaAsset(AUDIO_KEY)).toBeUndefined();
+    expect(await repo.getMediaAssetRaw(AUDIO_KEY)).toEqual(regenerated);
+  });
+
+  it("truncates over-long WAV using an admin maxDurationSeconds under the hard cap", async () => {
+    const longWav = wavSeconds(8);
+    const synthesizer = new MockTtsSynthesizer({ data: longWav, mimeType: "audio/wav" });
+
+    await regenerateWordAudio(repo, synthesizer, "long", "default", {
+      maxDurationSeconds: 2,
+    });
+
+    const stored = await repo.getMediaAssetRaw({ kind: "audio", key: "long", style: "default" });
+    expect(stored?.approvalStatus).toBe("pending");
+    const duration = estimateWavDurationSeconds(stored!.data);
+    expect(duration).not.toBeNull();
+    expect(duration!).toBeLessThanOrEqual(2.01);
+  });
+
+  it("serves the new clip after approve without re-synthesis", async () => {
+    await repo.putMediaAsset({
+      kind: "audio",
+      key: "cat",
+      style: "default",
+      data: new Uint8Array([1]),
+      mimeType: "audio/wav",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      source: "generated",
+      approvalStatus: "approved",
+      prompt: null,
+    });
+
+    const synthesizer = new MockTtsSynthesizer({ data: new Uint8Array([55]) });
+    await regenerateWordAudio(repo, synthesizer, "cat", "default", { voiceUri: "hannah" });
+
+    const catKey = { kind: "audio" as const, key: "cat", style: "default" };
+    await repo.approveMediaAsset(catKey);
+    const approved = await resolveWordAudio(repo, synthesizer, "cat");
+
+    expect(synthesizer.calls).toHaveLength(1);
+    expect(approved?.data).toEqual(new Uint8Array([55]));
+  });
+});
+
+describe("proactiveGenerateWordAudio", () => {
+  it("creates a pending clip for a missing word and forwards TTS knobs", async () => {
+    const synthesizer = new MockTtsSynthesizer({ data: new Uint8Array([77]) });
+    const created = await proactiveGenerateWordAudio(repo, synthesizer, "Xylophone", "default", {
+      rate: 0.9,
+      voiceUri: "autumn",
+      maxDurationSeconds: 4,
+    });
+
+    expect(synthesizer.calls).toHaveLength(1);
+    expect(synthesizer.calls[0]?.text).toBe("xylophone");
+    expect(synthesizer.calls[0]?.options).toEqual({ rate: 0.9, voiceUri: "autumn" });
+    expect(created.key).toBe("xylophone");
+    expect(created.approvalStatus).toBe("pending");
+    expect(created.source).toBe("generated");
+    expect(created.data).toEqual(new Uint8Array([77]));
+    expect(
+      await repo.getMediaAssetRaw({ kind: "audio", key: "xylophone", style: "default" }),
+    ).toEqual(created);
+    expect(
+      await repo.getMediaAsset({ kind: "audio", key: "xylophone", style: "default" }),
+    ).toBeUndefined();
+  });
+
+  it("rejects when a media row already exists without calling the synthesizer", async () => {
+    await repo.putMediaAsset({
+      kind: "audio",
+      key: "apple",
+      style: "default",
+      data: new Uint8Array([1]),
+      mimeType: "audio/wav",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      source: "generated",
+      approvalStatus: "approved",
+      prompt: null,
+    });
+
+    const synthesizer = new MockTtsSynthesizer();
+    await expect(proactiveGenerateWordAudio(repo, synthesizer, "Apple")).rejects.toThrow(
+      /already exists.*regenerate/i,
+    );
+    expect(synthesizer.calls).toHaveLength(0);
   });
 });
 
