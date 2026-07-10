@@ -52,6 +52,26 @@
 
 **Media asset store** — shared storage of generated/curated images and TTS audio, keyed by word/phrase; generate once, reuse forever across users.
 
+**Media regenerate** — admin action that deletes (or overwrites) an existing media asset for a `(kind, key, style)` and produces a fresh generation for the same key.
+
+**Proactive generate** — admin action that creates a media asset for a word/phrase that has no store row yet, without waiting for a learner resolve miss.
+
+**Pending media gate** — generated (including admin-triggered) media assets are stored as `pending` and hidden from learners until an admin approves them.
+
+**TTS length cap** — server-enforced maximum duration for stored media-asset audio (~5s, truncate); applies to learner resolve and admin generate/regenerate. See also **TTS duration cap**.
+
+**Image prompt override** — optional admin-edited text used instead of the default kid-illustration template for a single image generate/regenerate; asset key stays the word + style.
+
+**Stored generation prompt** — optional `prompt` field on a generated media-asset image row recording the exact text sent to the image provider; null for curated-pack rows.
+
+**Admin audio media page** — dedicated admin route for reviewing and managing `kind: "audio"` media assets, separate from the image media page.
+
+**Curriculum gap helper** — admin UI list of known pre-A1 vocabulary words missing a media-asset row for the current kind/style, used to drive proactive generate.
+
+**Audio pending gate** — rule that newly generated TTS media assets start as `pending` and are hidden from learners until admin approval (parity with generated images).
+
+**TTS duration cap** — ~5 second maximum for stored media-asset audio; longer clips are truncated before persist; admin may purge unacceptable clips entirely.
+
 **Kid palette** — the bright/light theme family used in kid experience mode; shares the design system with the premium-dark adult brand.
 
 **Quest** — a daily/weekly gamification goal ("review 10 words") with a reward on completion.
