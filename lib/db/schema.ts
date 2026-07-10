@@ -215,7 +215,7 @@ export type MediaAssetKind = "image" | "audio";
 /** How a media asset entered the store — generated on demand or from the curated pack. */
 export type MediaAssetSource = "generated" | "curated-pack";
 
-/** Kid-safety review gate for generated images (issue #69). Audio bypasses pending. */
+/** Kid-safety review gate for generated images and audio (ADR 0028). */
 export type MediaAssetApprovalStatus = "pending" | "approved";
 
 /** Default approval for a new asset from the given source. */

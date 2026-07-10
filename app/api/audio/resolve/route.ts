@@ -18,7 +18,7 @@ const ResolveQuery = z.object({
  *
  * Resolves spoken audio for a word/phrase from the shared media store (ADR 0016).
  * On a store miss, synthesizes via the server-only `TtsSynthesizer` seam, persists
- * the result, and returns the audio bytes. Repeat requests are served from the store.
+ * a pending truncated clip (ADR 0028 / 0030), and returns bytes only once approved.
  */
 export async function GET(request: Request) {
   if (!isSameOrigin(request)) {
@@ -41,8 +41,11 @@ export async function GET(request: Request) {
 
   try {
     const repo = await getServerContentRepository();
-    // Lazy factory: store hits must not require GROQ_API_KEY.
+    // Lazy factory: approved/pending store hits must not require GROQ_API_KEY.
     const asset = await resolveWordAudio(repo, () => getTtsSynthesizer(), word, style);
+    if (!asset) {
+      return Response.json({ error: "Audio not available" }, { status: 404 });
+    }
 
     return new Response(Buffer.from(asset.data), {
       headers: {

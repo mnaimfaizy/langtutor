@@ -362,8 +362,15 @@ export function MediaReviewClient({
           Users
         </Link>
         <span className={buttonClassName({ variant: "secondary", size: "sm" })} aria-current="page">
-          Media review
+          Image media
         </span>
+        <Link
+          href="/admin/media/audio"
+          className={buttonClassName({ variant: "ghost", size: "sm" })}
+          data-testid="admin-audio-media-link"
+        >
+          Audio review
+        </Link>
       </nav>
 
       {banner && (

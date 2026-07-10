@@ -39,6 +39,7 @@ const MAJOR_PAGES: MajorPage[] = [
   { path: "/diagnostics", heading: "Diagnostics" },
   { path: "/settings", heading: "Settings" },
   { path: "/admin/media", heading: "Media review" },
+  { path: "/admin/media/audio", heading: "Audio review" },
   { path: "/admin/users", heading: "User management" },
 ];
 

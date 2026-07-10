@@ -475,14 +475,21 @@ export default function SettingsPage() {
         <Card className="mt-6">
           <CardTitle>Media review</CardTitle>
           <CardDescription>
-            Approve generated kid illustrations before learners can see them.
+            Approve generated illustrations and speech clips before learners can see or hear them.
           </CardDescription>
-          <CardContent>
+          <CardContent className="flex flex-wrap gap-2">
             <Link
               href="/admin/media"
               className={buttonClassName({ variant: "secondary", size: "sm" })}
             >
-              Review media →
+              Review images →
+            </Link>
+            <Link
+              href="/admin/media/audio"
+              className={buttonClassName({ variant: "secondary", size: "sm" })}
+              data-testid="admin-audio-media-link"
+            >
+              Review audio →
             </Link>
           </CardContent>
         </Card>

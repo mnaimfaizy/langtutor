@@ -95,7 +95,14 @@ export function UsersClient({ initialUsers }: { initialUsers: AuthUser[] }) {
           className={buttonClassName({ variant: "ghost", size: "sm" })}
           data-testid="admin-media-link"
         >
-          Media review
+          Image media
+        </Link>
+        <Link
+          href="/admin/media/audio"
+          className={buttonClassName({ variant: "ghost", size: "sm" })}
+          data-testid="admin-audio-media-link"
+        >
+          Audio review
         </Link>
       </nav>
 
