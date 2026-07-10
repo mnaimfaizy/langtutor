@@ -16,3 +16,17 @@ export function buildKidIllustrationPrompt(word: string): string {
     "Suitable for preschool vocabulary learning.",
   ].join(" ");
 }
+
+/**
+ * Effective prompt for an image generate/regenerate (ADR 0023).
+ * Uses a non-empty stored/override prompt when present; otherwise the kid template.
+ */
+export function resolveKidIllustrationPrompt(
+  word: string,
+  storedOrOverride?: string | null,
+): string {
+  const trimmed = storedOrOverride?.trim();
+  return trimmed && trimmed.length > 0
+    ? trimmed
+    : buildKidIllustrationPrompt(word.toLowerCase().trim());
+}

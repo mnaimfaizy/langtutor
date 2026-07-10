@@ -24,14 +24,14 @@ on the next `click` / `waitForURL`).
 
 ## Canonical files
 
-| File | Role |
-| ---- | ---- |
-| `playwright.config.ts` | `serviceWorkers: "block"`, webServer `NEXT_PUBLIC_E2E=1`, auth project |
-| `tests/e2e/fixtures.ts` | Extends `test` → `stubMacApis(page)` every test |
-| `tests/e2e/stub-mac-apis.ts` | Default Mac stubs + `overridePathPlan` |
-| `tests/e2e/auth.setup.ts` | Admin session → `AUTH_FILE`; also stubs Mac |
-| `tests/e2e/auth-constants.ts` | `AUTH_FILE`, admin email/password |
-| `app/pwa-provider.tsx` | Disables Serwist under e2e / webdriver |
+| File                          | Role                                                                   |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `playwright.config.ts`        | `serviceWorkers: "block"`, webServer `NEXT_PUBLIC_E2E=1`, auth project |
+| `tests/e2e/fixtures.ts`       | Extends `test` → `stubMacApis(page)` every test                        |
+| `tests/e2e/stub-mac-apis.ts`  | Default Mac stubs + `overridePathPlan`                                 |
+| `tests/e2e/auth.setup.ts`     | Admin session → `AUTH_FILE`; also stubs Mac                            |
+| `tests/e2e/auth-constants.ts` | `AUTH_FILE`, admin email/password                                      |
+| `app/pwa-provider.tsx`        | Disables Serwist under e2e / webdriver                                 |
 
 ## What `stubMacApis` covers
 
@@ -69,11 +69,11 @@ Do **not** only `page.route` without `unroute` — LIFO races with the fixture s
 
 ## Auth matrix
 
-| Spec storageState | Default `request` | Safe for `/api/test/*`? |
-| ----------------- | ----------------- | ------------------------ |
-| Project default (`AUTH_FILE`) | Admin cookie | Yes |
-| Cleared (`cookies: [], origins: []`) | Logged out | **No** — use admin `browser.newContext` |
-| Manual kid context | N/A | Seed before kid work with admin context |
+| Spec storageState                    | Default `request` | Safe for `/api/test/*`?                 |
+| ------------------------------------ | ----------------- | --------------------------------------- |
+| Project default (`AUTH_FILE`)        | Admin cookie      | Yes                                     |
+| Cleared (`cookies: [], origins: []`) | Logged out        | **No** — use admin `browser.newContext` |
+| Manual kid context                   | N/A               | Seed before kid work with admin context |
 
 `requireUser()` on test routes redirects to `/login` when unauthenticated. Playwright
 `request` may follow redirects and return HTML — always `expect(res.ok())`.

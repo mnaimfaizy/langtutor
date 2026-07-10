@@ -12,6 +12,11 @@ import {
   CardContent,
   CardDescription,
   CardTitle,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
   buttonClassName,
   cn,
 } from "@/ui";
@@ -19,11 +24,20 @@ import {
 import {
   approveMediaAsset,
   getMediaAssetPreview,
+  getRegeneratePromptDraft,
   purgeMediaAsset,
   regenerateMediaAsset,
 } from "./actions";
 
 type Banner = { tone: "ok" | "error"; text: string } | null;
+
+type RegenerateTarget = {
+  asset: MediaAssetRecord;
+  draftPrompt: string;
+};
+
+const TEXTAREA_CLASS =
+  "border-border bg-card text-foreground placeholder:text-muted focus-visible:border-accent focus-visible:ring-accent focus-visible:ring-offset-background w-full resize-y rounded-lg border px-3 py-2 text-sm leading-6 transition-[colors,box-shadow] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-60";
 
 function assetId(asset: MediaAssetRecord): string {
   return `${asset.kind}:${asset.key}:${asset.style}`;
@@ -112,7 +126,13 @@ function AssetRow({
           </Button>
         )}
         {onRegenerate && (
-          <Button variant="secondary" size="sm" disabled={busy} onClick={onRegenerate}>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={busy}
+            onClick={onRegenerate}
+            data-testid="media-regenerate"
+          >
             Regenerate
           </Button>
         )}
@@ -121,6 +141,94 @@ function AssetRow({
         </Button>
       </div>
     </li>
+  );
+}
+
+function RegenerateDialogBody({
+  asset,
+  initialPrompt,
+  busy,
+  onConfirm,
+}: {
+  asset: MediaAssetRecord;
+  initialPrompt: string;
+  busy: boolean;
+  onConfirm: (prompt: string) => void;
+}) {
+  const [prompt, setPrompt] = useState(initialPrompt);
+
+  return (
+    <>
+      <DialogTitle>Regenerate “{asset.key}”</DialogTitle>
+      <DialogDescription>
+        Learners will not see an image for this word until you approve the new generation.
+      </DialogDescription>
+
+      <div className="mt-4 space-y-3">
+        <div>
+          <label htmlFor="media-regenerate-prompt" className="text-foreground text-sm font-medium">
+            Prompt
+          </label>
+          <p className="text-muted mt-1 text-xs">
+            Pre-filled from the last stored prompt, or the default kid-illustration template.
+          </p>
+          <textarea
+            id="media-regenerate-prompt"
+            data-testid="media-regenerate-prompt"
+            rows={5}
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            disabled={busy}
+            className={cn(TEXTAREA_CLASS, "mt-2")}
+          />
+        </div>
+
+        <p className="text-warning text-sm" role="status" data-testid="media-regenerate-warning">
+          Regenerating replaces the current image and creates a pending gap for learners until you
+          re-approve.
+        </p>
+
+        <div className="flex justify-end gap-2">
+          <DialogClose disabled={busy}>Cancel</DialogClose>
+          <Button
+            variant="primary"
+            disabled={busy || prompt.trim().length === 0}
+            data-testid="media-regenerate-confirm"
+            onClick={() => onConfirm(prompt)}
+          >
+            {busy ? "Regenerating…" : "Regenerate"}
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function RegenerateDialog({
+  target,
+  busy,
+  onOpenChange,
+  onConfirm,
+}: {
+  target: RegenerateTarget | null;
+  busy: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: (prompt: string) => void;
+}) {
+  return (
+    <Dialog open={target !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[min(90vw,36rem)]" data-testid="media-regenerate-dialog">
+        {target && (
+          <RegenerateDialogBody
+            key={assetId(target.asset)}
+            asset={target.asset}
+            initialPrompt={target.draftPrompt}
+            busy={busy}
+            onConfirm={onConfirm}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -135,6 +243,7 @@ export function MediaReviewClient({
   const [approved, setApproved] = useState(initialApproved);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [banner, setBanner] = useState<Banner>(null);
+  const [regenerateTarget, setRegenerateTarget] = useState<RegenerateTarget | null>(null);
 
   const runAction = useCallback(
     async (id: string, action: () => Promise<void>, success: string) => {
@@ -186,15 +295,47 @@ export function MediaReviewClient({
     );
   }
 
-  async function handleRegenerate(asset: MediaAssetRecord) {
+  async function openRegenerate(asset: MediaAssetRecord) {
+    const id = assetId(asset);
+    setBusyId(id);
+    setBanner(null);
+    try {
+      const draftPrompt = await getRegeneratePromptDraft({
+        kind: asset.kind,
+        key: asset.key,
+        style: asset.style,
+      });
+      setRegenerateTarget({ asset, draftPrompt });
+    } catch (err) {
+      setBanner({
+        tone: "error",
+        text: err instanceof Error ? err.message : "Could not load prompt",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleRegenerateConfirm(prompt: string) {
+    const target = regenerateTarget;
+    if (!target) return;
+    const { asset } = target;
     const id = assetId(asset);
     const key: MediaAssetKey = { kind: asset.kind, key: asset.key, style: asset.style };
     setBusyId(id);
     setBanner(null);
     try {
-      const updated = await regenerateMediaAsset(key);
-      setPending((prev) => prev.map((a) => (assetId(a) === id ? updated : a)));
-      setBanner({ tone: "ok", text: `Regenerated "${asset.key}".` });
+      const updated = await regenerateMediaAsset(key, prompt);
+      setApproved((prev) => prev.filter((a) => assetId(a) !== id));
+      setPending((prev) => {
+        const without = prev.filter((a) => assetId(a) !== id);
+        return [...without, updated];
+      });
+      setRegenerateTarget(null);
+      setBanner({
+        tone: "ok",
+        text: `Regenerated "${asset.key}" — pending approval before learners can see it.`,
+      });
     } catch (err) {
       setBanner({
         tone: "error",
@@ -220,10 +361,7 @@ export function MediaReviewClient({
         >
           Users
         </Link>
-        <span
-          className={buttonClassName({ variant: "secondary", size: "sm" })}
-          aria-current="page"
-        >
+        <span className={buttonClassName({ variant: "secondary", size: "sm" })} aria-current="page">
           Media review
         </span>
       </nav>
@@ -254,7 +392,7 @@ export function MediaReviewClient({
                   busy={busyId === assetId(asset)}
                   onApprove={() => void handleApprove(asset)}
                   onPurge={() => void handlePurge(asset, "pending")}
-                  onRegenerate={() => void handleRegenerate(asset)}
+                  onRegenerate={() => void openRegenerate(asset)}
                 />
               ))}
             </ul>
@@ -264,7 +402,9 @@ export function MediaReviewClient({
 
       <Card className="mt-6">
         <CardTitle>Approved</CardTitle>
-        <CardDescription>Images visible to learners.</CardDescription>
+        <CardDescription>
+          Images visible to learners. Regenerating creates a pending gap until re-approval.
+        </CardDescription>
         <CardContent>
           {approved.length === 0 ? (
             <p className="text-muted text-sm">No approved images yet.</p>
@@ -276,12 +416,22 @@ export function MediaReviewClient({
                   asset={asset}
                   busy={busyId === assetId(asset)}
                   onPurge={() => void handlePurge(asset, "approved")}
+                  onRegenerate={() => void openRegenerate(asset)}
                 />
               ))}
             </ul>
           )}
         </CardContent>
       </Card>
+
+      <RegenerateDialog
+        target={regenerateTarget}
+        busy={regenerateTarget !== null && busyId === assetId(regenerateTarget.asset)}
+        onOpenChange={(open) => {
+          if (!open && busyId === null) setRegenerateTarget(null);
+        }}
+        onConfirm={(prompt) => void handleRegenerateConfirm(prompt)}
+      />
     </main>
   );
 }

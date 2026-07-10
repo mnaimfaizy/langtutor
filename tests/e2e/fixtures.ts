@@ -10,8 +10,8 @@ export { expect };
 export type { Page } from "@playwright/test";
 
 export const test = base.extend({
-  page: async ({ page }, use) => {
+  page: async ({ page }, provide) => {
     await stubMacApis(page);
-    await use(page);
+    await provide(page);
   },
 });

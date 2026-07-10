@@ -158,6 +158,7 @@ describe("Migration — schema shape", () => {
     expect(columns("media_assets")).toContain("key");
     expect(columns("media_assets")).toContain("style");
     expect(columns("media_assets")).toContain("data");
+    expect(columns("media_assets")).toContain("prompt");
   });
 
   it("profile has user_id (per-user table)", () => {

@@ -24,17 +24,24 @@
   `pnpm exec playwright install chromium` (no `--with-deps`) is safe — it installs to the
   container-native `/ms-playwright` path, never to a bind mount.
 - **Wiping `node_modules` / the pnpm store more than once.** See anti-thrash rule below.
-- **`pkill -f "<pattern>"` / `killall`.** With `-f`, `pkill` matches the _full command line_ of
-  every process — including the shell running your own `pkill` — so it self-signals and aborts
-  the run (issue #62: exit 137 on `playwright`, exit 143 on `next dev`). True for **any** pattern.
+- **`pkill` / `killall` (any form, including the old "bracket trick").** With `-f`, `pkill`
+  matches the _full command line_ of every process — including the shell running your own
+  `pkill` — so it self-signals and aborts the run (issue #62: exit 137 on `playwright`,
+  exit 143 on `next dev`). The bracket form (`pkill -f 'next[ ]dev'`) is **also banned**:
+  the agent launch argv embeds this entire contract, so the literal text of the pattern
+  appears in the agent process cmdline and `pkill` SIGTERMs the agent (issue #108 run:
+  exit 143 mid-cleanup). True for **any** pattern. Kill by numeric PID only (`kill <pid>`).
 
 ## Process cleanup
 
 Don't kill anything — Playwright starts and `SIGTERM`s its own dev server per invocation. Between
 e2e runs, just clear stale build/db state: `rm -rf .next && rm -f langtutor-e2e.db*`.
 
-If a wedged server is genuinely still listening and a kill is unavoidable, use the "bracket trick"
-so the regex can't match its own command line: `pkill -f 'next[ ]dev' 2>/dev/null || true`.
+If a wedged server is genuinely still listening and a kill is unavoidable:
+
+1. List PIDs with `ps` / `pgrep` (read-only).
+2. `kill <pid>` (then `kill -9 <pid>` only if it ignores SIGTERM).
+3. Never `pkill` / `killall`.
 
 ## Anti-thrash rule
 
@@ -84,4 +91,17 @@ Do not enter an edit → revert → reinstall → re-apply loop. One reinstall a
   curl replays of the same sequence succeed, so it's Playwright's concurrent load on a cold dev
   server, not the lexicon route). Per the E2E policy above: run once, don't retry, hand off to a
   human.
+- **(issue #108) ESLint `react-hooks/rules-of-hooks` false-positive on Playwright fixture `use`**
+  in `tests/e2e/fixtures.ts` — calling the fixture setup's second callback (conventionally named
+  `use`) is misread as React's `use` hook. Rename the parameter (e.g. `provide`) — Playwright
+  only requires invoking that callback; the identifier name is not part of the API contract.
+- **(issue #108) `pnpm format:check` fails on clean HEAD** for a fixed set of already-committed
+  files (e2e specs, deck UI, AGENTS.md, e2e-playwright reference.md). Prettier `--write` on those
+  paths is required before `pnpm verify` can pass; include the format-only touch in the same
+  commit when blocked. `.claude/skills/**/SKILL.md` is in `.prettierignore` because Prettier
+  Markdown rewrites `llm/*` globs to `llm/_`.
+- **(issue #108) Bracket-trick process cleanup kills the agent (exit 143).** The agent
+  `--force` prompt includes this contract verbatim, so a full-cmdline pattern match still
+  hits the agent process. Prefer leaving hung Playwright alone (e2e policy: run once, don't
+  retry, hand off) or kill by numeric PID only. See Hard bans above.
 - (Add new, verified findings here — with the run/issue number.)

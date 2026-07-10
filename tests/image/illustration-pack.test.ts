@@ -31,6 +31,7 @@ describe("seedIllustrationPackIfEmpty", () => {
     expect(rows).toHaveLength(illustrationPackEntryCount());
     expect(rows.every((row) => row.source === "curated-pack")).toBe(true);
     expect(rows.every((row) => row.style === ILLUSTRATION_PACK_STYLE)).toBe(true);
+    expect(rows.every((row) => row.prompt === null)).toBe(true);
   });
 
   it("is idempotent on repeat calls", async () => {

@@ -9,7 +9,6 @@ import { MOCK_PASSAGE, MOCK_PROMPT } from "./stub-mac-apis";
 // writing, matching the issue's e2e acceptance criterion.
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword — see onboarding.spec.ts
 
-
 test.beforeEach(async ({ request }) => {
   test.setTimeout(180_000);
   await request.post("/api/test/reset");

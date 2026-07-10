@@ -123,6 +123,8 @@ export const mediaAssets = sqliteTable(
     approvalStatus: text("approval_status", { enum: MEDIA_ASSET_APPROVAL_STATUS_VALUES })
       .notNull()
       .default("approved"),
+    /** Generation prompt for generated images only (ADR 0024); null for curated-pack/audio. */
+    prompt: text("prompt"),
   },
   (t) => [primaryKey({ columns: [t.kind, t.key, t.style] })],
 );

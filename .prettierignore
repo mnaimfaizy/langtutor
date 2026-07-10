@@ -18,3 +18,6 @@ supabase/.temp
 # Hand-authored long-form docs (avoid reflowing tables)
 PLAN.md
 English Learning Web App Guide.md
+# Skill docs with `path/*` globs — Prettier Markdown treats `*` as emphasis and
+# rewrites e.g. `llm/*` → `llm/_` (issue #108).
+.claude/skills/**/SKILL.md

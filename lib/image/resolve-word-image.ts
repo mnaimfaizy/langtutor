@@ -3,7 +3,7 @@ import type { ContentRepository } from "@/lib/db/content-repository";
 import { defaultMediaAssetApproval, type MediaAsset, type MediaAssetKey } from "@/lib/db/schema";
 
 import type { ImageGenerator } from "./image-generator";
-import { buildKidIllustrationPrompt, wordImageSeed } from "./prompts";
+import { resolveKidIllustrationPrompt, wordImageSeed } from "./prompts";
 
 const DEFAULT_STYLE = "kid-illustration";
 /** Hosted NIM FLUX rejects 512; use an allowed square size (see nvidia-sizes.ts). */
@@ -31,8 +31,9 @@ async function produceWordImage(
   generator: ImageGenerator,
   normalized: string,
   style: string,
+  promptOverride?: string | null,
 ): Promise<MediaAsset> {
-  const prompt = buildKidIllustrationPrompt(normalized);
+  const prompt = resolveKidIllustrationPrompt(normalized, promptOverride);
   const generated = await generator.generate(prompt, {
     width: IMAGE_WIDTH,
     height: IMAGE_HEIGHT,
@@ -48,6 +49,7 @@ async function produceWordImage(
     createdAt: new Date(),
     source: "generated",
     approvalStatus: defaultMediaAssetApproval("generated"),
+    prompt,
   };
 }
 
@@ -76,12 +78,15 @@ export async function resolveWordImage(
 
 /**
  * Admin-only: delete the existing asset for @word and generate a fresh pending image.
+ * Optional `promptOverride` steers the generation (ADR 0023); the effective prompt is
+ * persisted on the new generated row (ADR 0024).
  */
 export async function regenerateWordImage(
   repo: ContentRepository,
   generator: ImageGeneratorSource,
   word: string,
   style: string = DEFAULT_STYLE,
+  promptOverride?: string | null,
 ): Promise<MediaAsset> {
   const normalized = normalizeWord(word);
   const key = mediaKey(normalized, style);
@@ -92,7 +97,7 @@ export async function regenerateWordImage(
     key,
     async () => {
       const resolved = await resolveGenerator(generator);
-      return produceWordImage(resolved, normalized, style);
+      return produceWordImage(resolved, normalized, style, promptOverride);
     },
     {
       forceRegenerate: true,

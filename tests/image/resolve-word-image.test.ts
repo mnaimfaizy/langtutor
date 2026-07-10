@@ -23,7 +23,7 @@ afterEach(async () => {
 });
 
 describe("resolveWordImage", () => {
-  it("invokes the generator exactly once on a store miss and stores a pending asset", async () => {
+  it("invokes the generator exactly once on a store miss and stores a pending asset with prompt", async () => {
     const generator = new MockImageGenerator({ data: new Uint8Array([42]) });
 
     const first = await resolveWordImage(repo, generator, "Apple");
@@ -38,6 +38,7 @@ describe("resolveWordImage", () => {
     expect(stored?.data).toEqual(new Uint8Array([42]));
     expect(stored?.approvalStatus).toBe("pending");
     expect(stored?.source).toBe("generated");
+    expect(stored?.prompt).toBe(buildKidIllustrationPrompt("apple"));
     expect(await repo.getMediaAsset(IMAGE_KEY)).toBeUndefined();
   });
 
@@ -51,6 +52,7 @@ describe("resolveWordImage", () => {
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       source: "generated",
       approvalStatus: "approved",
+      prompt: buildKidIllustrationPrompt("cat"),
     });
 
     const generator = new MockImageGenerator();
@@ -72,6 +74,7 @@ describe("resolveWordImage", () => {
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       source: "generated",
       approvalStatus: "pending",
+      prompt: null,
     });
 
     const factory = vi.fn(async () => {
@@ -93,6 +96,7 @@ describe("resolveWordImage", () => {
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       source: "generated",
       approvalStatus: "pending",
+      prompt: null,
     });
 
     const generator = new MockImageGenerator();
@@ -104,7 +108,7 @@ describe("resolveWordImage", () => {
 });
 
 describe("regenerateWordImage", () => {
-  it("replaces a pending asset with a freshly generated one", async () => {
+  it("replaces a pending asset with a freshly generated one and stores the default prompt", async () => {
     await repo.putMediaAsset({
       kind: "image",
       key: "ball",
@@ -114,16 +118,58 @@ describe("regenerateWordImage", () => {
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       source: "generated",
       approvalStatus: "pending",
+      prompt: "old prompt",
     });
 
     const generator = new MockImageGenerator({ data: new Uint8Array([99]) });
     const regenerated = await regenerateWordImage(repo, generator, "ball");
 
     expect(generator.calls).toHaveLength(1);
+    expect(generator.calls[0]?.prompt).toBe(buildKidIllustrationPrompt("ball"));
     expect(regenerated.data).toEqual(new Uint8Array([99]));
     expect(regenerated.approvalStatus).toBe("pending");
+    expect(regenerated.prompt).toBe(buildKidIllustrationPrompt("ball"));
     expect(
       await repo.getMediaAssetRaw({ kind: "image", key: "ball", style: "kid-illustration" }),
     ).toEqual(regenerated);
+    expect(
+      await repo.getMediaAsset({ kind: "image", key: "ball", style: "kid-illustration" }),
+    ).toBeUndefined();
+  });
+
+  it("accepts a prompt override, persists it, and hides the image until approve", async () => {
+    await repo.putMediaAsset({
+      kind: "image",
+      key: "apple",
+      style: "kid-illustration",
+      data: new Uint8Array([1]),
+      mimeType: "image/png",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      source: "curated-pack",
+      approvalStatus: "approved",
+      prompt: null,
+    });
+
+    const override = "A bright red apple cartoon for toddlers, plain white background.";
+    const generator = new MockImageGenerator({ data: new Uint8Array([55]) });
+    const regenerated = await regenerateWordImage(
+      repo,
+      generator,
+      "apple",
+      "kid-illustration",
+      override,
+    );
+
+    expect(generator.calls[0]?.prompt).toBe(override);
+    expect(regenerated.source).toBe("generated");
+    expect(regenerated.approvalStatus).toBe("pending");
+    expect(regenerated.prompt).toBe(override);
+    expect(await repo.getMediaAsset(IMAGE_KEY)).toBeUndefined();
+
+    await repo.approveMediaAsset(IMAGE_KEY);
+    const approved = await resolveWordImage(repo, generator, "apple");
+    expect(approved?.data).toEqual(new Uint8Array([55]));
+    expect(approved?.prompt).toBe(override);
+    expect(generator.calls).toHaveLength(1);
   });
 });

@@ -90,6 +90,7 @@ function rowToMediaAsset(row: typeof mediaAssetsTable.$inferSelect): MediaAsset 
     createdAt: row.createdAt,
     source: row.source,
     approvalStatus: row.approvalStatus,
+    prompt: row.prompt ?? null,
   };
 }
 
@@ -1006,6 +1007,7 @@ export class SupabaseContentRepository implements ContentRepository {
   async putMediaAsset(asset: MediaAsset): Promise<void> {
     await this.scoped(async (db) => {
       const normalized = normalizeMediaAssetKey(asset);
+      const prompt = asset.source === "generated" ? (asset.prompt ?? null) : null;
       await db
         .insert(mediaAssetsTable)
         .values({
@@ -1017,6 +1019,7 @@ export class SupabaseContentRepository implements ContentRepository {
           createdAt: asset.createdAt,
           source: asset.source,
           approvalStatus: asset.approvalStatus,
+          prompt,
         })
         .onConflictDoUpdate({
           target: [mediaAssetsTable.kind, mediaAssetsTable.key, mediaAssetsTable.style],
@@ -1026,6 +1029,7 @@ export class SupabaseContentRepository implements ContentRepository {
             createdAt: asset.createdAt,
             source: asset.source,
             approvalStatus: asset.approvalStatus,
+            prompt,
           },
         });
     });

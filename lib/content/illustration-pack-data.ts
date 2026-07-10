@@ -70,6 +70,7 @@ function packAsset(entry: IllustrationPackManifest["entries"][number], style: st
     createdAt: PACK_CREATED_AT,
     source: "curated-pack",
     approvalStatus: "approved",
+    prompt: null,
   };
 }
 

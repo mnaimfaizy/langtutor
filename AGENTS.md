@@ -29,20 +29,20 @@ phase history and `docs/decisions.md` for open roadmap items.
 
 ## Commands
 
-| Command                                    | What it does                                                                      |
-| ------------------------------------------ | --------------------------------------------------------------------------------- |
-| `pnpm dev`                                 | Dev server (Turbopack) at http://localhost:3000                                   |
-| `pnpm build`                               | Production build (Turbopack)                                                      |
-| `pnpm start`                               | Serve the production build                                                        |
-| `pnpm lint` / `pnpm lint:fix`              | ESLint (flat config)                                                              |
-| `pnpm typecheck`                           | `tsc --noEmit`                                                                    |
-| `pnpm format` / `pnpm format:check`        | Prettier (+ Tailwind class sort)                                                  |
-| `pnpm test` / `pnpm test:watch`            | Vitest (unit; node env + `fake-indexeddb`)                                        |
+| Command                                    | What it does                                                                                                                                                                                      |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                                 | Dev server (Turbopack) at http://localhost:3000                                                                                                                                                   |
+| `pnpm build`                               | Production build (Turbopack)                                                                                                                                                                      |
+| `pnpm start`                               | Serve the production build                                                                                                                                                                        |
+| `pnpm lint` / `pnpm lint:fix`              | ESLint (flat config)                                                                                                                                                                              |
+| `pnpm typecheck`                           | `tsc --noEmit`                                                                                                                                                                                    |
+| `pnpm format` / `pnpm format:check`        | Prettier (+ Tailwind class sort)                                                                                                                                                                  |
+| `pnpm test` / `pnpm test:watch`            | Vitest (unit; node env + `fake-indexeddb`)                                                                                                                                                        |
 | `pnpm test:e2e`                            | Playwright e2e (chromium; auto-starts the dev server). Specs import from `tests/e2e/fixtures.ts`, which stubs Mac-facing APIs via `stubMacApis` so e2e never hits a live Ollama/Whisper endpoint. |
-| `pnpm verify`                              | typecheck + lint + format:check + **unit** tests (CI-style gate; e2e is separate) |
-| `node scripts/build-wordnet.mjs`           | Generate `data/wordnet.json` (~40 MB; needs `wordpos` devDep installed)           |
-| `node scripts/build-words-cefr.mjs`        | Generate `data/words-cefr.json` (~3 MB; needs internet)                           |
-| `node scripts/build-illustration-pack.mjs` | Generate `data/illustration-pack/` (pre-A1 CC0/CC-BY illustrations)               |
+| `pnpm verify`                              | typecheck + lint + format:check + **unit** tests (CI-style gate; e2e is separate)                                                                                                                 |
+| `node scripts/build-wordnet.mjs`           | Generate `data/wordnet.json` (~40 MB; needs `wordpos` devDep installed)                                                                                                                           |
+| `node scripts/build-words-cefr.mjs`        | Generate `data/words-cefr.json` (~3 MB; needs internet)                                                                                                                                           |
+| `node scripts/build-illustration-pack.mjs` | Generate `data/illustration-pack/` (pre-A1 CC0/CC-BY illustrations)                                                                                                                               |
 
 ## Optional tooling
 

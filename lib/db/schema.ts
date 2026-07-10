@@ -241,6 +241,11 @@ export interface MediaAsset extends MediaAssetKey {
   createdAt: Date;
   source: MediaAssetSource;
   approvalStatus: MediaAssetApprovalStatus;
+  /**
+   * Exact prompt sent to the image provider for this generation (ADR 0024).
+   * Set only for `source: "generated"` images; null for curated-pack and audio.
+   */
+  prompt: string | null;
 }
 
 /** Metadata for admin media listings — omits the binary payload. */

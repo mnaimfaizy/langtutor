@@ -19,6 +19,7 @@ function makeAsset(byte: number, approvalStatus: "pending" | "approved" = "appro
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     source: "generated",
     approvalStatus,
+    prompt: null,
   };
 }
 

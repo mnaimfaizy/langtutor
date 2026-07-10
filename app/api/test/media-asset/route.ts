@@ -72,6 +72,7 @@ export async function POST(request: Request) {
         createdAt: asset.createdAt,
         source: asset.source,
         approvalStatus: asset.approvalStatus,
+        prompt: null,
       })
       .onConflictDoUpdate({
         target: [mediaAssets.kind, mediaAssets.key, mediaAssets.style],
@@ -81,6 +82,7 @@ export async function POST(request: Request) {
           createdAt: asset.createdAt,
           source: asset.source,
           approvalStatus: asset.approvalStatus,
+          prompt: null,
         },
       })
       .run();
@@ -98,6 +100,7 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       source: "generated",
       approvalStatus: "pending",
+      prompt: null,
     })
     .onConflictDoUpdate({
       target: [mediaAssets.kind, mediaAssets.key, mediaAssets.style],
@@ -107,6 +110,7 @@ export async function POST(request: Request) {
         createdAt: new Date(),
         source: "generated",
         approvalStatus: "pending",
+        prompt: null,
       },
     })
     .run();

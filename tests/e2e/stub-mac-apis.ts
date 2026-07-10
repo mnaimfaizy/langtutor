@@ -40,7 +40,11 @@ export interface StubMacApisOptions {
   plans?: unknown[];
 }
 
-async function json(route: { fulfill: (opts: Record<string, unknown>) => Promise<void> }, body: unknown, status = 200) {
+async function json(
+  route: { fulfill: (opts: Record<string, unknown>) => Promise<void> },
+  body: unknown,
+  status = 200,
+) {
   await route.fulfill({
     status,
     contentType: "application/json",

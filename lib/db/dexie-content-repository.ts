@@ -265,13 +265,16 @@ export class DexieContentRepository implements ContentRepository {
       ...key,
       key: key.key.toLowerCase(),
     };
-    return this.db.mediaAssets.get([lookup.kind, lookup.key, lookup.style]);
+    const asset = await this.db.mediaAssets.get([lookup.kind, lookup.key, lookup.style]);
+    if (!asset) return undefined;
+    return { ...asset, prompt: asset.prompt ?? null };
   }
 
   async putMediaAsset(asset: MediaAsset): Promise<void> {
     await this.db.mediaAssets.put({
       ...asset,
       key: asset.key.toLowerCase(),
+      prompt: asset.source === "generated" ? (asset.prompt ?? null) : null,
     });
   }
 
@@ -280,7 +283,10 @@ export class DexieContentRepository implements ContentRepository {
     return rows
       .filter((row) => (query?.kind ? row.kind === query.kind : true))
       .filter((row) => (query?.approvalStatus ? row.approvalStatus === query.approvalStatus : true))
-      .map(({ data: _data, ...record }) => record);
+      .map(({ data: _data, ...record }) => ({
+        ...record,
+        prompt: record.prompt ?? null,
+      }));
   }
 
   async deleteMediaAsset(key: MediaAssetKey): Promise<void> {

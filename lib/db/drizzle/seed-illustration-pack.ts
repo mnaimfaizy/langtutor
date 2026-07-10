@@ -47,6 +47,7 @@ export function seedIllustrationPackSync(db: DrizzleClient): void {
         createdAt: asset.createdAt,
         source: asset.source,
         approvalStatus: asset.approvalStatus,
+        prompt: null,
       })
       .run();
   }

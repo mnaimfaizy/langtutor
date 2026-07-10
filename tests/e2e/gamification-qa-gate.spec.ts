@@ -8,7 +8,6 @@ import { MOCK_PASSAGE } from "./stub-mac-apis";
 
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword — see onboarding.spec.ts
 
-
 interface Palette {
   name: "adult-light" | "adult-dark" | "kid-bright" | "kid-dark";
   mode: "adult" | "kid";

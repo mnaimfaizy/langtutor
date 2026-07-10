@@ -34,13 +34,7 @@ function definitionSnippet(definition: string, maxLen = 120): string {
   return `${definition.slice(0, maxLen).trimEnd()}…`;
 }
 
-function DeckCardWordImage({
-  word,
-  layout,
-}: {
-  word: string;
-  layout: "picture-first" | "accent";
-}) {
+function DeckCardWordImage({ word, layout }: { word: string; layout: "picture-first" | "accent" }) {
   const pictureFirst = layout === "picture-first";
   return (
     // eslint-disable-next-line @next/next/no-img-element -- same-origin media resolve URL
@@ -97,7 +91,7 @@ export function DeckBrowserCard({
         card.suspended && "opacity-60",
       )}
     >
-      <div className="from-accent/10 via-transparent to-warning/10 flex gap-4 bg-gradient-to-br p-4">
+      <div className="from-accent/10 to-warning/10 flex gap-4 bg-gradient-to-br via-transparent p-4">
         <div
           className={cn(
             "bg-background/60 flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10",

@@ -15,7 +15,6 @@ import { AUTH_FILE } from "./auth-constants";
 // tests/e2e/offline.spec.ts (network-mocking pattern), tests/e2e/onboarding.spec.ts (seed flow).
 const BATCH_SIZE = 6; // WORDS_PER_BATCH (5) + 1 pseudoword — see onboarding.spec.ts
 
-
 // Speaking's own passage is generated via the same /api/reading/generate endpoint as reading
 // and listening (lib/path/activity-content.ts's PASSAGE_ACTIVITY_KINDS) — one mock covers all
 // three. Grant microphone access and force Chromium's fake device so getUserMedia/MediaRecorder

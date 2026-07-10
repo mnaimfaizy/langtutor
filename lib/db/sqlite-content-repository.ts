@@ -87,6 +87,7 @@ function rowToMediaAsset(row: typeof mediaAssetsTable.$inferSelect): MediaAsset 
     createdAt: row.createdAt,
     source: row.source,
     approvalStatus: row.approvalStatus,
+    prompt: row.prompt ?? null,
   };
 }
 
@@ -964,6 +965,7 @@ export class SqliteContentRepository implements ContentRepository {
 
   async putMediaAsset(asset: MediaAsset): Promise<void> {
     const normalized = normalizeMediaAssetKey(asset);
+    const prompt = asset.source === "generated" ? (asset.prompt ?? null) : null;
     this.db
       .insert(mediaAssetsTable)
       .values({
@@ -975,6 +977,7 @@ export class SqliteContentRepository implements ContentRepository {
         createdAt: asset.createdAt,
         source: asset.source,
         approvalStatus: asset.approvalStatus,
+        prompt,
       })
       .onConflictDoUpdate({
         target: [mediaAssetsTable.kind, mediaAssetsTable.key, mediaAssetsTable.style],
@@ -984,6 +987,7 @@ export class SqliteContentRepository implements ContentRepository {
           createdAt: asset.createdAt,
           source: asset.source,
           approvalStatus: asset.approvalStatus,
+          prompt,
         },
       })
       .run();

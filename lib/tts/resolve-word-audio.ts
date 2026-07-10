@@ -53,6 +53,7 @@ export async function resolveWordAudio(
       createdAt: new Date(),
       source: "generated",
       approvalStatus: "approved",
+      prompt: null,
     };
     return asset;
   }).then((asset) => {

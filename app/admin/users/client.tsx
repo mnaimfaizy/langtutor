@@ -87,10 +87,7 @@ export function UsersClient({ initialUsers }: { initialUsers: AuthUser[] }) {
       <h1 className="text-foreground mt-2 text-2xl font-semibold">User management</h1>
       <p className="text-muted mt-1 text-sm">Admin-only. Create and manage user accounts.</p>
       <nav aria-label="Admin sections" className="mt-3 flex flex-wrap gap-2">
-        <span
-          className={buttonClassName({ variant: "secondary", size: "sm" })}
-          aria-current="page"
-        >
+        <span className={buttonClassName({ variant: "secondary", size: "sm" })} aria-current="page">
           Users
         </span>
         <Link

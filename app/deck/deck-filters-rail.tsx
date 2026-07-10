@@ -451,7 +451,7 @@ function RailPill({
       className={
         selected
           ? "border-accent bg-accent/15 text-foreground flex w-full items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs font-medium"
-          : "border-transparent text-muted hover:bg-foreground/5 hover:text-foreground flex w-full items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs"
+          : "text-muted hover:bg-foreground/5 hover:text-foreground flex w-full items-center gap-2 rounded-lg border border-transparent px-2.5 py-1.5 text-left text-xs"
       }
     >
       {children}

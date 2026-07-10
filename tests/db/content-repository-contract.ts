@@ -641,6 +641,7 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
           createdAt: new Date("2026-01-01T00:00:00.000Z"),
           source: "generated",
           approvalStatus: "approved",
+          prompt: null,
         };
       }
 
@@ -711,10 +712,33 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
           ...makeAsset(imageKey, 8),
           source: "curated-pack",
           approvalStatus: "approved",
+          prompt: null,
         });
 
         expect(await repo.getMediaAsset(imageKey)).toBeDefined();
         expect(await repo.queryMediaAssets({ approvalStatus: "approved" })).toHaveLength(1);
+        expect((await repo.getMediaAssetRaw(imageKey))?.prompt).toBeNull();
+      });
+
+      it("round-trips an optional generation prompt on generated images", async () => {
+        const withPrompt = {
+          ...makeAsset(imageKey, 11),
+          prompt: "A friendly apple for kids",
+        };
+        await repo.putMediaAsset(withPrompt);
+
+        expect((await repo.getMediaAsset(imageKey))?.prompt).toBe("A friendly apple for kids");
+      });
+
+      it("clears prompt when storing curated-pack assets", async () => {
+        await repo.putMediaAsset({
+          ...makeAsset(imageKey, 12),
+          source: "curated-pack",
+          approvalStatus: "approved",
+          prompt: "should not persist",
+        });
+
+        expect((await repo.getMediaAssetRaw(imageKey))?.prompt).toBeNull();
       });
 
       it("deleteMediaAsset removes the asset", async () => {
@@ -753,6 +777,7 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
           createdAt: new Date(0),
           source: "generated",
           approvalStatus: "approved",
+          prompt: null,
         });
         await repo.addUnit(makeUnit(0));
         await repo.saveQuestState({

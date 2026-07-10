@@ -20,7 +20,6 @@ const UNIT_TITLE = "Talking About Home";
 const UNIT_NOTE = "Practice everyday words about home and school.";
 const UNIT_VOCAB = ["house", "school", "happy", "big"];
 
-
 interface Palette {
   name: "adult-light" | "adult-dark" | "kid-bright" | "kid-dark";
   mode: "adult" | "kid";
