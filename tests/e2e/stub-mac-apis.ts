@@ -116,6 +116,20 @@ export async function stubMacApis(page: Page, options: StubMacApisOptions = {}):
     });
   });
 
+  // Pre-A1 chapter exam fill (issue #115) — fixed shape, three items per skill.
+  await page.route("**/api/path/exam/fill", async (route) => {
+    const skills = ["alphabet", "phonics", "picture-words", "listen-tap"] as const;
+    const items = skills.flatMap((skill) =>
+      [1, 2, 3].map((n) => ({
+        skill,
+        prompt: `E2E ${skill} question ${n}?`,
+        options: ["A", "B", "C", "D"],
+        answerIndex: 0,
+      })),
+    );
+    await json(route, { exam: { items } });
+  });
+
   await page.route("**/api/agent/research-word", async (route) => {
     await json(route, {
       found: true,

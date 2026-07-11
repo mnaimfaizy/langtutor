@@ -1,0 +1,278 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+
+import { PRE_A1_CHAPTER_TIER, resolveChapterGateStatus } from "@/lib/path/chapter-gate";
+import {
+  PreA1ExamFillSchema,
+  PRE_A1_EXAM_OVERALL_THRESHOLD,
+  PRE_A1_EXAM_SKILL_FLOOR,
+  PRE_A1_EXAM_SKILLS,
+  preA1ExamItemCount,
+  submitPreA1ChapterExam,
+  type ExamScoreBreakdown,
+  type PreA1ExamFill,
+  type PreA1ExamSkill,
+} from "@/lib/path/exam";
+import { getContentRepository } from "@/lib/registry";
+import { BackLink, Button, Card, SelectPill } from "@/ui";
+
+type Phase = "loading" | "already-passed" | "answering" | "submitting" | "result" | "error";
+
+const SKILL_LABEL: Record<PreA1ExamSkill, string> = {
+  alphabet: "Alphabet",
+  phonics: "Phonics",
+  "picture-words": "Picture words",
+  "listen-tap": "Listen & tap",
+};
+
+function pct(ratio: number): string {
+  return `${Math.round(ratio * 100)}%`;
+}
+
+export function PreA1ExamPlayer() {
+  const [loadNonce, setLoadNonce] = useState(0);
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [exam, setExam] = useState<PreA1ExamFill | null>(null);
+  const [selected, setSelected] = useState<(number | null)[]>([]);
+  const [breakdown, setBreakdown] = useState<ExamScoreBreakdown | null>(null);
+  const [unlockedA1, setUnlockedA1] = useState(false);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    void (async () => {
+      const repo = getContentRepository();
+      const gate = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
+      if (!active) return;
+
+      if (resolveChapterGateStatus(gate) === "passed") {
+        setPhase("already-passed");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/path/exam/fill", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        if (!res.ok) throw new Error(`fill failed (${res.status})`);
+        const data: unknown = await res.json();
+        const parsed = PreA1ExamFillSchema.safeParse(
+          data && typeof data === "object" && "exam" in data
+            ? (data as { exam: unknown }).exam
+            : data,
+        );
+        if (!parsed.success) throw new Error("invalid exam payload");
+        if (!active) return;
+        setExam(parsed.data);
+        setSelected(new Array<number | null>(parsed.data.items.length).fill(null));
+        setPhase("answering");
+      } catch (err) {
+        if (!active) return;
+        setErrorDetail(err instanceof Error ? err.message : "unknown");
+        setPhase("error");
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [loadNonce]);
+
+  function retryLoad() {
+    setExam(null);
+    setErrorDetail(null);
+    setPhase("loading");
+    setLoadNonce((n) => n + 1);
+  }
+
+  function select(itemIndex: number, optionIndex: number) {
+    setSelected((prev) => {
+      const next = [...prev];
+      next[itemIndex] = optionIndex;
+      return next;
+    });
+  }
+
+  const allAnswered =
+    exam !== null && selected.length === exam.items.length && selected.every((s) => s !== null);
+
+  async function handleSubmit() {
+    if (!exam || !allAnswered || phase === "submitting") return;
+    setPhase("submitting");
+    try {
+      const repo = getContentRepository();
+      const result = await submitPreA1ChapterExam(repo, exam, selected);
+      setBreakdown(result.breakdown);
+      setUnlockedA1(result.unlockedA1);
+      setPhase("result");
+    } catch {
+      setErrorDetail("submit failed");
+      setPhase("error");
+    }
+  }
+
+  if (phase === "loading") {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-8" data-testid="pre-a1-exam-loading">
+        <BackLink href="/home" label="Home" className="mb-6" />
+        <p className="text-muted text-sm">Preparing your chapter exam…</p>
+      </main>
+    );
+  }
+
+  if (phase === "already-passed") {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-8" data-testid="pre-a1-exam-already-passed">
+        <BackLink href="/home" label="Home" className="mb-6" />
+        <Card>
+          <h1 className="text-foreground text-xl font-semibold">Chapter exam already passed</h1>
+          <p className="text-muted mt-2 text-sm">
+            You already cleared the Pre-A1 gate. Continue into A1 on your path.
+          </p>
+          <Link href="/home" className="mt-6 inline-block">
+            <Button variant="primary">Back to home</Button>
+          </Link>
+        </Card>
+      </main>
+    );
+  }
+
+  if (phase === "error") {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-8" data-testid="pre-a1-exam-error">
+        <BackLink href="/home" label="Home" className="mb-6" />
+        <Card>
+          <h1 className="text-foreground text-xl font-semibold">Could not start the exam</h1>
+          <p className="text-muted mt-2 text-sm">
+            The teacher could not fill the exam items right now
+            {errorDetail ? ` (${errorDetail})` : ""}. A1 stays locked until a valid exam is taken.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button variant="secondary" onClick={retryLoad}>
+              Try again
+            </Button>
+            <Link href="/home">
+              <Button variant="ghost">Back to home</Button>
+            </Link>
+          </div>
+        </Card>
+      </main>
+    );
+  }
+
+  if (phase === "result" && breakdown) {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-8" data-testid="pre-a1-exam-result">
+        <BackLink href="/home" label="Home" className="mb-6" />
+        <Card>
+          <h1 className="text-foreground text-xl font-semibold" data-testid="pre-a1-exam-outcome">
+            {breakdown.passed ? "You passed!" : "Not quite yet"}
+          </h1>
+          <p className="text-muted mt-2 text-sm">
+            Overall {pct(breakdown.overallRatio)} ({breakdown.overallCorrect}/
+            {breakdown.overallTotal}). Pass needs {pct(PRE_A1_EXAM_OVERALL_THRESHOLD)} overall and{" "}
+            {pct(PRE_A1_EXAM_SKILL_FLOOR)} in every skill.
+          </p>
+          {unlockedA1 && (
+            <p className="text-accent mt-2 text-sm font-medium" data-testid="pre-a1-exam-unlocked">
+              Level A1 is unlocked — continue on your path.
+            </p>
+          )}
+          {!breakdown.passed && (
+            <p className="text-muted mt-2 text-sm">
+              A1 stays locked. Practice and try the chapter exam again when you are ready.
+            </p>
+          )}
+
+          <ul className="mt-6 flex flex-col gap-2" data-testid="pre-a1-exam-skill-scores">
+            {breakdown.bySkill.map((skill) => (
+              <li
+                key={skill.skill}
+                className="border-border flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
+                data-testid={`pre-a1-exam-skill-${skill.skill}`}
+              >
+                <span className="text-foreground font-medium">{SKILL_LABEL[skill.skill]}</span>
+                <span className={skill.metFloor ? "text-foreground" : "text-danger"}>
+                  {pct(skill.ratio)} ({skill.correct}/{skill.total})
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <Link href="/home" className="mt-8 inline-block">
+            <Button variant="primary">Back to home</Button>
+          </Link>
+        </Card>
+      </main>
+    );
+  }
+
+  if (!exam) return null;
+
+  const sections = PRE_A1_EXAM_SKILLS.map((skill) => ({
+    skill,
+    entries: exam.items
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.skill === skill),
+  }));
+
+  return (
+    <main className="mx-auto max-w-2xl px-4 py-8" data-testid="pre-a1-exam-player">
+      <BackLink href="/home" label="Home" className="mb-6" />
+      <h1 className="text-foreground text-xl font-semibold">Pre-A1 chapter exam</h1>
+      <p className="text-muted mt-1 text-sm">
+        {preA1ExamItemCount()} questions across alphabet, phonics, picture words, and listen &amp;
+        tap. Answer every item, then submit once.
+      </p>
+
+      <ol className="mt-6 flex flex-col gap-8">
+        {sections.map(({ skill, entries }) => (
+          <li key={skill}>
+            <h2 className="text-foreground mb-3 text-sm font-semibold tracking-wide uppercase">
+              {SKILL_LABEL[skill]}
+            </h2>
+            <ol className="flex flex-col gap-4">
+              {entries.map(({ item, index }) => (
+                <li key={index} data-testid={`pre-a1-exam-item-${index}`}>
+                  <Card>
+                    <p className="text-foreground text-base font-medium">{item.prompt}</p>
+                    <div className="mt-3 flex flex-col gap-2">
+                      {item.options.map((option, optionIndex) => (
+                        <SelectPill
+                          key={optionIndex}
+                          selected={selected[index] === optionIndex}
+                          onClick={() => select(index, optionIndex)}
+                          data-testid={`pre-a1-exam-item-${index}-opt-${optionIndex}`}
+                        >
+                          {option}
+                        </SelectPill>
+                      ))}
+                    </div>
+                  </Card>
+                </li>
+              ))}
+            </ol>
+          </li>
+        ))}
+      </ol>
+
+      <div className="mt-8 flex items-center gap-3">
+        <Button
+          variant="primary"
+          size="lg"
+          disabled={!allAnswered || phase === "submitting"}
+          onClick={() => void handleSubmit()}
+          data-testid="pre-a1-exam-submit"
+        >
+          {phase === "submitting" ? "Scoring…" : "Submit exam"}
+        </Button>
+        {!allAnswered && <p className="text-muted text-xs">Answer every question to submit.</p>}
+      </div>
+    </main>
+  );
+}
