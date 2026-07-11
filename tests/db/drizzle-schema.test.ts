@@ -158,6 +158,8 @@ describe("Migration — schema shape", () => {
     expect(columns("media_assets")).toContain("key");
     expect(columns("media_assets")).toContain("style");
     expect(columns("media_assets")).toContain("data");
+    expect(columns("media_assets")).toContain("source");
+    expect(columns("media_assets")).toContain("approval_status");
     expect(columns("media_assets")).toContain("prompt");
   });
 

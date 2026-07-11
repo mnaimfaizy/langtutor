@@ -50,7 +50,8 @@ export async function GET(request: Request) {
     return new Response(Buffer.from(asset.data), {
       headers: {
         "Content-Type": asset.mimeType,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        // Approval/regenerate can replace bytes at this URL — never immutable-cache.
+        "Cache-Control": "private, no-store",
       },
     });
   } catch (error) {

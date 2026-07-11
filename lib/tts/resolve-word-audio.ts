@@ -153,13 +153,17 @@ export async function proactiveGenerateWordAudio(
   }
   const key = mediaKey(normalized, style);
 
-  const existing = await repo.getMediaAssetRaw(key);
-  if (existing) {
-    throw new Error(`Audio already exists for "${normalized}". Use regenerate instead.`);
+  const asset = await resolveMediaAsset(
+    repo,
+    key,
+    async () => {
+      const resolved = await resolveSynthesizer(synthesizer);
+      return produceWordAudio(resolved, normalized, style, options);
+    },
+    { createIfAbsent: true },
+  );
+  if (!asset) {
+    throw new Error("Audio proactive generate failed");
   }
-
-  const resolved = await resolveSynthesizer(synthesizer);
-  const asset = await produceWordAudio(resolved, normalized, style, options);
-  await repo.putMediaAsset(asset);
   return asset;
 }

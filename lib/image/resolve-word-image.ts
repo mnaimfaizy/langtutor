@@ -127,13 +127,17 @@ export async function proactiveGenerateWordImage(
   }
   const key = mediaKey(normalized, style);
 
-  const existing = await repo.getMediaAssetRaw(key);
-  if (existing) {
-    throw new Error(`Image already exists for "${normalized}". Use regenerate instead.`);
+  const asset = await resolveMediaAsset(
+    repo,
+    key,
+    async () => {
+      const resolved = await resolveGenerator(generator);
+      return produceWordImage(resolved, normalized, style, promptOverride);
+    },
+    { createIfAbsent: true },
+  );
+  if (!asset) {
+    throw new Error("Image proactive generate failed");
   }
-
-  const resolved = await resolveGenerator(generator);
-  const asset = await produceWordImage(resolved, normalized, style, promptOverride);
-  await repo.putMediaAsset(asset);
   return asset;
 }

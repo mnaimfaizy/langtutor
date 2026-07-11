@@ -96,4 +96,37 @@ describe("resolveMediaAsset", () => {
     expect(a).toEqual(makeAsset(42, "approved"));
     expect(b).toEqual(makeAsset(42, "approved"));
   });
+
+  it("createIfAbsent returns pending assets and rejects when a row already exists", async () => {
+    const producer = vi.fn(async () => makeAsset(42, "pending"));
+
+    const created = await resolveMediaAsset(repo, KEY, producer, { createIfAbsent: true });
+    expect(created).toEqual(makeAsset(42, "pending"));
+    expect(producer).toHaveBeenCalledTimes(1);
+
+    await expect(
+      resolveMediaAsset(repo, KEY, producer, { createIfAbsent: true }),
+    ).rejects.toThrow(/already exists.*regenerate/i);
+    expect(producer).toHaveBeenCalledTimes(1);
+  });
+
+  it("coalesces createIfAbsent with a concurrent learner miss onto one producer", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const producer = vi.fn(async () => {
+      await gate;
+      return makeAsset(42, "pending");
+    });
+
+    const admin = resolveMediaAsset(repo, KEY, producer, { createIfAbsent: true });
+    const learner = resolveMediaAsset(repo, KEY, producer);
+    release();
+    const [created, hidden] = await Promise.all([admin, learner]);
+
+    expect(producer).toHaveBeenCalledTimes(1);
+    expect(created).toEqual(makeAsset(42, "pending"));
+    expect(hidden).toBeUndefined();
+  });
 });

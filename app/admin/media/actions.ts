@@ -12,13 +12,13 @@ import { getImageGenerator } from "@/lib/image/server";
 
 const DEFAULT_IMAGE_STYLE = "kid-illustration";
 
-const MediaAssetKeySchema = z.object({
-  kind: z.enum(["image", "audio"]),
+const ImageMediaAssetKeySchema = z.object({
+  kind: z.literal("image"),
   key: z.string().trim().min(1).max(100),
   style: z.string().trim().min(1).max(64),
 });
 
-const RegenerateSchema = MediaAssetKeySchema.extend({
+const RegenerateSchema = ImageMediaAssetKeySchema.extend({
   prompt: z.string().max(4000).optional(),
 });
 
@@ -42,14 +42,14 @@ export async function listMediaAssets(
 
 export async function approveMediaAsset(key: MediaAssetKey): Promise<void> {
   await requireAdmin();
-  MediaAssetKeySchema.parse(key);
+  ImageMediaAssetKeySchema.parse(key);
   const repo = await getServerContentRepository();
   await repo.approveMediaAsset(key);
 }
 
 export async function purgeMediaAsset(key: MediaAssetKey): Promise<void> {
   await requireAdmin();
-  MediaAssetKeySchema.parse(key);
+  ImageMediaAssetKeySchema.parse(key);
   const repo = await getServerContentRepository();
   await repo.deleteMediaAsset(key);
 }
@@ -144,7 +144,7 @@ export async function listImageCurriculumGaps(
 /** Prior stored prompt, or the default kid-illustration template when missing/curated. */
 export async function getRegeneratePromptDraft(key: MediaAssetKey): Promise<string> {
   await requireAdmin();
-  const parsed = MediaAssetKeySchema.parse(key);
+  const parsed = ImageMediaAssetKeySchema.parse(key);
   const repo = await getServerContentRepository();
   const asset = await repo.getMediaAssetRaw(parsed);
   return resolveKidIllustrationPrompt(parsed.key, asset?.prompt);
@@ -159,7 +159,7 @@ export async function getProactivePromptDraft(word: string): Promise<string> {
 
 export async function getMediaAssetPreview(key: MediaAssetKey): Promise<string | null> {
   await requireAdmin();
-  MediaAssetKeySchema.parse(key);
+  ImageMediaAssetKeySchema.parse(key);
   const repo = await getServerContentRepository();
   const asset = await repo.getMediaAssetRaw(key);
   if (!asset || asset.kind !== "image") return null;

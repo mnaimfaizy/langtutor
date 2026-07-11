@@ -78,6 +78,13 @@
       "when": 1784100000000,
       "tag": "0010_media_asset_prompt",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784200000000,
+      "tag": "0011_media_asset_approval",
+      "breakpoints": true
     }
   ]
 }

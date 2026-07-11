@@ -19,8 +19,8 @@ const DEFAULT_AUDIO_STYLE = "default";
 
 const ORPHEUS_VOICE_URIS = GROQ_ORPHEUS_VOICES.map((v) => v.voiceURI) as [string, ...string[]];
 
-const MediaAssetKeySchema = z.object({
-  kind: z.enum(["image", "audio"]),
+const AudioMediaAssetKeySchema = z.object({
+  kind: z.literal("audio"),
   key: z.string().trim().min(1).max(100),
   style: z.string().trim().min(1).max(64),
 });
@@ -31,7 +31,7 @@ const AdminTtsOptionsSchema = z.object({
   maxDurationSeconds: z.number().min(0.5).max(TTS_MAX_DURATION_SECONDS).optional(),
 });
 
-const RegenerateSchema = MediaAssetKeySchema.extend({
+const RegenerateSchema = AudioMediaAssetKeySchema.extend({
   options: AdminTtsOptionsSchema.optional(),
 });
 
@@ -76,14 +76,14 @@ export async function listAudioMediaAssets(
 
 export async function approveAudioMediaAsset(key: MediaAssetKey): Promise<void> {
   await requireAdmin();
-  MediaAssetKeySchema.parse(key);
+  AudioMediaAssetKeySchema.parse(key);
   const repo = await getServerContentRepository();
   await repo.approveMediaAsset(key);
 }
 
 export async function purgeAudioMediaAsset(key: MediaAssetKey): Promise<void> {
   await requireAdmin();
-  MediaAssetKeySchema.parse(key);
+  AudioMediaAssetKeySchema.parse(key);
   const repo = await getServerContentRepository();
   await repo.deleteMediaAsset(key);
 }
@@ -177,7 +177,7 @@ export async function listAudioCurriculumGaps(
 
 export async function getAudioMediaAssetPreview(key: MediaAssetKey): Promise<AudioPreview | null> {
   await requireAdmin();
-  MediaAssetKeySchema.parse(key);
+  AudioMediaAssetKeySchema.parse(key);
   const repo = await getServerContentRepository();
   const asset = await repo.getMediaAssetRaw(key);
   if (!asset || asset.kind !== "audio") return null;

@@ -4,33 +4,42 @@ import type { MediaAsset, MediaAssetKey } from "@/lib/db/schema";
 export interface ResolveMediaAssetOptions {
   /** When true, always invoke `producer` and return the stored asset regardless of approval. */
   forceRegenerate?: boolean;
+  /**
+   * Admin proactive create: reject when a row already exists; otherwise coalesce on the
+   * in-flight map, persist, and return the asset even when pending.
+   */
+  createIfAbsent?: boolean;
 }
 
+type FlightResult = { asset: MediaAsset; produced: boolean };
+
 /** In-flight producers keyed by `(kind, key, style)` so concurrent misses share one call. */
-const inFlight = new Map<string, Promise<MediaAsset | undefined>>();
+const inFlight = new Map<string, Promise<FlightResult>>();
 
 function mediaAssetFlightKey(key: MediaAssetKey): string {
   return `${key.kind}\0${key.key.toLowerCase()}\0${key.style}`;
 }
 
+function alreadyExistsError(key: MediaAssetKey): Error {
+  const label = key.kind === "audio" ? "Audio" : "Image";
+  return new Error(`${label} already exists for "${key.key}". Use regenerate instead.`);
+}
+
+/**
+ * Produce and persist on a miss. If a row appears mid-flight, return it without
+ * overwriting (`produced: false`) so createIfAbsent can reject.
+ */
 async function produceAndStore(
   repo: ContentRepository,
   key: MediaAssetKey,
   producer: () => Promise<MediaAsset>,
-  forceRegenerate: boolean,
-): Promise<MediaAsset | undefined> {
-  if (!forceRegenerate) {
-    const raced = await repo.getMediaAssetRaw(key);
-    if (raced) {
-      return raced.approvalStatus === "approved" ? raced : undefined;
-    }
-  }
+): Promise<FlightResult> {
+  const raced = await repo.getMediaAssetRaw(key);
+  if (raced) return { asset: raced, produced: false };
 
   const produced = await producer();
   await repo.putMediaAsset(produced);
-
-  if (forceRegenerate) return produced;
-  return produced.approvalStatus === "approved" ? produced : undefined;
+  return { asset: produced, produced: true };
 }
 
 /**
@@ -52,27 +61,39 @@ export async function resolveMediaAsset(
 ): Promise<MediaAsset | undefined> {
   const normalizedKey: MediaAssetKey = { ...key, key: key.key.toLowerCase() };
   const forceRegenerate = options?.forceRegenerate === true;
+  const createIfAbsent = options?.createIfAbsent === true;
 
   if (forceRegenerate) {
-    return produceAndStore(repo, normalizedKey, producer, true);
+    const produced = await producer();
+    await repo.putMediaAsset(produced);
+    return produced;
   }
 
   const existing = await repo.getMediaAssetRaw(normalizedKey);
   if (existing) {
+    if (createIfAbsent) throw alreadyExistsError(normalizedKey);
     return existing.approvalStatus === "approved" ? existing : undefined;
   }
 
   const flightKey = mediaAssetFlightKey(normalizedKey);
   const pending = inFlight.get(flightKey);
-  if (pending) return pending;
+  const work =
+    pending ??
+    produceAndStore(repo, normalizedKey, producer).finally(() => {
+      if (inFlight.get(flightKey) === work) {
+        inFlight.delete(flightKey);
+      }
+    });
+  if (!pending) {
+    inFlight.set(flightKey, work);
+  }
 
-  // Claim the flight slot synchronously (no await between get and set) so concurrent
-  // callers that already observed a store miss join this same promise.
-  const work = produceAndStore(repo, normalizedKey, producer, false).finally(() => {
-    if (inFlight.get(flightKey) === work) {
-      inFlight.delete(flightKey);
-    }
-  });
-  inFlight.set(flightKey, work);
-  return work;
+  const { asset, produced } = await work;
+
+  if (createIfAbsent) {
+    if (!produced) throw alreadyExistsError(normalizedKey);
+    return asset;
+  }
+
+  return asset.approvalStatus === "approved" ? asset : undefined;
 }
