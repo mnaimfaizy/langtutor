@@ -2,12 +2,23 @@
 
 import { useEffect, useState } from "react";
 
-import { DEFAULT_EXPERIENCE_MODE, type ExperienceMode, type Unit } from "@/lib/db";
+import {
+  DEFAULT_EXPERIENCE_MODE,
+  type ChapterGateStatus,
+  type ExperienceMode,
+  type Unit,
+} from "@/lib/db";
+import {
+  PRE_A1_CHAPTER_TIER,
+  resolveChapterGateStatus,
+  shouldShowPreA1ChapterGatePendingCta,
+} from "@/lib/path/chapter-gate";
 import { groupUnitsByChapter } from "@/lib/path/chapters";
 import { replenishPathBuffer } from "@/lib/path/replenish";
 import { ensurePath } from "@/lib/path/seed";
 import { currentUnit } from "@/lib/path/unit-progress";
 import { getContentRepository } from "@/lib/registry";
+import { PathChapterGatePendingCta } from "./path-chapter-gate-cta";
 import { PathChapterMilestone } from "./path-chapter-milestone";
 import { PathContinue } from "./path-continue";
 import { PathNode } from "./path-node";
@@ -31,10 +42,14 @@ const MODE_HEADING: Record<ExperienceMode, string> = {
  * replenishment pass (session-start trigger, ADR 0015, issue #61 — plans unplanned future
  * units, issue #58, and pre-generates their activity content, issue #61) and re-renders with
  * whatever it managed to fill in.
+ *
+ * Chapter-gate pending CTA (issue #114) surfaces when pre-A1 is complete and the gate is not
+ * yet passed — including the strict-mode hold that keeps unit 0 locked.
  */
 export function LearningPath() {
   const [units, setUnits] = useState<Unit[] | null>(null);
   const [mode, setMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
+  const [gateStatus, setGateStatus] = useState<ChapterGateStatus>("pending");
 
   useEffect(() => {
     let active = true;
@@ -52,14 +67,21 @@ export function LearningPath() {
         experienceMode: profile?.experienceMode,
       });
       const loaded = await repo.getUnits();
-      if (active) setUnits(loaded);
+      const gate = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
+      if (active) {
+        setUnits(loaded);
+        setGateStatus(resolveChapterGateStatus(gate));
+      }
 
       await replenishPathBuffer(repo, undefined, undefined, async () => {
         // Surface teacher plans as soon as they're persisted — don't wait for content
         // generation / embeddings, which can be slow or hang when the Mac is unreachable.
         if (active) setUnits(await repo.getUnits());
       });
-      if (active) setUnits(await repo.getUnits());
+      if (active) {
+        setUnits(await repo.getUnits());
+        setGateStatus(resolveChapterGateStatus(await repo.getChapterGate(PRE_A1_CHAPTER_TIER)));
+      }
     })();
 
     return () => {
@@ -74,6 +96,7 @@ export function LearningPath() {
 
   const chapters = groupUnitsByChapter(units);
   const current = currentUnit(units);
+  const showGateCta = shouldShowPreA1ChapterGatePendingCta({ units, gateStatus });
 
   return (
     <section data-testid="learning-path" data-experience-mode={mode} className="mt-10 w-full">
@@ -82,6 +105,12 @@ export function LearningPath() {
       {current && (
         <div className="mt-4">
           <PathContinue unit={current} mode={mode} />
+        </div>
+      )}
+
+      {showGateCta && (
+        <div className="mt-4">
+          <PathChapterGatePendingCta mode={mode} />
         </div>
       )}
 

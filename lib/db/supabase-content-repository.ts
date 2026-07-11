@@ -31,6 +31,7 @@ import {
   mediaAssets as mediaAssetsTable,
   collectibleGrants as collectibleGrantsTable,
   questState as questStateTable,
+  chapterGates as chapterGatesTable,
   profiles as profilesTable,
   units as unitsTable,
   weakness as weaknessTable,
@@ -38,6 +39,8 @@ import {
 import type {
   Achievement,
   Card,
+  ChapterGate,
+  ChapterTier,
   CollectibleGrant,
   CollectionSummary,
   Content,
@@ -1146,6 +1149,48 @@ export class SupabaseContentRepository implements ContentRepository {
     });
   }
 
+  // ─── chapter mastery gates ────────────────────────────────────────────────
+
+  async getChapterGate(tier: ChapterTier): Promise<ChapterGate | undefined> {
+    return this.scoped(async (db) => {
+      const [row] = await db
+        .select()
+        .from(chapterGatesTable)
+        .where(and(eq(chapterGatesTable.userId, this.userId), eq(chapterGatesTable.tier, tier)))
+        .limit(1);
+      if (!row) return undefined;
+      return { tier: row.tier, status: row.status, updatedAt: row.updatedAt };
+    });
+  }
+
+  async saveChapterGate(gate: ChapterGate): Promise<void> {
+    await this.scoped(async (db) => {
+      const [existing] = await db
+        .select({ tier: chapterGatesTable.tier })
+        .from(chapterGatesTable)
+        .where(
+          and(eq(chapterGatesTable.userId, this.userId), eq(chapterGatesTable.tier, gate.tier)),
+        )
+        .limit(1);
+
+      if (existing) {
+        await db
+          .update(chapterGatesTable)
+          .set({ status: gate.status, updatedAt: gate.updatedAt })
+          .where(
+            and(eq(chapterGatesTable.userId, this.userId), eq(chapterGatesTable.tier, gate.tier)),
+          );
+      } else {
+        await db.insert(chapterGatesTable).values({
+          userId: this.userId,
+          tier: gate.tier,
+          status: gate.status,
+          updatedAt: gate.updatedAt,
+        });
+      }
+    });
+  }
+
   // ─── maintenance ──────────────────────────────────────────────────────────
 
   async clear(): Promise<void> {
@@ -1162,6 +1207,7 @@ export class SupabaseContentRepository implements ContentRepository {
       await db.delete(gamificationTable).where(eq(gamificationTable.userId, this.userId));
       await db.delete(questStateTable).where(eq(questStateTable.userId, this.userId));
       await db.delete(collectibleGrantsTable).where(eq(collectibleGrantsTable.userId, this.userId));
+      await db.delete(chapterGatesTable).where(eq(chapterGatesTable.userId, this.userId));
       await db.delete(lexiconCacheTable);
       await db.delete(mediaAssetsTable);
       await db.delete(unitsTable).where(eq(unitsTable.userId, this.userId));

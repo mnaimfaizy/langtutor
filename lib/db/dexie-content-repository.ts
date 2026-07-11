@@ -13,6 +13,8 @@ import type {
 } from "./content-repository";
 import type {
   Card,
+  ChapterGate,
+  ChapterTier,
   CollectibleGrant,
   CollectionSummary,
   Content,
@@ -318,6 +320,15 @@ export class DexieContentRepository implements ContentRepository {
 
   async deleteUnit(id: number): Promise<void> {
     await this.db.units.delete(id);
+  }
+
+  // chapter mastery gates ---------------------------------------------------
+  async getChapterGate(tier: ChapterTier): Promise<ChapterGate | undefined> {
+    return this.db.chapterGates.get(tier);
+  }
+
+  async saveChapterGate(gate: ChapterGate): Promise<void> {
+    await this.db.chapterGates.put(gate);
   }
 
   // maintenance -------------------------------------------------------------

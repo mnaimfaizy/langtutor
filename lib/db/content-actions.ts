@@ -13,6 +13,8 @@ import type {
 } from "@/lib/db/content-repository";
 import type {
   Card,
+  ChapterGate,
+  ChapterTier,
   CollectionSummary,
   Content,
   ErrorEventRecord,
@@ -227,6 +229,14 @@ export async function repoUpdateUnit(id: number, changes: Partial<NewUnit>): Pro
 
 export async function repoDeleteUnit(id: number): Promise<void> {
   return (await getServerContentRepository()).deleteUnit(id);
+}
+
+export async function repoGetChapterGate(tier: ChapterTier): Promise<ChapterGate | undefined> {
+  return (await getServerContentRepository()).getChapterGate(tier);
+}
+
+export async function repoSaveChapterGate(gate: ChapterGate): Promise<void> {
+  return (await getServerContentRepository()).saveChapterGate(gate);
 }
 
 export async function repoClear(): Promise<void> {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ContentRepository, NewUnit, QuestState, Unit } from "@/lib/db";
+import type { ChapterGate, ContentRepository, NewUnit, Profile, QuestState, Unit } from "@/lib/db";
 import { onUnitCompleted } from "@/lib/path/unit-events";
 import { completeUnitActivity } from "@/lib/path/unit-player";
 
@@ -9,11 +9,28 @@ import { completeUnitActivity } from "@/lib/path/unit-player";
  * itself. */
 const noopReplenish = async () => {};
 
+type FakeRepo = ContentRepository & {
+  units: Unit[];
+  setProfile: (profile: Profile | undefined) => void;
+  getSavedGate: (tier: string) => ChapterGate | undefined;
+};
+
 /** Minimal in-memory stand-in — only the methods completeUnitActivity touches are real. */
-function makeFakeRepo(initial: Unit[]): ContentRepository & { units: Unit[] } {
-  const state = { units: initial.slice(), questState: undefined as QuestState | undefined };
+function makeFakeRepo(initial: Unit[]): FakeRepo {
+  const state = {
+    units: initial.slice(),
+    questState: undefined as QuestState | undefined,
+    profile: undefined as Profile | undefined,
+    chapterGates: new Map<string, ChapterGate>(),
+  };
   return {
     units: state.units,
+    setProfile(profile: Profile | undefined) {
+      state.profile = profile;
+    },
+    getSavedGate(tier: string) {
+      return state.chapterGates.get(tier);
+    },
     async getUnits() {
       return state.units;
     },
@@ -28,7 +45,16 @@ function makeFakeRepo(initial: Unit[]): ContentRepository & { units: Unit[] } {
     async saveQuestState(next: QuestState) {
       state.questState = next;
     },
-  } as unknown as ContentRepository & { units: Unit[] };
+    async getProfile() {
+      return state.profile;
+    },
+    async getChapterGate(tier: string) {
+      return state.chapterGates.get(tier);
+    },
+    async saveChapterGate(gate: ChapterGate) {
+      state.chapterGates.set(gate.tier, gate);
+    },
+  } as unknown as FakeRepo;
 }
 
 function unit(overrides: Partial<Unit> = {}): Unit {
@@ -168,6 +194,92 @@ describe("completeUnitActivity", () => {
 
     const units = await repo.getUnits();
     expect(units.find((u) => u.id === 2)?.status).toBe("available");
+  });
+});
+
+describe("completeUnitActivity — pre-A1 chapter gate hold (issue #114)", () => {
+  function preA1Path(): Unit[] {
+    return [
+      unit({
+        id: 1,
+        index: -4,
+        status: "completed",
+        activities: [{ skill: "alphabet", done: true }],
+      }),
+      unit({
+        id: 2,
+        index: -3,
+        status: "completed",
+        activities: [{ skill: "phonics", done: true }],
+      }),
+      unit({
+        id: 3,
+        index: -2,
+        status: "completed",
+        activities: [{ skill: "picture-match", done: true }],
+      }),
+      unit({
+        id: 4,
+        index: -1,
+        status: "in-progress",
+        activities: [{ skill: "listen-tap" }],
+      }),
+      unit({ id: 5, index: 0, status: "locked", activities: [{ skill: "review" }] }),
+    ];
+  }
+
+  it("holds A1 unlock in strict mode and persists a pending pre-A1 gate", async () => {
+    const repo = makeFakeRepo(preA1Path());
+    repo.setProfile({
+      goals: [],
+      createdAt: new Date(0),
+      settings: {},
+      experienceMode: "kid",
+    });
+
+    await completeUnitActivity(repo, repo.units, 4, 0, noopReplenish);
+
+    const units = await repo.getUnits();
+    expect(units.find((u) => u.id === 4)?.status).toBe("completed");
+    expect(units.find((u) => u.id === 5)?.status).toBe("locked");
+    expect(repo.getSavedGate("pre-A1")?.status).toBe("pending");
+  });
+
+  it("unlocks A1 in open mode while still persisting a pending gate", async () => {
+    const repo = makeFakeRepo(preA1Path());
+    repo.setProfile({
+      goals: [],
+      createdAt: new Date(0),
+      settings: { progressionMode: "open", enablePreA1: true },
+      experienceMode: "adult",
+    });
+
+    await completeUnitActivity(repo, repo.units, 4, 0, noopReplenish);
+
+    const units = await repo.getUnits();
+    expect(units.find((u) => u.id === 5)?.status).toBe("available");
+    expect(repo.getSavedGate("pre-A1")?.status).toBe("pending");
+  });
+
+  it("unlocks A1 in strict mode once the gate is already passed", async () => {
+    const repo = makeFakeRepo(preA1Path());
+    repo.setProfile({
+      goals: [],
+      createdAt: new Date(0),
+      settings: {},
+      experienceMode: "kid",
+    });
+    await repo.saveChapterGate({
+      tier: "pre-A1",
+      status: "passed",
+      updatedAt: new Date(0),
+    });
+
+    await completeUnitActivity(repo, repo.units, 4, 0, noopReplenish);
+
+    const units = await repo.getUnits();
+    expect(units.find((u) => u.id === 5)?.status).toBe("available");
+    expect(repo.getSavedGate("pre-A1")?.status).toBe("passed");
   });
 });
 

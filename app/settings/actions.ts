@@ -23,7 +23,7 @@ type AdminConfig = Pick<
 
 type TtsPrefs = Pick<
   ProfileSettings,
-  "ttsRate" | "ttsVoiceUri" | "ttsLang" | "enablePreA1" | "soundMuted"
+  "ttsRate" | "ttsVoiceUri" | "ttsLang" | "enablePreA1" | "soundMuted" | "progressionMode"
 >;
 
 const ADMIN_KEYS: Array<keyof AdminConfig> = [

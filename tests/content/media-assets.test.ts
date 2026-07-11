@@ -104,9 +104,9 @@ describe("resolveMediaAsset", () => {
     expect(created).toEqual(makeAsset(42, "pending"));
     expect(producer).toHaveBeenCalledTimes(1);
 
-    await expect(
-      resolveMediaAsset(repo, KEY, producer, { createIfAbsent: true }),
-    ).rejects.toThrow(/already exists.*regenerate/i);
+    await expect(resolveMediaAsset(repo, KEY, producer, { createIfAbsent: true })).rejects.toThrow(
+      /already exists.*regenerate/i,
+    );
     expect(producer).toHaveBeenCalledTimes(1);
   });
 

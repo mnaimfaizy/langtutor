@@ -12,6 +12,8 @@ import type {
 } from "./content-repository";
 import type {
   Card,
+  ChapterGate,
+  ChapterTier,
   CollectionSummary,
   Content,
   ErrorEventRecord,
@@ -48,6 +50,7 @@ import {
   repoExportBackup,
   repoGetAllCards,
   repoGetCard,
+  repoGetChapterGate,
   repoGetContent,
   repoGetDueCards,
   repoGetGamification,
@@ -69,6 +72,7 @@ import {
   repoQueryContent,
   repoQueryErrorEvents,
   repoQueryMediaAssets,
+  repoSaveChapterGate,
   repoSaveGamification,
   repoSaveProfile,
   repoSaveQuestState,
@@ -213,6 +217,12 @@ export class HttpContentRepository implements ContentRepository {
   }
   deleteUnit(id: number): Promise<void> {
     return repoDeleteUnit(id);
+  }
+  getChapterGate(tier: ChapterTier): Promise<ChapterGate | undefined> {
+    return repoGetChapterGate(tier);
+  }
+  saveChapterGate(gate: ChapterGate): Promise<void> {
+    return repoSaveChapterGate(gate);
   }
   clear(): Promise<void> {
     return repoClear();

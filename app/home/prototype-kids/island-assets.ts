@@ -138,8 +138,6 @@ export function kidsIslandAssetUrl(id: KidsIslandAssetId, refresh = false): stri
   return refresh ? `${base}&refresh=1` : base;
 }
 
-export function islandBackgroundId(
-  orientation: "portrait" | "landscape",
-): KidsIslandAssetId {
+export function islandBackgroundId(orientation: "portrait" | "landscape"): KidsIslandAssetId {
   return orientation === "portrait" ? "island-bg-portrait" : "island-bg-landscape";
 }

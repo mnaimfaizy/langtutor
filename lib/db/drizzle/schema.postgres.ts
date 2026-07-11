@@ -23,6 +23,8 @@ import {
   MEDIA_ASSET_APPROVAL_STATUS_VALUES,
   MEDIA_ASSET_KIND_VALUES,
   MEDIA_ASSET_SOURCE_VALUES,
+  CHAPTER_GATE_STATUS_VALUES,
+  CHAPTER_TIER_VALUES,
   COLLECTION_KIND_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
@@ -49,6 +51,8 @@ export {
   MEDIA_ASSET_APPROVAL_STATUS_VALUES,
   MEDIA_ASSET_KIND_VALUES,
   MEDIA_ASSET_SOURCE_VALUES,
+  CHAPTER_GATE_STATUS_VALUES,
+  CHAPTER_TIER_VALUES,
   COLLECTION_KIND_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
@@ -265,4 +269,16 @@ export const units = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   },
   (t) => [uniqueIndex("idx_units_user_index").on(t.userId, t.index)],
+);
+
+/** Per-user chapter mastery-gate status (ADR 0043, issue #114). */
+export const chapterGates = pgTable(
+  "chapter_gates",
+  {
+    userId: uuid("user_id").notNull(),
+    tier: text("tier", { enum: CHAPTER_TIER_VALUES }).notNull(),
+    status: text("status", { enum: CHAPTER_GATE_STATUS_VALUES }).notNull().default("pending"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.tier] })],
 );

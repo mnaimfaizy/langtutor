@@ -4,10 +4,21 @@
  * Wires the pure state machine (`lib/path/unit-progress.ts`) to the repository and the
  * completion event (`lib/path/unit-events.ts`). Called from the embedded review/reading
  * experiences when the learner finishes an activity inside a unit.
+ *
+ * Chapter mastery-gate hold (ADR 0043, issue #114): completing the last pre-A1 unit in
+ * strict mode does not unlock A1 until the chapter gate is marked passed.
  */
 import type { ContentRepository, Unit } from "@/lib/db";
 import { recordCelebration } from "@/lib/gamification";
 
+import {
+  effectiveProgressionMode,
+  isPreA1ChapterComplete,
+  isPreA1ToA1Boundary,
+  PRE_A1_CHAPTER_TIER,
+  resolveChapterGateStatus,
+  shouldHoldUnlockForChapterGate,
+} from "./chapter-gate";
 import { replenishPathBuffer } from "./replenish";
 import { emitUnitCompleted } from "./unit-events";
 import { completeActivity, nextUnitToUnlock } from "./unit-progress";
@@ -18,9 +29,10 @@ export type ReplenishPathBufferFn = typeof replenishPathBuffer;
 /**
  * Marks activity @activityIndex of unit @unitId done, persists the unit's new
  * activities/status, and — if that completes the unit — emits the completion event and
- * unlocks the next locked unit on the path. Idempotent: re-completing an already-done
- * activity, or an unknown unit id, is a silent no-op so a duplicate callback (e.g. a
- * remounted embedded view) never double-unlocks or double-emits.
+ * unlocks the next locked unit on the path (unless a strict chapter gate holds the
+ * unlock). Idempotent: re-completing an already-done activity, or an unknown unit id, is
+ * a silent no-op so a duplicate callback (e.g. a remounted embedded view) never
+ * double-unlocks or double-emits.
  *
  * On completion, also fires the path-buffer replenishment trigger (ADR 0015, issue #61) —
  * deliberately **not** awaited: replenishment is a background, best-effort pass that must
@@ -61,9 +73,40 @@ export async function completeUnitActivity(
     at: completedAt,
   });
 
-  const next = nextUnitToUnlock(units, unit);
+  // Reflect this completion in the in-memory snapshot so chapter-complete checks see it.
+  const unitsAfter = units.map((u) =>
+    u.id === unitId ? { ...u, activities, status: "completed" as const } : u,
+  );
+
+  if (isPreA1ChapterComplete(unitsAfter)) {
+    const existing = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
+    if (!existing || existing.status !== "passed") {
+      await repo.saveChapterGate({
+        tier: PRE_A1_CHAPTER_TIER,
+        status: "pending",
+        updatedAt: completedAt,
+      });
+    }
+  }
+
+  const next = nextUnitToUnlock(unitsAfter, { ...unit, activities, status: "completed" });
   if (next) {
-    await repo.updateUnit(next.id, { status: "available" });
+    let hold = false;
+    if (isPreA1ToA1Boundary(unit, next)) {
+      const profile = await repo.getProfile();
+      const gate = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
+      hold = shouldHoldUnlockForChapterGate({
+        completedUnit: unit,
+        nextUnit: next,
+        progressionMode: effectiveProgressionMode(
+          profile ?? { experienceMode: undefined, settings: {} },
+        ),
+        gateStatus: resolveChapterGateStatus(gate),
+      });
+    }
+    if (!hold) {
+      await repo.updateUnit(next.id, { status: "available" });
+    }
   }
 
   void replenish(repo);

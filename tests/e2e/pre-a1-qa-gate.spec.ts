@@ -370,7 +370,9 @@ test("four pre-A1 activity types render and accept input in both kid palettes", 
   }
 });
 
-test("completing every pre-A1 unit unlocks unit 0 for the A1 handoff", async ({ page }) => {
+test("completing every pre-A1 unit leaves A1 locked until the chapter gate passes", async ({
+  page,
+}) => {
   await signUpKid(page);
   await completeOnboardingToHome(page);
 
@@ -381,7 +383,9 @@ test("completing every pre-A1 unit unlocks unit 0 for the A1 handoff", async ({ 
   await completePictureMatchUnit(page);
   await completeListenTapUnit(page);
 
+  // Kid island hands off once pre-A1 is done; standard home shows the gate hold (issue #114).
+  await page.goto("/home");
   await expect(page.getByTestId("unit--1")).toHaveAttribute("data-status", "completed");
-  await expect(page.getByTestId("unit-0")).toHaveAttribute("data-status", "available");
-  await expect(page.getByTestId("unit-0")).toContainText("A1");
+  await expect(page.getByTestId("unit-0")).toHaveAttribute("data-status", "locked");
+  await expect(page.getByTestId("chapter-gate-pending-cta")).toBeVisible();
 });

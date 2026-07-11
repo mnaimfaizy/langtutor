@@ -496,6 +496,38 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
     });
 
     // -------------------------------------------------------------------------
+    describe("chapter gates (issue #114)", () => {
+      const updatedAt = new Date("2026-07-11T12:00:00.000Z");
+
+      it("returns undefined before any gate is saved", async () => {
+        expect(await repo.getChapterGate("pre-A1")).toBeUndefined();
+      });
+
+      it("round-trips a pending pre-A1 gate", async () => {
+        await repo.saveChapterGate({ tier: "pre-A1", status: "pending", updatedAt });
+
+        expect(await repo.getChapterGate("pre-A1")).toEqual({
+          tier: "pre-A1",
+          status: "pending",
+          updatedAt,
+        });
+      });
+
+      it("overwrites status on repeated save for the same tier", async () => {
+        await repo.saveChapterGate({ tier: "pre-A1", status: "pending", updatedAt });
+        await repo.saveChapterGate({
+          tier: "pre-A1",
+          status: "passed",
+          updatedAt: new Date("2026-07-11T13:00:00.000Z"),
+        });
+
+        const gate = await repo.getChapterGate("pre-A1");
+        expect(gate?.status).toBe("passed");
+        expect(gate?.updatedAt).toEqual(new Date("2026-07-11T13:00:00.000Z"));
+      });
+    });
+
+    // -------------------------------------------------------------------------
     describe("collectible grants", () => {
       const grantedAt = new Date("2026-06-22T15:00:00.000Z");
 
@@ -786,6 +818,11 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
           entries: [],
         });
         await repo.grantCollectible("sticker-fox", 1, new Date(0));
+        await repo.saveChapterGate({
+          tier: "pre-A1",
+          status: "pending",
+          updatedAt: new Date(0),
+        });
 
         await repo.clear();
 
@@ -799,6 +836,7 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
         expect(await repo.getQuestState()).toBeUndefined();
         expect(await repo.getCollectibles()).toEqual([]);
         expect(await repo.getCollections()).toEqual([]);
+        expect(await repo.getChapterGate("pre-A1")).toBeUndefined();
       });
     });
 

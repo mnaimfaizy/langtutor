@@ -19,12 +19,13 @@ afterEach(async () => {
 });
 
 describe("DexieContentRepository — schema versioning", () => {
-  it("opens at version 7 with deck collections", async () => {
+  it("opens at version 8 with chapter gates", async () => {
     await db.open();
-    expect(db.verno).toBe(7);
+    expect(db.verno).toBe(8);
     expect(db.tables.map((t) => t.name).sort()).toEqual([
       "cardCollectionMembers",
       "cards",
+      "chapterGates",
       "collectibleGrants",
       "collections",
       "content",

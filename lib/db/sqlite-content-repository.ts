@@ -28,6 +28,7 @@ import {
   mediaAssets as mediaAssetsTable,
   collectibleGrants as collectibleGrantsTable,
   questState as questStateTable,
+  chapterGates as chapterGatesTable,
   profiles as profilesTable,
   units as unitsTable,
   weakness as weaknessTable,
@@ -35,6 +36,8 @@ import {
 import type {
   Achievement,
   Card,
+  ChapterGate,
+  ChapterTier,
   CollectibleGrant,
   CollectionSummary,
   Content,
@@ -1093,6 +1096,46 @@ export class SqliteContentRepository implements ContentRepository {
       .run();
   }
 
+  // ─── chapter mastery gates ────────────────────────────────────────────────
+
+  async getChapterGate(tier: ChapterTier): Promise<ChapterGate | undefined> {
+    const row = this.db
+      .select()
+      .from(chapterGatesTable)
+      .where(and(eq(chapterGatesTable.userId, this.userId), eq(chapterGatesTable.tier, tier)))
+      .get();
+    if (!row) return undefined;
+    return { tier: row.tier, status: row.status, updatedAt: row.updatedAt };
+  }
+
+  async saveChapterGate(gate: ChapterGate): Promise<void> {
+    const existing = this.db
+      .select({ tier: chapterGatesTable.tier })
+      .from(chapterGatesTable)
+      .where(and(eq(chapterGatesTable.userId, this.userId), eq(chapterGatesTable.tier, gate.tier)))
+      .get();
+
+    if (existing) {
+      this.db
+        .update(chapterGatesTable)
+        .set({ status: gate.status, updatedAt: gate.updatedAt })
+        .where(
+          and(eq(chapterGatesTable.userId, this.userId), eq(chapterGatesTable.tier, gate.tier)),
+        )
+        .run();
+    } else {
+      this.db
+        .insert(chapterGatesTable)
+        .values({
+          userId: this.userId,
+          tier: gate.tier,
+          status: gate.status,
+          updatedAt: gate.updatedAt,
+        })
+        .run();
+    }
+  }
+
   // ─── maintenance ──────────────────────────────────────────────────────────
 
   async clear(): Promise<void> {
@@ -1112,6 +1155,7 @@ export class SqliteContentRepository implements ContentRepository {
       .delete(collectibleGrantsTable)
       .where(eq(collectibleGrantsTable.userId, this.userId))
       .run();
+    this.db.delete(chapterGatesTable).where(eq(chapterGatesTable.userId, this.userId)).run();
     this.db.delete(lexiconCacheTable).run();
     this.db.delete(mediaAssetsTable).run();
     this.db.delete(unitsTable).where(eq(unitsTable.userId, this.userId)).run();

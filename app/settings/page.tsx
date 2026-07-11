@@ -7,10 +7,12 @@ import { z } from "zod";
 
 import {
   DEFAULT_EXPERIENCE_MODE,
+  DEFAULT_PROGRESSION_MODE,
   type Cefr,
   type ExperienceMode,
   type LearnerGoal,
   type Profile,
+  type ProgressionMode,
 } from "@/lib/db";
 import { HealthResponseSchema } from "@/lib/llm/settings";
 import { getContentRepository } from "@/lib/registry";
@@ -62,6 +64,19 @@ const EXPERIENCE_MODE_OPTIONS: { value: ExperienceMode; label: string; hint: str
   { value: "kid", label: "Kid", hint: "Bright, playful" },
 ];
 
+const PROGRESSION_MODE_OPTIONS: { value: ProgressionMode; label: string; hint: string }[] = [
+  {
+    value: "strict",
+    label: "Strict",
+    hint: "Chapter exams must be passed before the next chapter unlocks",
+  },
+  {
+    value: "open",
+    label: "Open",
+    hint: "Exams and reports still run; they do not block the path",
+  },
+];
+
 const SttHealthSchema = z.object({ ok: z.boolean(), error: z.string().optional() });
 
 export default function SettingsPage() {
@@ -99,6 +114,11 @@ export default function SettingsPage() {
   const [preA1Busy, setPreA1Busy] = useState(false);
   const [preA1Banner, setPreA1Banner] = useState<Banner>(null);
 
+  // Adult progression mode (ADR 0033 / 0042, issue #114)
+  const [progressionMode, setProgressionMode] = useState<ProgressionMode>(DEFAULT_PROGRESSION_MODE);
+  const [progressionBusy, setProgressionBusy] = useState(false);
+  const [progressionBanner, setProgressionBanner] = useState<Banner>(null);
+
   // TTS state
   const [ttsRate, setTtsRate] = useState(1);
   const [ttsVoiceUri, setTtsVoiceUri] = useState("");
@@ -132,6 +152,7 @@ export default function SettingsPage() {
         setProfileGoals(profile?.goals ?? []);
         setExperienceMode(profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE);
         setEnablePreA1(s.enablePreA1 ?? false);
+        setProgressionMode(s.progressionMode ?? DEFAULT_PROGRESSION_MODE);
         setSoundMuted(s.soundMuted ?? false);
         setTtsRate(s.ttsRate ?? 1);
         setTtsVoiceUri(s.ttsVoiceUri ?? "");
@@ -292,11 +313,20 @@ export default function SettingsPage() {
     try {
       const repo = getContentRepository();
       const existing = await repo.getProfile();
+      // Kid accounts are always strict (ADR 0042) — force the stored setting on switch.
+      const nextSettings =
+        experienceMode === "kid"
+          ? { ...(existing?.settings ?? {}), progressionMode: "strict" as const }
+          : (existing?.settings ?? {});
+      if (experienceMode === "kid") {
+        setProgressionMode("strict");
+        await saveUserPrefs({ progressionMode: "strict" });
+      }
       const profile: Profile = {
         cefrLevel: existing?.cefrLevel,
         goals: existing?.goals ?? [],
         createdAt: existing?.createdAt ?? new Date(),
-        settings: existing?.settings ?? {},
+        settings: nextSettings,
         experienceMode,
       };
       await repo.saveProfile(profile);
@@ -309,6 +339,22 @@ export default function SettingsPage() {
       });
     } finally {
       setExperienceModeBusy(false);
+    }
+  }
+
+  async function handleSaveProgressionMode() {
+    setProgressionBusy(true);
+    setProgressionBanner(null);
+    try {
+      await saveUserPrefs({ progressionMode });
+      setProgressionBanner({ tone: "ok", text: "Progression mode saved." });
+    } catch (error) {
+      setProgressionBanner({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Save failed",
+      });
+    } finally {
+      setProgressionBusy(false);
     }
   }
 
@@ -425,6 +471,54 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {experienceMode === "adult" && (
+        <Card className="mt-6" data-testid="progression-mode-section">
+          <CardTitle>Progression</CardTitle>
+          <CardDescription>
+            Choose how chapter mastery exams affect the learning path. Kid accounts always use
+            strict mode.
+          </CardDescription>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              {PROGRESSION_MODE_OPTIONS.map(({ value, label, hint }) => (
+                <SelectPill
+                  key={value}
+                  data-testid={`progression-mode-btn-${value}`}
+                  selected={progressionMode === value}
+                  disabled={!loaded || progressionBusy}
+                  onClick={() => setProgressionMode(value)}
+                >
+                  {label}
+                  <span className="text-muted mt-0.5 block text-xs font-normal">{hint}</span>
+                </SelectPill>
+              ))}
+            </div>
+
+            <div className="pt-1">
+              <Button
+                data-testid="btn-save-progression-mode"
+                onClick={() => void handleSaveProgressionMode()}
+                disabled={!loaded || progressionBusy}
+              >
+                Save progression
+              </Button>
+            </div>
+
+            {progressionBanner && (
+              <p
+                className={cn(
+                  "text-sm",
+                  progressionBanner.tone === "ok" ? "text-success" : "text-danger",
+                )}
+                role="status"
+              >
+                {progressionBanner.text}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {experienceMode === "adult" && (
         <Card className="mt-6" data-testid="pre-a1-settings-section">

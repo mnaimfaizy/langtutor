@@ -13,6 +13,9 @@ export const MEDIA_ASSET_KIND_VALUES = ["image", "audio"] as const;
 export const MEDIA_ASSET_SOURCE_VALUES = ["generated", "curated-pack"] as const;
 export const MEDIA_ASSET_APPROVAL_STATUS_VALUES = ["pending", "approved"] as const;
 export const COLLECTION_KIND_VALUES = ["user", "unit"] as const;
+export const CHAPTER_TIER_VALUES = ["pre-A1", "A1", "A2", "B1", "B2", "C1", "C2"] as const;
+export const CHAPTER_GATE_STATUS_VALUES = ["pending", "passed"] as const;
+export const PROGRESSION_MODE_VALUES = ["strict", "open"] as const;
 
 export type ChatProvider = (typeof CHAT_PROVIDER_VALUES)[number];
 export type SttProvider = (typeof STT_PROVIDER_VALUES)[number];

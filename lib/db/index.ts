@@ -9,6 +9,9 @@ export type {
   ActivityKind,
   Card,
   Cefr,
+  ChapterGate,
+  ChapterGateStatus,
+  ChapterTier,
   Collection,
   CollectionKind,
   CollectionSummary,
@@ -30,6 +33,7 @@ export type {
   MediaAssetSource,
   Profile,
   ProfileSettings,
+  ProgressionMode,
   QuestProgressEntry,
   QuestState,
   Skill,
@@ -39,7 +43,7 @@ export type {
   UnitStatus,
   Weakness,
 } from "./schema";
-export { DEFAULT_EXPERIENCE_MODE } from "./schema";
+export { DEFAULT_EXPERIENCE_MODE, DEFAULT_PROGRESSION_MODE } from "./schema";
 
 export type { BackupData } from "../backup/schema";
 

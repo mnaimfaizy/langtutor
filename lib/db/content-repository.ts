@@ -2,6 +2,8 @@ import type { BackupData } from "../backup/schema";
 import type {
   Card,
   Cefr,
+  ChapterGate,
+  ChapterTier,
   CollectionKind,
   CollectionSummary,
   Content,
@@ -147,6 +149,11 @@ export interface ContentRepository extends ContentSink {
   getUnits(): Promise<Unit[]>;
   updateUnit(id: number, changes: Partial<NewUnit>): Promise<void>;
   deleteUnit(id: number): Promise<void>;
+
+  // chapter mastery gates (ADR 0043, issue #114)
+  getChapterGate(tier: ChapterTier): Promise<ChapterGate | undefined>;
+  /** Upserts the gate row for @gate.tier (pending / passed at minimum). */
+  saveChapterGate(gate: ChapterGate): Promise<void>;
 
   /** Wipe every table. Used by import/restore (Phase 8.2) and tests. */
   clear(): Promise<void>;

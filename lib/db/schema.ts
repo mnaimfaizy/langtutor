@@ -31,6 +31,24 @@ export type ExperienceMode = "adult" | "kid";
 /** Default for new profiles and legacy rows saved before this field existed. */
 export const DEFAULT_EXPERIENCE_MODE: ExperienceMode = "adult";
 
+/** Strict vs open chapter-gate progression (ADR 0033). Default for new adults is strict. */
+export type ProgressionMode = "strict" | "open";
+
+export const DEFAULT_PROGRESSION_MODE: ProgressionMode = "strict";
+
+/** Chapter / tier key for mastery-gate status (ADR 0035 / 0043). */
+export type ChapterTier = Cefr | "pre-A1";
+
+/** Minimum gate lifecycle for the pre-A1 slice (exam/review arrive in later issues). */
+export type ChapterGateStatus = "pending" | "passed";
+
+/** Persisted chapter mastery-gate status for one tier (ADR 0043, issue #114). */
+export interface ChapterGate {
+  tier: ChapterTier;
+  status: ChapterGateStatus;
+  updatedAt: Date;
+}
+
 /**
  * Runtime overrides for the Mac endpoints / model names and TTS prefs, set in the
  * Settings UI and persisted in the profile (PLAN §3.2). Defaults come from server-only
@@ -54,6 +72,12 @@ export interface ProfileSettings {
   enablePreA1?: boolean;
   /** When true, celebration sound effects are silenced (issue #81). */
   soundMuted?: boolean;
+  /**
+   * Adult-selectable progression mode for chapter mastery gates (ADR 0033 / 0042).
+   * Kids always resolve to `"strict"` regardless of this field — see
+   * `effectiveProgressionMode` in `lib/path/chapter-gate.ts`.
+   */
+  progressionMode?: ProgressionMode;
 }
 
 /**

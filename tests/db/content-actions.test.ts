@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   BackupData,
+  ChapterGate,
   GamificationState,
   LexiconCacheEntry,
   MediaAsset,
@@ -51,6 +52,8 @@ const mockRepo = vi.hoisted(() => ({
   saveGamification: vi.fn().mockResolvedValue(undefined),
   getQuestState: vi.fn().mockResolvedValue(undefined),
   saveQuestState: vi.fn().mockResolvedValue(undefined),
+  getChapterGate: vi.fn().mockResolvedValue(undefined),
+  saveChapterGate: vi.fn().mockResolvedValue(undefined),
   getCollectibles: vi.fn().mockResolvedValue([]),
   grantCollectible: vi.fn().mockResolvedValue(undefined),
   getLexiconEntry: vi.fn().mockResolvedValue(undefined),
@@ -118,6 +121,8 @@ describe("content actions — identity routing", () => {
     await actions.repoSaveGamification({} as GamificationState);
     await actions.repoGetQuestState();
     await actions.repoSaveQuestState({} as QuestState);
+    await actions.repoGetChapterGate("pre-A1");
+    await actions.repoSaveChapterGate({} as ChapterGate);
     await actions.repoGetCollectibles();
     await actions.repoGrantCollectible("sticker-fox", 1, new Date());
     await actions.repoGetLexiconEntry("hello");
@@ -135,6 +140,6 @@ describe("content actions — identity routing", () => {
     await actions.repoExportBackup();
     await actions.repoImportBackup({} as BackupData);
 
-    expect(mockResolveCurrentUser).toHaveBeenCalledTimes(37);
+    expect(mockResolveCurrentUser).toHaveBeenCalledTimes(39);
   });
 });

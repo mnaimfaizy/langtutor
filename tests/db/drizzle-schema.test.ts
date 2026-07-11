@@ -15,6 +15,7 @@ import {
   mediaAssets,
   collectibleGrants,
   questState,
+  chapterGates,
   profiles,
   weakness,
 } from "@/lib/db/drizzle/schema";
@@ -66,6 +67,7 @@ describe("Migration — table existence", () => {
     expect(names).toContain("media_assets");
     expect(names).toContain("profile");
     expect(names).toContain("quest_state");
+    expect(names).toContain("chapter_gates");
     expect(names).toContain("weakness");
   });
 });
@@ -202,6 +204,13 @@ describe("Migration — schema shape", () => {
     expect(columns("quest_state")).toContain("entries");
   });
 
+  it("chapter_gates has user_id+tier compound PK columns", () => {
+    expect(columns("chapter_gates")).toContain("user_id");
+    expect(columns("chapter_gates")).toContain("tier");
+    expect(columns("chapter_gates")).toContain("status");
+    expect(columns("chapter_gates")).toContain("updated_at");
+  });
+
   it("collectible_grants has user_id as part of compound PK", () => {
     expect(columns("collectible_grants")).toContain("user_id");
     expect(columns("collectible_grants")).toContain("collectible_id");
@@ -218,6 +227,7 @@ describe("Drizzle schema table objects", () => {
     expect(errorEvents).toBeDefined();
     expect(gamification).toBeDefined();
     expect(questState).toBeDefined();
+    expect(chapterGates).toBeDefined();
     expect(collectibleGrants).toBeDefined();
     expect(lexiconCache).toBeDefined();
     expect(mediaAssets).toBeDefined();

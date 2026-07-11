@@ -1,7 +1,7 @@
 /**
  * Issue #66 — pre-A1 tier path plumbing. Kid-mode learners start with negative-index
- * placeholder units; adult learners opt in via Settings. Handoff into A1 reuses the
- * existing unlock state machine (unit -1 complete → unit 0 available).
+ * placeholder units; adult learners opt in via Settings. Within-pre-A1 unlock stays
+ * completion-based; the pre-A1 → A1 chapter gate (issue #114) holds unit 0 in strict mode.
  */
 import { type Page, expect, test } from "./fixtures";
 

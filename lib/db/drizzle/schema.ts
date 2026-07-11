@@ -20,6 +20,8 @@ export {
   MEDIA_ASSET_APPROVAL_STATUS_VALUES,
   MEDIA_ASSET_KIND_VALUES,
   MEDIA_ASSET_SOURCE_VALUES,
+  CHAPTER_GATE_STATUS_VALUES,
+  CHAPTER_TIER_VALUES,
   COLLECTION_KIND_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
@@ -37,6 +39,8 @@ import {
   MEDIA_ASSET_APPROVAL_STATUS_VALUES,
   MEDIA_ASSET_KIND_VALUES,
   MEDIA_ASSET_SOURCE_VALUES,
+  CHAPTER_GATE_STATUS_VALUES,
+  CHAPTER_TIER_VALUES,
   COLLECTION_KIND_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
@@ -287,4 +291,16 @@ export const units = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   },
   (t) => [uniqueIndex("idx_units_user_index").on(t.userId, t.index)],
+);
+
+/** Per-user chapter mastery-gate status (ADR 0043, issue #114). */
+export const chapterGates = sqliteTable(
+  "chapter_gates",
+  {
+    userId: text("user_id").notNull(),
+    tier: text("tier", { enum: CHAPTER_TIER_VALUES }).notNull(),
+    status: text("status", { enum: CHAPTER_GATE_STATUS_VALUES }).notNull().default("pending"),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.tier] })],
 );

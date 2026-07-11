@@ -37,7 +37,7 @@ Choose **Option A**:
    student reports, and review guidance. These must not be reduced to a static
    rule table that never changes with the learner.
 
-This amends the *intent* of ADR 0015 (teacher adapts the experience) without
+This amends the _intent_ of ADR 0015 (teacher adapts the experience) without
 adopting structural path mutation (insert/reorder/replace backbone nodes).
 
 ## Consequences

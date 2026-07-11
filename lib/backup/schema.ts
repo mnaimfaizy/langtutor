@@ -20,6 +20,7 @@ const ProfileRowSchema = z.object({
     ttsLang: z.string().optional(),
     enablePreA1: z.boolean().optional(),
     soundMuted: z.boolean().optional(),
+    progressionMode: z.enum(["strict", "open"]).optional(),
   }),
 });
 

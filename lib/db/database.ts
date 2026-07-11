@@ -2,6 +2,7 @@ import Dexie, { type EntityTable, type Table } from "dexie";
 import type {
   Card,
   Cefr,
+  ChapterGate,
   CollectibleGrant,
   Collection,
   Content,
@@ -67,6 +68,8 @@ export class LangTutorDB extends Dexie {
   collectibleGrants!: Table<CollectibleGrant, CollectibleGrantKey>;
   collections!: EntityTable<Collection, "id">;
   cardCollectionMembers!: Table<CardCollectionMember, CardCollectionMemberKey>;
+  /** Keyed by chapter tier (`pre-A1`, `A1`, …). */
+  chapterGates!: Table<ChapterGate, string>;
 
   constructor(name = "lang-tutor") {
     super(name);
@@ -117,6 +120,10 @@ export class LangTutorDB extends Dexie {
     this.version(7).stores({
       collections: "++id, kind",
       cardCollectionMembers: "[collectionId+cardId], collectionId, cardId",
+    });
+    // v8: chapter mastery-gate status (ADR 0043, issue #114).
+    this.version(8).stores({
+      chapterGates: "tier",
     });
   }
 }
