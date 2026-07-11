@@ -67,7 +67,8 @@ export function isPreA1ChapterComplete(units: readonly Unit[]): boolean {
 
 /**
  * Home CTA: pre-A1 finished and the chapter gate is not yet passed. Independent of
- * progression mode — open mode still surfaces the (future) exam entry point.
+ * progression mode — open mode still surfaces the exam entry point for feedback
+ * without blocking A1 (issue #119).
  * Adults with pre-A1 disabled have no pre-A1 units, so this is false for them.
  */
 export function shouldShowPreA1ChapterGatePendingCta(args: {

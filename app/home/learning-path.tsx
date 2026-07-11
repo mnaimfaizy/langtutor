@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 
 import {
   DEFAULT_EXPERIENCE_MODE,
+  DEFAULT_PROGRESSION_MODE,
   type ChapterGateStatus,
   type ExperienceMode,
+  type ProgressionMode,
   type Unit,
 } from "@/lib/db";
 import {
   PRE_A1_CHAPTER_TIER,
+  effectiveProgressionMode,
   resolveChapterGateStatus,
   shouldShowPreA1ChapterGatePendingCta,
 } from "@/lib/path/chapter-gate";
@@ -43,12 +46,14 @@ const MODE_HEADING: Record<ExperienceMode, string> = {
  * units, issue #58, and pre-generates their activity content, issue #61) and re-renders with
  * whatever it managed to fill in.
  *
- * Chapter-gate pending CTA (issue #114) surfaces when pre-A1 is complete and the gate is not
- * yet passed — including the strict-mode hold that keeps unit 0 locked.
+ * Chapter-gate pending CTA (issues #114/#119) surfaces when pre-A1 is complete and the gate
+ * is not yet passed — including the strict-mode hold that keeps unit 0 locked. Open mode
+ * still shows the CTA for exam + teacher report without blocking A1.
  */
 export function LearningPath() {
   const [units, setUnits] = useState<Unit[] | null>(null);
   const [mode, setMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
+  const [progressionMode, setProgressionMode] = useState<ProgressionMode>(DEFAULT_PROGRESSION_MODE);
   const [gateStatus, setGateStatus] = useState<ChapterGateStatus>("pending");
 
   useEffect(() => {
@@ -57,7 +62,12 @@ export function LearningPath() {
 
     void (async () => {
       const profile = await repo.getProfile();
-      if (active) setMode(profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE);
+      if (active) {
+        setMode(profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE);
+        setProgressionMode(
+          effectiveProgressionMode(profile ?? { experienceMode: undefined, settings: {} }),
+        );
+      }
 
       await ensurePath(repo, {
         cefrLevel: profile?.cefrLevel,
@@ -110,7 +120,11 @@ export function LearningPath() {
 
       {showGateCta && (
         <div className="mt-4">
-          <PathChapterGatePendingCta mode={mode} gateStatus={gateStatus} />
+          <PathChapterGatePendingCta
+            mode={mode}
+            gateStatus={gateStatus}
+            progressionMode={progressionMode}
+          />
         </div>
       )}
 

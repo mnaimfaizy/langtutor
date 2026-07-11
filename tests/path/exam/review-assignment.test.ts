@@ -232,5 +232,20 @@ describe("strict fail → review → retake → pass state machine (issue #117)"
     expect(result.reviewAssigned).toBe(false);
     expect(repo.getSavedGate("pre-A1")?.status).toBe("pending");
     expect(isPreA1ExamStartAllowed("pending")).toBe(true);
+    expect(repo.getUnit0()?.status).toBe("available");
+  });
+
+  it("open-mode fail unlocks A1 when it was still locked", async () => {
+    const repo = makeFakeRepo(
+      [...completedPreA1, unit({ id: 10, index: 0, status: "locked" })],
+      openAdultProfile(),
+    );
+    const fill = makeValidExamFill();
+    const result = await submitPreA1ChapterExam(repo, fill, allWrongAnswers(fill));
+
+    expect(result.reviewAssigned).toBe(false);
+    expect(result.unlockedA1).toBe(true);
+    expect(repo.getUnit0()?.status).toBe("available");
+    expect(repo.getSavedGate("pre-A1")?.status).toBe("pending");
   });
 });

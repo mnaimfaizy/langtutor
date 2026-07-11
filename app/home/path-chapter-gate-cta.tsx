@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 
-import type { ChapterGateStatus, ExperienceMode } from "@/lib/db";
+import {
+  DEFAULT_PROGRESSION_MODE,
+  type ChapterGateStatus,
+  type ExperienceMode,
+  type ProgressionMode,
+} from "@/lib/db";
 import { preA1ChapterGateCtaHref } from "@/lib/path/chapter-gate";
 import { Card, cn } from "@/ui";
 import { TrophyIcon } from "../icons";
 
-const MODE_COPY: Record<
-  ExperienceMode,
-  Record<"pending" | "failed_review" | "ready_retake", { title: string; body: string }>
-> = {
+type CtaKind = "pending" | "failed_review" | "ready_retake";
+
+const MODE_COPY: Record<ExperienceMode, Record<CtaKind, { title: string; body: string }>> = {
   kid: {
     pending: {
       title: "Chapter check waiting",
@@ -41,25 +45,46 @@ const MODE_COPY: Record<
   },
 };
 
-function ctaKind(status: ChapterGateStatus): "pending" | "failed_review" | "ready_retake" {
+/** Open-mode adults still get the exam CTA — feedback without blocking A1 (issue #119). */
+const ADULT_OPEN_PENDING = {
+  title: "Chapter exam available",
+  body: "Pre-A1 is complete. Take the exam for a teacher report — A1 stays open either way.",
+} as const;
+
+function ctaKind(status: ChapterGateStatus): CtaKind {
   if (status === "failed_review") return "failed_review";
   if (status === "ready_retake") return "ready_retake";
   return "pending";
 }
 
+function ctaCopy(
+  mode: ExperienceMode,
+  kind: CtaKind,
+  progressionMode: ProgressionMode,
+): { title: string; body: string } {
+  if (mode === "adult" && progressionMode === "open" && kind === "pending") {
+    return ADULT_OPEN_PENDING;
+  }
+  return MODE_COPY[mode][kind];
+}
+
 /**
  * Shown on the home path when pre-A1 units are done but the chapter gate is not yet
- * passed (ADR 0043, issues #114–#117). Links into the exam or review checklist.
+ * passed (ADR 0043, issues #114–#119). Links into the exam or review checklist.
+ * Open mode still offers the CTA for feedback; only the A1 block differs.
  */
 export function PathChapterGatePendingCta({
   mode,
   gateStatus = "pending",
+  progressionMode = DEFAULT_PROGRESSION_MODE,
 }: {
   mode: ExperienceMode;
   gateStatus?: ChapterGateStatus;
+  /** Effective progression mode (kids always resolve to strict upstream). */
+  progressionMode?: ProgressionMode;
 }) {
   const kind = ctaKind(gateStatus);
-  const copy = MODE_COPY[mode][kind];
+  const copy = ctaCopy(mode, kind, progressionMode);
   const kid = mode === "kid";
   const href = preA1ChapterGateCtaHref(gateStatus);
 

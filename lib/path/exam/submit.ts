@@ -7,8 +7,10 @@
  * still hold (they won't for a real abandon). Already-passed gates are left alone.
  *
  * Strict fail assigns a review checklist and blocks retake until complete; open-mode
- * fail leaves the gate pending (A1 already unlocked at unit completion in open mode).
- * Review alone never clears the gate — re-pass is required.
+ * fail leaves the gate pending for the exam CTA / retake, ensures A1 is available
+ * (unlocks unit 0 if still locked), and never assigns a blocking review. Teacher
+ * reports still run in both modes. Review alone never clears the gate — re-pass is
+ * required (strict only).
  */
 import type { ContentRepository } from "@/lib/db";
 
@@ -24,7 +26,7 @@ import { PRE_A1_EXAM_TOPIC } from "./shape";
 
 export interface SubmitPreA1ExamResult {
   breakdown: ExamScoreBreakdown;
-  /** True when this submit newly marked the gate passed and unlocked unit 0. */
+  /** True when this submit newly unlocked unit 0 (pass, or open-mode fail ensuring availability). */
   unlockedA1: boolean;
   /** True when the gate was already passed before this submit. */
   alreadyPassed: boolean;
@@ -116,15 +118,27 @@ export async function submitPreA1ChapterExam(
       };
     }
 
+    // Open mode: feedback without block — keep gate pending (CTA / retake) and
+    // ensure A1 is enterable even if it was still locked (e.g. switched to open
+    // after a strict hold, or edge cases where completion didn't unlock).
     await repo.saveChapterGate({
       tier: PRE_A1_CHAPTER_TIER,
       status: "pending",
       updatedAt: now,
       reviewAssignment: null,
     });
+
+    const units = await repo.getUnits();
+    const unit0 = units.find((u) => u.index === 0);
+    let unlockedA1 = false;
+    if (unit0 && unit0.status === "locked") {
+      await repo.updateUnit(unit0.id, { status: "available" });
+      unlockedA1 = true;
+    }
+
     return {
       breakdown,
-      unlockedA1: false,
+      unlockedA1,
       alreadyPassed: false,
       reviewAssigned: false,
       contentId,

@@ -346,7 +346,7 @@ export function PreA1ExamPlayer() {
             {breakdown.overallTotal}). Pass needs {pct(PRE_A1_EXAM_OVERALL_THRESHOLD)} overall and{" "}
             {pct(PRE_A1_EXAM_SKILL_FLOOR)} in every skill.
           </p>
-          {unlockedA1 && (
+          {unlockedA1 && breakdown.passed && (
             <p
               className="text-accent mt-2 text-sm font-medium"
               data-testid="pre-a1-exam-unlocked"
@@ -364,8 +364,10 @@ export function PreA1ExamPlayer() {
             </p>
           )}
           {!breakdown.passed && !reviewAssigned && (
-            <p className="text-muted mt-2 text-sm">
-              Practice and try the chapter exam again when you are ready.
+            <p className="text-muted mt-2 text-sm" data-testid="pre-a1-exam-open-fail">
+              {unlockedA1
+                ? "Level A1 is open on your path. Read your teacher report below — retake anytime for a better score."
+                : "A1 stays available on your path. Read your teacher report below — retake anytime for a better score."}
             </p>
           )}
 
@@ -433,7 +435,11 @@ export function PreA1ExamPlayer() {
         )}
 
         <Link href="/home" className="mt-8 inline-block">
-          <Button variant={unlockedA1 ? "primary" : "secondary"}>Back to home</Button>
+          <Button
+            variant={unlockedA1 || (!breakdown.passed && !reviewAssigned) ? "primary" : "secondary"}
+          >
+            Back to home
+          </Button>
         </Link>
       </main>
     );
