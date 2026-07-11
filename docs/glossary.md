@@ -44,11 +44,33 @@
 
 **Unit** — one node on the learning path: a themed bundle of activities (vocab, listening, reading, …) planned by the LLM teacher around the static backbone.
 
-**LLM teacher** — the server-side path planner persona: a professional English teacher (adult mode) or kindergarten teacher (kid mode) that plans and adapts units from profile, level, and weakness data.
+**LLM teacher** — the server-side path planner persona: a professional English teacher (adult mode) or kindergarten teacher (kid mode) that plans unit register, runs/interprets mastery checks, and produces motivational review guidance from profile, level, and weakness data — without reordering the grammar backbone (ADR 0032).
 
 **Path buffer** — the N upcoming units whose plan and content are pre-generated while the Mac/provider is reachable, so the path continues offline.
 
-**Pre-A1 tier** — content tier below A1 for true beginners: alphabet, phonics, picture-word matching, listen-and-tap games; image- and audio-first.
+**Grammar backbone** — the fixed, long-lived sequence of grammar constructions (university-grade map) that anchors unit order; not rearranged by the AI teacher.
+
+**Mastery gate** — a check/exam at a **chapter/tier** boundary (`pre-A1`, `A1`…`C2`); in strict mode it must be passed before the next chapter’s first unit unlocks (ADR 0032–0035).
+
+**Path chapter** — a contiguous group of path units at the same tier (`pre-A1` or one CEFR level); the visual journey milestone and the mastery-gate boundary.
+
+**Progression mode** — **strict** (fail → teacher-assigned chapter review → must re-pass exam before next chapter) or **open** (exams/reports still run; gates do not block). Kids are always strict; adults default strict and may choose open (ADR 0033, ADR 0034, ADR 0042).
+
+**Teacher report** — AI-generated, learner-facing feedback after a mastery gate: motivation plus concrete pointers to weaknesses.
+
+**Review assignment** — structured, teacher-chosen set of units/skills within the failed chapter that the learner must complete before a strict-mode re-take (ADR 0036).
+
+**Chapter exam** — hybrid mastery check at a chapter exit: fixed skill/shape checklist, AI-filled items, Zod-validated; pre-buffered for offline play when possible (ADR 0037). Pass requires overall score ≥ threshold **and** every skill section ≥ its floor (v1 defaults 70% / 50%); AI writes report/review assignment only (ADR 0038–0039).
+
+**Exam buffer** — the next chapter exam (filled items) prepared while the AI provider is reachable, so a gate can still be taken offline.
+
+**Curriculum constants** — slow-changing assets the teacher plans around: grammar constructions and a general vocabulary base (extra vocab retrieved gradually).
+
+**Pre-A1 tier** — content tier below A1 for true beginners; planned to grow beyond the initial four single-activity units into a richer multi-unit, multi-activity chapter with a chapter exam (ADR 0016, ADR 0040).
+
+**Curriculum guide** — a verified reference syllabus/course framework (by tier) that orients the AI teacher’s planning, exams, and reports; fundamental guidance, not a rigid script. In v1, guides are bundled/retrieved into prompts with model-knowledge adaptation — no live web search (ADR 0040, ADR 0041). First product slice may use a minimal pre-A1 guide stub (ADR 0043).
+
+**First mastery-gate slice** — Pre-A1 chapter exam + teacher report + strict review/re-pass on the existing four units, before expanding pre-A1 content or gating A1+ (ADR 0043).
 
 **Media asset store** — shared storage of generated/curated images and TTS audio, keyed by word/phrase; generate once, reuse forever across users.
 
