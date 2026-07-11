@@ -324,11 +324,19 @@ export class DexieContentRepository implements ContentRepository {
 
   // chapter mastery gates ---------------------------------------------------
   async getChapterGate(tier: ChapterTier): Promise<ChapterGate | undefined> {
-    return this.db.chapterGates.get(tier);
+    const gate = await this.db.chapterGates.get(tier);
+    if (!gate) return undefined;
+    return {
+      ...gate,
+      reviewAssignment: gate.reviewAssignment ?? null,
+    };
   }
 
   async saveChapterGate(gate: ChapterGate): Promise<void> {
-    await this.db.chapterGates.put(gate);
+    await this.db.chapterGates.put({
+      ...gate,
+      reviewAssignment: gate.reviewAssignment ?? null,
+    });
   }
 
   // maintenance -------------------------------------------------------------

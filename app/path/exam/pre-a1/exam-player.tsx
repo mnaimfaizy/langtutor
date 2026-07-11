@@ -6,6 +6,7 @@ import Link from "next/link";
 import { DEFAULT_EXPERIENCE_MODE, type ExperienceMode } from "@/lib/db";
 import { PRE_A1_CHAPTER_TIER, resolveChapterGateStatus } from "@/lib/path/chapter-gate";
 import {
+  isPreA1ExamStartAllowed,
   persistPreA1ExamTeacherReport,
   PreA1ExamFillSchema,
   PRE_A1_EXAM_OVERALL_THRESHOLD,
@@ -17,12 +18,20 @@ import {
   type ExamScoreBreakdown,
   type PreA1ExamFill,
   type PreA1ExamSkill,
+  type ReviewAssignment,
   type TeacherReport,
 } from "@/lib/path/exam";
 import { getContentRepository } from "@/lib/registry";
 import { BackLink, Button, Card, SelectPill } from "@/ui";
 
-type Phase = "loading" | "already-passed" | "answering" | "submitting" | "result" | "error";
+type Phase =
+  | "loading"
+  | "already-passed"
+  | "review-required"
+  | "answering"
+  | "submitting"
+  | "result"
+  | "error";
 type ReportPhase = "idle" | "loading" | "ready" | "unavailable";
 
 const SKILL_LABEL: Record<PreA1ExamSkill, string> = {
@@ -43,6 +52,9 @@ export function PreA1ExamPlayer() {
   const [selected, setSelected] = useState<(number | null)[]>([]);
   const [breakdown, setBreakdown] = useState<ExamScoreBreakdown | null>(null);
   const [unlockedA1, setUnlockedA1] = useState(false);
+  const [reviewAssigned, setReviewAssigned] = useState(false);
+  const [reviewAssignment, setReviewAssignment] = useState<ReviewAssignment | null>(null);
+  const [wasRetake, setWasRetake] = useState(false);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [experienceMode, setExperienceMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
   const [reportPhase, setReportPhase] = useState<ReportPhase>("idle");
@@ -61,10 +73,17 @@ export function PreA1ExamPlayer() {
 
       setExperienceMode(profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE);
 
-      if (resolveChapterGateStatus(gate) === "passed") {
+      const status = resolveChapterGateStatus(gate);
+      if (status === "passed") {
         setPhase("already-passed");
         return;
       }
+      if (!isPreA1ExamStartAllowed(status)) {
+        setPhase("review-required");
+        return;
+      }
+
+      setWasRetake(status === "ready_retake");
 
       try {
         const res = await fetch("/api/path/exam/fill", {
@@ -153,6 +172,8 @@ export function PreA1ExamPlayer() {
       const result = await submitPreA1ChapterExam(repo, exam, selected);
       setBreakdown(result.breakdown);
       setUnlockedA1(result.unlockedA1);
+      setReviewAssigned(result.reviewAssigned);
+      setReviewAssignment(result.reviewAssignment ?? null);
       setPhase("result");
       // Score/unlock already finished — report is best-effort and must not undo unlock.
       void fetchAndPersistReport(result.contentId, result.breakdown, experienceMode);
@@ -188,6 +209,24 @@ export function PreA1ExamPlayer() {
     );
   }
 
+  if (phase === "review-required") {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-8" data-testid="pre-a1-exam-review-required">
+        <BackLink href="/home" label="Home" className="mb-6" />
+        <Card>
+          <h1 className="text-foreground text-xl font-semibold">Finish your review first</h1>
+          <p className="text-muted mt-2 text-sm">
+            The teacher assigned practice after your last attempt. Complete every checklist item
+            before the retake is available. A1 stays locked until you pass.
+          </p>
+          <Link href="/path/exam/pre-a1/review" className="mt-6 inline-block">
+            <Button variant="primary">Open review checklist</Button>
+          </Link>
+        </Card>
+      </main>
+    );
+  }
+
   if (phase === "error") {
     return (
       <main className="mx-auto max-w-2xl px-4 py-8" data-testid="pre-a1-exam-error">
@@ -217,7 +256,11 @@ export function PreA1ExamPlayer() {
         <BackLink href="/home" label="Home" className="mb-6" />
         <Card>
           <h1 className="text-foreground text-xl font-semibold" data-testid="pre-a1-exam-outcome">
-            {breakdown.passed ? "You passed!" : "Not quite yet"}
+            {breakdown.passed
+              ? wasRetake
+                ? "Chapter complete — you passed the retake!"
+                : "You passed!"
+              : "Not quite yet"}
           </h1>
           <p className="text-muted mt-2 text-sm">
             Overall {pct(breakdown.overallRatio)} ({breakdown.overallCorrect}/
@@ -225,13 +268,25 @@ export function PreA1ExamPlayer() {
             {pct(PRE_A1_EXAM_SKILL_FLOOR)} in every skill.
           </p>
           {unlockedA1 && (
-            <p className="text-accent mt-2 text-sm font-medium" data-testid="pre-a1-exam-unlocked">
-              Level A1 is unlocked — continue on your path.
+            <p
+              className="text-accent mt-2 text-sm font-medium"
+              data-testid="pre-a1-exam-unlocked"
+              data-chapter-complete={wasRetake || undefined}
+            >
+              {wasRetake
+                ? "Pre-A1 chapter complete — Level A1 is unlocked. Celebrate and continue on your path!"
+                : "Level A1 is unlocked — continue on your path."}
             </p>
           )}
-          {!breakdown.passed && (
+          {!breakdown.passed && reviewAssigned && (
+            <p className="text-muted mt-2 text-sm" data-testid="pre-a1-exam-review-assigned">
+              A1 stays locked. Complete the teacher’s review assignment, then retake and pass the
+              exam.
+            </p>
+          )}
+          {!breakdown.passed && !reviewAssigned && (
             <p className="text-muted mt-2 text-sm">
-              A1 stays locked. Practice and try the chapter exam again when you are ready.
+              Practice and try the chapter exam again when you are ready.
             </p>
           )}
 
@@ -282,8 +337,24 @@ export function PreA1ExamPlayer() {
           )}
         </Card>
 
+        {reviewAssigned && reviewAssignment && (
+          <Card className="mt-4" data-testid="pre-a1-exam-review-preview">
+            <h2 className="text-foreground text-lg font-semibold">Review assignment</h2>
+            <ul className="mt-3 flex flex-col gap-1">
+              {reviewAssignment.items.map((item) => (
+                <li key={item.id} className="text-foreground text-sm">
+                  · {item.label}
+                </li>
+              ))}
+            </ul>
+            <Link href="/path/exam/pre-a1/review" className="mt-4 inline-block">
+              <Button variant="primary">Open review checklist</Button>
+            </Link>
+          </Card>
+        )}
+
         <Link href="/home" className="mt-8 inline-block">
-          <Button variant="primary">Back to home</Button>
+          <Button variant={unlockedA1 ? "primary" : "secondary"}>Back to home</Button>
         </Link>
       </main>
     );
@@ -301,7 +372,9 @@ export function PreA1ExamPlayer() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-8" data-testid="pre-a1-exam-player">
       <BackLink href="/home" label="Home" className="mb-6" />
-      <h1 className="text-foreground text-xl font-semibold">Pre-A1 chapter exam</h1>
+      <h1 className="text-foreground text-xl font-semibold">
+        {wasRetake ? "Pre-A1 chapter exam — retake" : "Pre-A1 chapter exam"}
+      </h1>
       <p className="text-muted mt-1 text-sm">
         {preA1ExamItemCount()} questions across alphabet, phonics, picture words, and listen &amp;
         tap. Answer every item, then submit once.

@@ -1159,7 +1159,15 @@ export class SupabaseContentRepository implements ContentRepository {
         .where(and(eq(chapterGatesTable.userId, this.userId), eq(chapterGatesTable.tier, tier)))
         .limit(1);
       if (!row) return undefined;
-      return { tier: row.tier, status: row.status, updatedAt: row.updatedAt };
+      return {
+        tier: row.tier,
+        status: row.status,
+        updatedAt: row.updatedAt,
+        reviewAssignment:
+          row.reviewAssignment == null || row.reviewAssignment === ""
+            ? null
+            : (JSON.parse(row.reviewAssignment) as NonNullable<ChapterGate["reviewAssignment"]>),
+      };
     });
   }
 
@@ -1173,10 +1181,19 @@ export class SupabaseContentRepository implements ContentRepository {
         )
         .limit(1);
 
+      const reviewAssignmentJson =
+        gate.reviewAssignment === undefined || gate.reviewAssignment === null
+          ? null
+          : JSON.stringify(gate.reviewAssignment);
+
       if (existing) {
         await db
           .update(chapterGatesTable)
-          .set({ status: gate.status, updatedAt: gate.updatedAt })
+          .set({
+            status: gate.status,
+            updatedAt: gate.updatedAt,
+            reviewAssignment: reviewAssignmentJson,
+          })
           .where(
             and(eq(chapterGatesTable.userId, this.userId), eq(chapterGatesTable.tier, gate.tier)),
           );
@@ -1186,6 +1203,7 @@ export class SupabaseContentRepository implements ContentRepository {
           tier: gate.tier,
           status: gate.status,
           updatedAt: gate.updatedAt,
+          reviewAssignment: reviewAssignmentJson,
         });
       }
     });

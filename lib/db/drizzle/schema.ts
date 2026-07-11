@@ -293,7 +293,7 @@ export const units = sqliteTable(
   (t) => [uniqueIndex("idx_units_user_index").on(t.userId, t.index)],
 );
 
-/** Per-user chapter mastery-gate status (ADR 0043, issue #114). */
+/** Per-user chapter mastery-gate status (ADR 0043, issues #114/#117). */
 export const chapterGates = sqliteTable(
   "chapter_gates",
   {
@@ -301,6 +301,8 @@ export const chapterGates = sqliteTable(
     tier: text("tier", { enum: CHAPTER_TIER_VALUES }).notNull(),
     status: text("status", { enum: CHAPTER_GATE_STATUS_VALUES }).notNull().default("pending"),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+    /** JSON {@link ChapterReviewAssignment} or null (issue #117). */
+    reviewAssignment: text("review_assignment"),
   },
   (t) => [primaryKey({ columns: [t.userId, t.tier] })],
 );

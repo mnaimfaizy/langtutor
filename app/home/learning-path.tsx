@@ -110,7 +110,7 @@ export function LearningPath() {
 
       {showGateCta && (
         <div className="mt-4">
-          <PathChapterGatePendingCta mode={mode} />
+          <PathChapterGatePendingCta mode={mode} gateStatus={gateStatus} />
         </div>
       )}
 

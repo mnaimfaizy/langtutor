@@ -11,6 +11,8 @@ export type {
   Cefr,
   ChapterGate,
   ChapterGateStatus,
+  ChapterReviewAssignment,
+  ChapterReviewAssignmentItem,
   ChapterTier,
   Collection,
   CollectionKind,

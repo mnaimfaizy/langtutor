@@ -142,7 +142,9 @@ describe("submitPreA1ChapterExam", () => {
 
     expect(result.breakdown.passed).toBe(false);
     expect(result.unlockedA1).toBe(false);
-    expect(repo.getSavedGate("pre-A1")?.status).toBe("pending");
+    // Default profile is adult+strict → failed_review with assignment (issue #117).
+    expect(repo.getSavedGate("pre-A1")?.status).toBe("failed_review");
+    expect(result.reviewAssigned).toBe(true);
     expect(repo.getUnit0()?.status).toBe("locked");
   });
 

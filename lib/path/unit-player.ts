@@ -80,11 +80,13 @@ export async function completeUnitActivity(
 
   if (isPreA1ChapterComplete(unitsAfter)) {
     const existing = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
-    if (!existing || existing.status !== "passed") {
+    // Only seed a pending gate when none exists — never overwrite fail/review/retake state.
+    if (!existing) {
       await repo.saveChapterGate({
         tier: PRE_A1_CHAPTER_TIER,
         status: "pending",
         updatedAt: completedAt,
+        reviewAssignment: null,
       });
     }
   }

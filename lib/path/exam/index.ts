@@ -44,3 +44,17 @@ export {
 } from "./teacher-report";
 
 export { persistPreA1ExamTeacherReport } from "./persist-report";
+
+export {
+  PRE_A1_REVIEW_SKILL_LABEL,
+  PRE_A1_SKILL_TO_UNIT_INDEX,
+  ReviewAssignmentItemSchema,
+  ReviewAssignmentSchema,
+  buildPreA1ReviewAssignment,
+  isPreA1ExamStartAllowed,
+  isReviewAssignmentComplete,
+  markPreA1ReviewItemDone,
+  selectReviewSkills,
+  type BuildReviewAssignmentArgs,
+  type ReviewAssignment,
+} from "./review-assignment";

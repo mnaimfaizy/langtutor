@@ -1,14 +1,23 @@
 /**
  * Submit a scored pre-A1 chapter exam: persist attempt, mark gate, unlock A1 on pass.
- * (ADR 0038–0039 / 0043, issue #115)
+ * (ADR 0038–0039 / 0043, issues #115/#117)
  *
  * Partial / abandoned attempts must not call this — or if they do with incomplete
  * answers, scoring treats blanks as wrong so pass/unlock won't fire unless thresholds
  * still hold (they won't for a real abandon). Already-passed gates are left alone.
+ *
+ * Strict fail assigns a review checklist and blocks retake until complete; open-mode
+ * fail leaves the gate pending (A1 already unlocked at unit completion in open mode).
+ * Review alone never clears the gate — re-pass is required.
  */
 import type { ContentRepository } from "@/lib/db";
 
-import { PRE_A1_CHAPTER_TIER, resolveChapterGateStatus } from "../chapter-gate";
+import {
+  PRE_A1_CHAPTER_TIER,
+  effectiveProgressionMode,
+  resolveChapterGateStatus,
+} from "../chapter-gate";
+import { buildPreA1ReviewAssignment, type ReviewAssignment } from "./review-assignment";
 import type { PreA1ExamFill } from "./schemas";
 import { scorePreA1Exam, type ExamAnswerSelection, type ExamScoreBreakdown } from "./scoring";
 import { PRE_A1_EXAM_TOPIC } from "./shape";
@@ -19,6 +28,10 @@ export interface SubmitPreA1ExamResult {
   unlockedA1: boolean;
   /** True when the gate was already passed before this submit. */
   alreadyPassed: boolean;
+  /** True when a strict-mode fail produced a review assignment. */
+  reviewAssigned: boolean;
+  /** Present when reviewAssigned is true. */
+  reviewAssignment?: ReviewAssignment;
   contentId: number;
 }
 
@@ -66,22 +79,63 @@ export async function submitPreA1ChapterExam(
   });
 
   if (alreadyPassed) {
-    return { breakdown, unlockedA1: false, alreadyPassed: true, contentId };
+    return {
+      breakdown,
+      unlockedA1: false,
+      alreadyPassed: true,
+      reviewAssigned: false,
+      contentId,
+    };
   }
 
   if (!breakdown.passed) {
+    const profile = await repo.getProfile();
+    const progression = effectiveProgressionMode(
+      profile ?? { experienceMode: undefined, settings: {} },
+    );
+
+    if (progression === "strict") {
+      const reviewAssignment = buildPreA1ReviewAssignment({
+        breakdown,
+        attemptContentId: contentId,
+        now,
+      });
+      await repo.saveChapterGate({
+        tier: PRE_A1_CHAPTER_TIER,
+        status: "failed_review",
+        updatedAt: now,
+        reviewAssignment,
+      });
+      return {
+        breakdown,
+        unlockedA1: false,
+        alreadyPassed: false,
+        reviewAssigned: true,
+        reviewAssignment,
+        contentId,
+      };
+    }
+
     await repo.saveChapterGate({
       tier: PRE_A1_CHAPTER_TIER,
       status: "pending",
       updatedAt: now,
+      reviewAssignment: null,
     });
-    return { breakdown, unlockedA1: false, alreadyPassed: false, contentId };
+    return {
+      breakdown,
+      unlockedA1: false,
+      alreadyPassed: false,
+      reviewAssigned: false,
+      contentId,
+    };
   }
 
   await repo.saveChapterGate({
     tier: PRE_A1_CHAPTER_TIER,
     status: "passed",
     updatedAt: now,
+    reviewAssignment: null,
   });
 
   const units = await repo.getUnits();
@@ -90,5 +144,11 @@ export async function submitPreA1ChapterExam(
     await repo.updateUnit(unit0.id, { status: "available" });
   }
 
-  return { breakdown, unlockedA1: true, alreadyPassed: false, contentId };
+  return {
+    breakdown,
+    unlockedA1: true,
+    alreadyPassed: false,
+    reviewAssigned: false,
+    contentId,
+  };
 }

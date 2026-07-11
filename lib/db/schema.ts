@@ -39,14 +39,40 @@ export const DEFAULT_PROGRESSION_MODE: ProgressionMode = "strict";
 /** Chapter / tier key for mastery-gate status (ADR 0035 / 0043). */
 export type ChapterTier = Cefr | "pre-A1";
 
-/** Minimum gate lifecycle for the pre-A1 slice (exam/review arrive in later issues). */
-export type ChapterGateStatus = "pending" | "passed";
+/**
+ * Chapter mastery-gate lifecycle (ADR 0034 / 0043, issue #117).
+ * - pending: exam not yet passed (first attempt available)
+ * - failed_review: strict fail; review assignment incomplete; retake blocked
+ * - ready_retake: review complete; retake offered; A1 still locked until pass
+ * - passed: exam passed; next chapter unlocked
+ */
+export type ChapterGateStatus = "pending" | "failed_review" | "ready_retake" | "passed";
 
-/** Persisted chapter mastery-gate status for one tier (ADR 0043, issue #114). */
+/** One teacher-assigned review target within a failed chapter (ADR 0036). */
+export interface ChapterReviewAssignmentItem {
+  id: string;
+  /** Pre-A1 unit index (e.g. -4 … -1). */
+  unitIndex: number;
+  /** Exam skill section to practice. */
+  skill: string;
+  label: string;
+  done: boolean;
+}
+
+/** Structured review assignment tied to a failed gate attempt (ADR 0036, issue #117). */
+export interface ChapterReviewAssignment {
+  items: ChapterReviewAssignmentItem[];
+  createdAt: string;
+  attemptContentId?: number;
+}
+
+/** Persisted chapter mastery-gate status for one tier (ADR 0043, issues #114/#117). */
 export interface ChapterGate {
   tier: ChapterTier;
   status: ChapterGateStatus;
   updatedAt: Date;
+  /** Present while strict-mode fail review is active; cleared on pass. */
+  reviewAssignment?: ChapterReviewAssignment | null;
 }
 
 /**

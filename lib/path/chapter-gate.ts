@@ -1,5 +1,5 @@
 /**
- * Chapter mastery-gate helpers (ADR 0033–0035, 0042–0043, issue #114).
+ * Chapter mastery-gate helpers (ADR 0033–0035, 0042–0043, issues #114/#117).
  *
  * Pure and side-effect free: callers persist gate rows via ContentRepository and decide
  * unlocks in `completeUnitActivity`. This module only answers "what's the effective mode?",
@@ -89,6 +89,12 @@ export function isA1BlockedByPreA1Gate(args: {
     units: args.units,
     gateStatus: args.gateStatus,
   });
+}
+
+/** Home CTA href for the current pre-A1 gate lifecycle (issue #117). */
+export function preA1ChapterGateCtaHref(gateStatus: ChapterGateStatus): string {
+  if (gateStatus === "failed_review") return "/path/exam/pre-a1/review";
+  return "/path/exam/pre-a1";
 }
 
 export const PRE_A1_CHAPTER_TIER: ChapterTier = "pre-A1";

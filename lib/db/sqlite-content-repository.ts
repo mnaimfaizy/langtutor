@@ -137,6 +137,20 @@ function parseAchievements(json: string): Achievement[] {
   return raw.map((a) => ({ id: a.id, unlockedAt: new Date(a.unlockedAt) }));
 }
 
+function parseReviewAssignment(json: string | null): ChapterGate["reviewAssignment"] {
+  if (json == null || json === "") return null;
+  return JSON.parse(json) as NonNullable<ChapterGate["reviewAssignment"]>;
+}
+
+function rowToChapterGate(row: typeof chapterGatesTable.$inferSelect): ChapterGate {
+  return {
+    tier: row.tier,
+    status: row.status,
+    updatedAt: row.updatedAt,
+    reviewAssignment: parseReviewAssignment(row.reviewAssignment),
+  };
+}
+
 function parseQuestEntries(json: string): QuestProgressEntry[] {
   const raw = JSON.parse(json) as Array<{
     questId: string;
@@ -1105,7 +1119,7 @@ export class SqliteContentRepository implements ContentRepository {
       .where(and(eq(chapterGatesTable.userId, this.userId), eq(chapterGatesTable.tier, tier)))
       .get();
     if (!row) return undefined;
-    return { tier: row.tier, status: row.status, updatedAt: row.updatedAt };
+    return rowToChapterGate(row);
   }
 
   async saveChapterGate(gate: ChapterGate): Promise<void> {
@@ -1115,10 +1129,19 @@ export class SqliteContentRepository implements ContentRepository {
       .where(and(eq(chapterGatesTable.userId, this.userId), eq(chapterGatesTable.tier, gate.tier)))
       .get();
 
+    const reviewAssignmentJson =
+      gate.reviewAssignment === undefined || gate.reviewAssignment === null
+        ? null
+        : JSON.stringify(gate.reviewAssignment);
+
     if (existing) {
       this.db
         .update(chapterGatesTable)
-        .set({ status: gate.status, updatedAt: gate.updatedAt })
+        .set({
+          status: gate.status,
+          updatedAt: gate.updatedAt,
+          reviewAssignment: reviewAssignmentJson,
+        })
         .where(
           and(eq(chapterGatesTable.userId, this.userId), eq(chapterGatesTable.tier, gate.tier)),
         )
@@ -1131,6 +1154,7 @@ export class SqliteContentRepository implements ContentRepository {
           tier: gate.tier,
           status: gate.status,
           updatedAt: gate.updatedAt,
+          reviewAssignment: reviewAssignmentJson,
         })
         .run();
     }

@@ -209,6 +209,7 @@ describe("Migration — schema shape", () => {
     expect(columns("chapter_gates")).toContain("tier");
     expect(columns("chapter_gates")).toContain("status");
     expect(columns("chapter_gates")).toContain("updated_at");
+    expect(columns("chapter_gates")).toContain("review_assignment");
   });
 
   it("collectible_grants has user_id as part of compound PK", () => {

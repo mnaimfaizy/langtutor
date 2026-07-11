@@ -510,6 +510,7 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
           tier: "pre-A1",
           status: "pending",
           updatedAt,
+          reviewAssignment: null,
         });
       });
 
@@ -524,6 +525,35 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
         const gate = await repo.getChapterGate("pre-A1");
         expect(gate?.status).toBe("passed");
         expect(gate?.updatedAt).toEqual(new Date("2026-07-11T13:00:00.000Z"));
+      });
+
+      it("round-trips a review assignment on a failed_review gate (issue #117)", async () => {
+        const reviewAssignment = {
+          createdAt: "2026-07-11T12:00:00.000Z",
+          attemptContentId: 42,
+          items: [
+            {
+              id: "alphabet",
+              unitIndex: -4,
+              skill: "alphabet",
+              label: "Practice Alphabet",
+              done: false,
+            },
+          ],
+        };
+        await repo.saveChapterGate({
+          tier: "pre-A1",
+          status: "failed_review",
+          updatedAt,
+          reviewAssignment,
+        });
+
+        expect(await repo.getChapterGate("pre-A1")).toEqual({
+          tier: "pre-A1",
+          status: "failed_review",
+          updatedAt,
+          reviewAssignment,
+        });
       });
     });
 

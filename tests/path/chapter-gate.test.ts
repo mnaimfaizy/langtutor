@@ -164,6 +164,20 @@ describe("pre-A1 chapter complete + CTA + A1 block", () => {
     ).toBe(true);
     expect(
       isA1BlockedByPreA1Gate({
+        profile: profile({ experienceMode: "kid" }),
+        units: [...completedPreA1, lockedA1],
+        gateStatus: "failed_review",
+      }),
+    ).toBe(true);
+    expect(
+      isA1BlockedByPreA1Gate({
+        profile: profile({ experienceMode: "kid" }),
+        units: [...completedPreA1, lockedA1],
+        gateStatus: "ready_retake",
+      }),
+    ).toBe(true);
+    expect(
+      isA1BlockedByPreA1Gate({
         profile: profile({
           experienceMode: "adult",
           settings: { progressionMode: "open", enablePreA1: true },
