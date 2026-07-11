@@ -13,6 +13,7 @@ import {
 } from "../icons";
 import { DailyQuests } from "./daily-quests";
 import { LearningPath } from "./learning-path";
+import { KidPreA1Gate } from "./kid-island/gate";
 
 const skills = [
   { name: "Reading", blurb: "Level-appropriate passages with tap-to-define.", icon: BookIcon },
@@ -50,7 +51,7 @@ const secondaryActions = [
   { href: "/diagnostics", label: "Diagnostics", testId: "btn-diagnostics", icon: ActivityIcon },
 ];
 
-export default function Home() {
+function HomeDefault() {
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-12 sm:px-6 sm:py-16">
       <div className="w-full max-w-2xl">
@@ -117,5 +118,13 @@ export default function Home() {
         </ul>
       </div>
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <KidPreA1Gate>
+      <HomeDefault />
+    </KidPreA1Gate>
   );
 }

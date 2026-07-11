@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import type { Profile } from "@/lib/db";
+import type { Profile, Unit } from "@/lib/db";
 import {
   PRE_A1_UNIT_COUNT,
   hasReachedFirstA1Unit,
   seedPreA1Units,
   shouldSeedPreA1,
+  shouldShowKidIsland,
 } from "@/lib/path/pre-a1";
 
 function profile(overrides: Partial<Profile> = {}): Profile {
@@ -13,6 +14,23 @@ function profile(overrides: Partial<Profile> = {}): Profile {
     goals: [],
     createdAt: new Date(0),
     settings: {},
+    ...overrides,
+  };
+}
+
+function unit(overrides: Partial<Unit> = {}): Unit {
+  return {
+    id: 1,
+    index: -1,
+    title: "Pre-A1",
+    teacherNote: "",
+    targetGrammarIds: [],
+    targetVocab: [],
+    targetCefr: "A1",
+    activities: [],
+    status: "available",
+    bufferStatus: "empty",
+    createdAt: new Date(0),
     ...overrides,
   };
 }
@@ -165,5 +183,36 @@ describe("hasReachedFirstA1Unit", () => {
         },
       ]),
     ).toBe(true);
+  });
+});
+
+describe("shouldShowKidIsland", () => {
+  it("shows the island for a kid learner still in the pre-A1 tier", () => {
+    expect(
+      shouldShowKidIsland(profile({ experienceMode: "kid" }), [
+        unit({ index: -1, status: "available" }),
+      ]),
+    ).toBe(true);
+  });
+
+  it("shows the island for a fresh kid profile before the path is seeded", () => {
+    expect(shouldShowKidIsland(profile({ experienceMode: "kid" }), [])).toBe(true);
+  });
+
+  it("hands off to the standard home once the kid learner reaches unit 0", () => {
+    expect(
+      shouldShowKidIsland(profile({ experienceMode: "kid" }), [
+        unit({ index: -1, status: "completed" }),
+        unit({ id: 2, index: 0, status: "in-progress" }),
+      ]),
+    ).toBe(false);
+  });
+
+  it("never shows the island in adult mode, even with pre-A1 units opted in", () => {
+    expect(
+      shouldShowKidIsland(profile({ experienceMode: "adult", settings: { enablePreA1: true } }), [
+        unit({ index: -1, status: "available" }),
+      ]),
+    ).toBe(false);
   });
 });

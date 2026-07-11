@@ -82,6 +82,21 @@ export function shouldSeedPreA1(profile: Profile, anchorLevel: Cefr): boolean {
   return profile.settings.enablePreA1 === true;
 }
 
+/**
+ * Whether the kid-only Pre-A1 home (the illustrated island trail) should render instead of
+ * the standard path home. Kid-only regardless of adult pre-A1 opt-in (`shouldSeedPreA1`) —
+ * the island is a kid-specific presentation, not a pre-A1-tier one. Reuses
+ * `hasReachedFirstA1Unit` so the handoff to the standard home is driven by the same unlock
+ * state machine as the rest of the path — no separate flag to keep in sync.
+ */
+export function shouldShowKidIsland(
+  profile: Pick<Profile, "experienceMode">,
+  units: readonly Unit[],
+): boolean {
+  const mode = profile.experienceMode ?? DEFAULT_EXPERIENCE_MODE;
+  return mode === "kid" && !hasReachedFirstA1Unit(units);
+}
+
 /** Deterministic backbone placeholders at indices `-count … -1`; only the first unlocks. */
 export function seedPreA1Units(now: Date = new Date()): NewUnit[] {
   return PRE_A1_TOPICS.map((topic, i) => ({
