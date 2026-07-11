@@ -6,13 +6,18 @@ import Link from "next/link";
 import { DEFAULT_EXPERIENCE_MODE, type ExperienceMode } from "@/lib/db";
 import { PRE_A1_CHAPTER_TIER, resolveChapterGateStatus } from "@/lib/path/chapter-gate";
 import {
+  isPreA1ExamGatePaused,
   isPreA1ExamStartAllowed,
+  loadBufferedPreA1Exam,
+  persistBufferedPreA1Exam,
   persistPreA1ExamTeacherReport,
+  preferFreshExamFill,
   PreA1ExamFillSchema,
   PRE_A1_EXAM_OVERALL_THRESHOLD,
   PRE_A1_EXAM_SKILL_FLOOR,
   PRE_A1_EXAM_SKILLS,
   preA1ExamItemCount,
+  queueDeferredPreA1TeacherReport,
   submitPreA1ChapterExam,
   TeacherReportSchema,
   type ExamScoreBreakdown,
@@ -28,11 +33,12 @@ type Phase =
   | "loading"
   | "already-passed"
   | "review-required"
+  | "paused"
   | "answering"
   | "submitting"
   | "result"
   | "error";
-type ReportPhase = "idle" | "loading" | "ready" | "unavailable";
+type ReportPhase = "idle" | "loading" | "ready" | "deferred";
 
 const SKILL_LABEL: Record<PreA1ExamSkill, string> = {
   alphabet: "Alphabet",
@@ -43,6 +49,21 @@ const SKILL_LABEL: Record<PreA1ExamSkill, string> = {
 
 function pct(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
+}
+
+async function fetchFreshExamFill(): Promise<PreA1ExamFill> {
+  const res = await fetch("/api/path/exam/fill", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) throw new Error(`fill failed (${res.status})`);
+  const data: unknown = await res.json();
+  const parsed = PreA1ExamFillSchema.safeParse(
+    data && typeof data === "object" && "exam" in data ? (data as { exam: unknown }).exam : data,
+  );
+  if (!parsed.success) throw new Error("invalid exam payload");
+  return parsed.data;
 }
 
 export function PreA1ExamPlayer() {
@@ -59,15 +80,17 @@ export function PreA1ExamPlayer() {
   const [experienceMode, setExperienceMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
   const [reportPhase, setReportPhase] = useState<ReportPhase>("idle");
   const [report, setReport] = useState<TeacherReport | null>(null);
+  const [usedBufferedExam, setUsedBufferedExam] = useState(false);
 
   useEffect(() => {
     let active = true;
 
     void (async () => {
       const repo = getContentRepository();
-      const [gate, profile] = await Promise.all([
+      const [gate, profile, units] = await Promise.all([
         repo.getChapterGate(PRE_A1_CHAPTER_TIER),
         repo.getProfile(),
+        repo.getUnits(),
       ]);
       if (!active) return;
 
@@ -84,30 +107,51 @@ export function PreA1ExamPlayer() {
       }
 
       setWasRetake(status === "ready_retake");
+      const buffered = await loadBufferedPreA1Exam(repo);
+      const hasBuffer = buffered !== undefined;
 
-      try {
-        const res = await fetch("/api/path/exam/fill", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
-        if (!res.ok) throw new Error(`fill failed (${res.status})`);
-        const data: unknown = await res.json();
-        const parsed = PreA1ExamFillSchema.safeParse(
-          data && typeof data === "object" && "exam" in data
-            ? (data as { exam: unknown }).exam
-            : data,
-        );
-        if (!parsed.success) throw new Error("invalid exam payload");
-        if (!active) return;
-        setExam(parsed.data);
-        setSelected(new Array<number | null>(parsed.data.items.length).fill(null));
-        setPhase("answering");
-      } catch (err) {
-        if (!active) return;
-        setErrorDetail(err instanceof Error ? err.message : "unknown");
-        setPhase("error");
+      // Prefer a fresh fill when online (especially retakes); fall back to buffer offline.
+      if (preferFreshExamFill({ providerReachable: true, isRetake: status === "ready_retake" })) {
+        try {
+          const fresh = await fetchFreshExamFill();
+          if (!active) return;
+          // Keep the offline buffer topped up with this fill for a later outage.
+          await persistBufferedPreA1Exam(repo, fresh);
+          setExam(fresh);
+          setSelected(new Array<number | null>(fresh.items.length).fill(null));
+          setUsedBufferedExam(false);
+          setPhase("answering");
+          return;
+        } catch {
+          // Provider unreachable — use buffer or pause below.
+        }
       }
+
+      if (buffered) {
+        if (!active) return;
+        setExam(buffered.exam);
+        setSelected(new Array<number | null>(buffered.exam.items.length).fill(null));
+        setUsedBufferedExam(true);
+        setPhase("answering");
+        return;
+      }
+
+      if (
+        isPreA1ExamGatePaused({
+          units,
+          gateStatus: status,
+          hasBufferedExam: hasBuffer,
+          providerReachable: false,
+        })
+      ) {
+        if (!active) return;
+        setPhase("paused");
+        return;
+      }
+
+      if (!active) return;
+      setErrorDetail("no buffered exam and provider unreachable");
+      setPhase("error");
     })();
 
     return () => {
@@ -118,6 +162,7 @@ export function PreA1ExamPlayer() {
   function retryLoad() {
     setExam(null);
     setErrorDetail(null);
+    setUsedBufferedExam(false);
     setPhase("loading");
     setLoadNonce((n) => n + 1);
   }
@@ -159,8 +204,14 @@ export function PreA1ExamPlayer() {
       setReport(parsed.data);
       setReportPhase("ready");
     } catch {
+      const repo = getContentRepository();
+      await queueDeferredPreA1TeacherReport(repo, {
+        attemptContentId,
+        experienceMode: mode,
+        breakdown: score,
+      });
       setReport(null);
-      setReportPhase("unavailable");
+      setReportPhase("deferred");
     }
   }
 
@@ -169,13 +220,14 @@ export function PreA1ExamPlayer() {
     setPhase("submitting");
     try {
       const repo = getContentRepository();
+      // Local deterministic score — works offline from a buffered fill (ADR 0037 / #118).
       const result = await submitPreA1ChapterExam(repo, exam, selected);
       setBreakdown(result.breakdown);
       setUnlockedA1(result.unlockedA1);
       setReviewAssigned(result.reviewAssigned);
       setReviewAssignment(result.reviewAssignment ?? null);
       setPhase("result");
-      // Score/unlock already finished — report is best-effort and must not undo unlock.
+      // Score/unlock already finished — report is best-effort and may defer until AI returns.
       void fetchAndPersistReport(result.contentId, result.breakdown, experienceMode);
     } catch {
       setErrorDetail("submit failed");
@@ -222,6 +274,33 @@ export function PreA1ExamPlayer() {
           <Link href="/path/exam/pre-a1/review" className="mt-6 inline-block">
             <Button variant="primary">Open review checklist</Button>
           </Link>
+        </Card>
+      </main>
+    );
+  }
+
+  if (phase === "paused") {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-8" data-testid="pre-a1-exam-paused">
+        <BackLink href="/home" label="Home" className="mb-6" />
+        <Card>
+          <h1 className="text-foreground text-xl font-semibold">Chapter exam on pause</h1>
+          <p className="text-muted mt-2 text-sm">
+            The teacher exam isn&apos;t buffered yet and the AI isn&apos;t reachable right now. A1
+            stays locked — no free unlock. Try again when you&apos;re back online, or review
+            vocabulary while you wait.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button variant="secondary" onClick={retryLoad} data-testid="pre-a1-exam-pause-retry">
+              Try again
+            </Button>
+            <Link href="/review">
+              <Button variant="ghost">Review vocabulary</Button>
+            </Link>
+            <Link href="/home">
+              <Button variant="ghost">Back to home</Button>
+            </Link>
+          </div>
         </Card>
       </main>
     );
@@ -313,8 +392,8 @@ export function PreA1ExamPlayer() {
               Your teacher is writing a coaching note…
             </p>
           )}
-          {reportPhase === "unavailable" && (
-            <p className="text-muted mt-2 text-sm" data-testid="pre-a1-exam-report-unavailable">
+          {reportPhase === "deferred" && (
+            <p className="text-muted mt-2 text-sm" data-testid="pre-a1-exam-report-deferred">
               Score saved. The teacher report will appear when the AI is reachable again.
             </p>
           )}
@@ -378,6 +457,7 @@ export function PreA1ExamPlayer() {
       <p className="text-muted mt-1 text-sm">
         {preA1ExamItemCount()} questions across alphabet, phonics, picture words, and listen &amp;
         tap. Answer every item, then submit once.
+        {usedBufferedExam ? " (Playing a buffered exam offline.)" : ""}
       </p>
 
       <ol className="mt-6 flex flex-col gap-8">

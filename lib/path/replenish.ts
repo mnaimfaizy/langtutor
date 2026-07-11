@@ -1,8 +1,10 @@
 /**
- * Path-buffer replenishment orchestration (ADR 0015, issue #61). Plans any unplanned units in
- * the buffer window (extending issue #58's `/api/path/plan`) and generates missing activity
- * content for planned-but-not-yet-buffered units (extending issue #59/#60's generate-and-cache
- * pattern), up to `PATH_BUFFER_DEPTH` future units.
+ * Path-buffer replenishment orchestration (ADR 0015, issue #61; exam buffer ADR 0037 / #118).
+ * Plans any unplanned units in the buffer window (extending issue #58's `/api/path/plan`) and
+ * generates missing activity content for planned-but-not-yet-buffered units (extending issue
+ * #59/#60's generate-and-cache pattern), up to `PATH_BUFFER_DEPTH` future units. Also
+ * pre-buffers the next pre-A1 chapter exam when the gate is pending and drains deferred
+ * teacher reports when the provider is reachable again.
  *
  * Called on two triggers (both best-effort, both silent): authed session start
  * (`app/home/learning-path.tsx`) and unit completion (`lib/path/unit-player.ts`). Never throws
@@ -19,6 +21,15 @@ import {
   isActivityReady,
   PATH_BUFFER_DEPTH,
 } from "./buffer";
+import { PRE_A1_CHAPTER_TIER, resolveChapterGateStatus } from "./chapter-gate";
+import { shouldBufferPreA1Exam } from "./exam/buffer";
+import {
+  drainDeferredPreA1TeacherReports,
+  hasBufferedPreA1Exam,
+  replenishPreA1ExamBuffer,
+  type FetchExamFillFn,
+  type FetchTeacherReportFn,
+} from "./exam/buffer-store";
 import type { PlannedUnit } from "./teacher-planner";
 
 /** Injectable so tests can simulate provider success/failure without a real network call. */
@@ -90,9 +101,10 @@ async function bufferUnitContent(
 
 /**
  * Runs one best-effort path-buffer replenishment pass: plan, then generate content for up to
- * @depth future units. Always resolves — never throws, never rejects — so callers can fire it
- * without awaiting (unit completion) or await it in a background effect that already rendered
- * (session start) without either path ever blocking or erroring the UI.
+ * @depth future units, then (when needed) pre-buffer the pre-A1 chapter exam and drain any
+ * deferred teacher reports. Always resolves — never throws, never rejects — so callers can
+ * fire it without awaiting (unit completion) or await it in a background effect that already
+ * rendered (session start) without either path ever blocking or erroring the UI.
  *
  * @param onAfterPlan optional hook fired after planning is persisted and before content
  *   generation. Session-start UI uses this to re-render teacher titles/notes immediately —
@@ -103,6 +115,8 @@ export async function replenishPathBuffer(
   depth: number = PATH_BUFFER_DEPTH,
   generate: GenerateActivityContentFn = generateActivityContent,
   onAfterPlan?: () => void | Promise<void>,
+  fetchExamFill: FetchExamFillFn | undefined = undefined,
+  fetchTeacherReport: FetchTeacherReportFn | undefined = undefined,
 ): Promise<void> {
   try {
     await planUnplannedUnits(repo);
@@ -111,9 +125,34 @@ export async function replenishPathBuffer(
     const units = await repo.getUnits();
     const { toGenerateContent } = decideReplenishment(units, depth);
 
+    let providerReachable = true;
     for (const unit of toGenerateContent) {
-      const providerReachable = await bufferUnitContent(repo, unit, generate);
+      providerReachable = await bufferUnitContent(repo, unit, generate);
       if (!providerReachable) break;
+    }
+
+    // Exam buffer + deferred reports only when unit content buffering did not already
+    // prove the provider unreachable (avoid guaranteed-failing round trips).
+    if (providerReachable) {
+      const gate = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
+      const gateStatus = resolveChapterGateStatus(gate);
+      const hasBuffer = await hasBufferedPreA1Exam(repo);
+      const needsExamBuffer = shouldBufferPreA1Exam({
+        units: await repo.getUnits(),
+        gateStatus,
+        hasBufferedExam: hasBuffer,
+      });
+      providerReachable = fetchExamFill
+        ? await replenishPreA1ExamBuffer(repo, needsExamBuffer, fetchExamFill)
+        : await replenishPreA1ExamBuffer(repo, needsExamBuffer);
+    }
+
+    if (providerReachable) {
+      if (fetchTeacherReport) {
+        await drainDeferredPreA1TeacherReports(repo, fetchTeacherReport);
+      } else {
+        await drainDeferredPreA1TeacherReports(repo);
+      }
     }
   } catch {
     // Replenishment is best-effort only — a failure here must never surface to the caller.

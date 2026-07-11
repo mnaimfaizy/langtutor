@@ -35,6 +35,30 @@ export { submitPreA1ChapterExam, type SubmitPreA1ExamResult } from "./submit";
 export { PRE_A1_CURRICULUM_GUIDE_STUB } from "./guide-stub";
 
 export {
+  PRE_A1_EXAM_BUFFER_TOPIC,
+  PRE_A1_EXAM_DEFERRED_REPORT_TOPIC,
+  isPreA1ExamGatePaused,
+  preferFreshExamFill,
+  shouldBufferPreA1Exam,
+} from "./buffer";
+
+export {
+  drainDeferredPreA1TeacherReports,
+  fetchPreA1ExamFill,
+  fetchPreA1TeacherReport,
+  hasBufferedPreA1Exam,
+  listDeferredPreA1TeacherReports,
+  loadBufferedPreA1Exam,
+  persistBufferedPreA1Exam,
+  queueDeferredPreA1TeacherReport,
+  replenishPreA1ExamBuffer,
+  type BufferedPreA1Exam,
+  type DeferredTeacherReportJob,
+  type FetchExamFillFn,
+  type FetchTeacherReportFn,
+} from "./buffer-store";
+
+export {
   PRE_A1_EXAM_REPORT_TOPIC,
   TeacherReportSchema,
   buildPreA1TeacherReportMessages,
