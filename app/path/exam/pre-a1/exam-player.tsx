@@ -3,22 +3,27 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+import { DEFAULT_EXPERIENCE_MODE, type ExperienceMode } from "@/lib/db";
 import { PRE_A1_CHAPTER_TIER, resolveChapterGateStatus } from "@/lib/path/chapter-gate";
 import {
+  persistPreA1ExamTeacherReport,
   PreA1ExamFillSchema,
   PRE_A1_EXAM_OVERALL_THRESHOLD,
   PRE_A1_EXAM_SKILL_FLOOR,
   PRE_A1_EXAM_SKILLS,
   preA1ExamItemCount,
   submitPreA1ChapterExam,
+  TeacherReportSchema,
   type ExamScoreBreakdown,
   type PreA1ExamFill,
   type PreA1ExamSkill,
+  type TeacherReport,
 } from "@/lib/path/exam";
 import { getContentRepository } from "@/lib/registry";
 import { BackLink, Button, Card, SelectPill } from "@/ui";
 
 type Phase = "loading" | "already-passed" | "answering" | "submitting" | "result" | "error";
+type ReportPhase = "idle" | "loading" | "ready" | "unavailable";
 
 const SKILL_LABEL: Record<PreA1ExamSkill, string> = {
   alphabet: "Alphabet",
@@ -39,14 +44,22 @@ export function PreA1ExamPlayer() {
   const [breakdown, setBreakdown] = useState<ExamScoreBreakdown | null>(null);
   const [unlockedA1, setUnlockedA1] = useState(false);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const [experienceMode, setExperienceMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
+  const [reportPhase, setReportPhase] = useState<ReportPhase>("idle");
+  const [report, setReport] = useState<TeacherReport | null>(null);
 
   useEffect(() => {
     let active = true;
 
     void (async () => {
       const repo = getContentRepository();
-      const gate = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
+      const [gate, profile] = await Promise.all([
+        repo.getChapterGate(PRE_A1_CHAPTER_TIER),
+        repo.getProfile(),
+      ]);
       if (!active) return;
+
+      setExperienceMode(profile?.experienceMode ?? DEFAULT_EXPERIENCE_MODE);
 
       if (resolveChapterGateStatus(gate) === "passed") {
         setPhase("already-passed");
@@ -101,6 +114,37 @@ export function PreA1ExamPlayer() {
   const allAnswered =
     exam !== null && selected.length === exam.items.length && selected.every((s) => s !== null);
 
+  async function fetchAndPersistReport(
+    attemptContentId: number,
+    score: ExamScoreBreakdown,
+    mode: ExperienceMode,
+  ) {
+    setReportPhase("loading");
+    try {
+      const res = await fetch("/api/path/exam/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ experienceMode: mode, breakdown: score }),
+      });
+      if (!res.ok) throw new Error(`report failed (${res.status})`);
+      const data: unknown = await res.json();
+      const parsed = TeacherReportSchema.safeParse(
+        data && typeof data === "object" && "report" in data
+          ? (data as { report: unknown }).report
+          : data,
+      );
+      if (!parsed.success) throw new Error("invalid report payload");
+
+      const repo = getContentRepository();
+      await persistPreA1ExamTeacherReport(repo, attemptContentId, parsed.data);
+      setReport(parsed.data);
+      setReportPhase("ready");
+    } catch {
+      setReport(null);
+      setReportPhase("unavailable");
+    }
+  }
+
   async function handleSubmit() {
     if (!exam || !allAnswered || phase === "submitting") return;
     setPhase("submitting");
@@ -110,6 +154,8 @@ export function PreA1ExamPlayer() {
       setBreakdown(result.breakdown);
       setUnlockedA1(result.unlockedA1);
       setPhase("result");
+      // Score/unlock already finished — report is best-effort and must not undo unlock.
+      void fetchAndPersistReport(result.contentId, result.breakdown, experienceMode);
     } catch {
       setErrorDetail("submit failed");
       setPhase("error");
@@ -203,11 +249,42 @@ export function PreA1ExamPlayer() {
               </li>
             ))}
           </ul>
-
-          <Link href="/home" className="mt-8 inline-block">
-            <Button variant="primary">Back to home</Button>
-          </Link>
         </Card>
+
+        <Card className="mt-4" data-testid="pre-a1-exam-teacher-report">
+          <h2 className="text-foreground text-lg font-semibold">Teacher report</h2>
+          {reportPhase === "loading" && (
+            <p className="text-muted mt-2 text-sm" data-testid="pre-a1-exam-report-pending">
+              Your teacher is writing a coaching note…
+            </p>
+          )}
+          {reportPhase === "unavailable" && (
+            <p className="text-muted mt-2 text-sm" data-testid="pre-a1-exam-report-unavailable">
+              Score saved. The teacher report will appear when the AI is reachable again.
+            </p>
+          )}
+          {reportPhase === "ready" && report && (
+            <div data-testid="pre-a1-exam-report-ready">
+              <p
+                className="text-foreground mt-2 text-base font-medium"
+                data-testid="pre-a1-exam-report-headline"
+              >
+                {report.headline}
+              </p>
+              <p className="text-foreground mt-3 text-sm leading-relaxed">{report.body}</p>
+              <p className="text-accent mt-3 text-sm font-medium">{report.encouragement}</p>
+              {report.focusSkills.length > 0 && (
+                <p className="text-muted mt-3 text-xs">
+                  Focus next: {report.focusSkills.map((s) => SKILL_LABEL[s]).join(", ")}
+                </p>
+              )}
+            </div>
+          )}
+        </Card>
+
+        <Link href="/home" className="mt-8 inline-block">
+          <Button variant="primary">Back to home</Button>
+        </Link>
       </main>
     );
   }

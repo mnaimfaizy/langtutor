@@ -130,6 +130,18 @@ export async function stubMacApis(page: Page, options: StubMacApisOptions = {}):
     await json(route, { exam: { items } });
   });
 
+  // Pre-A1 chapter exam teacher report (issue #116).
+  await page.route("**/api/path/exam/report", async (route) => {
+    await json(route, {
+      report: {
+        headline: "E2E teacher report",
+        body: "You practiced alphabet, phonics, picture words, and listen and tap. Keep going.",
+        encouragement: "Nice work — practice a little more and try again soon.",
+        focusSkills: ["phonics"],
+      },
+    });
+  });
+
   await page.route("**/api/agent/research-word", async (route) => {
     await json(route, {
       found: true,

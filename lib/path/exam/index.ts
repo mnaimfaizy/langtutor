@@ -9,13 +9,16 @@ export {
 } from "./shape";
 
 export {
+  ExamScoreBreakdownSchema,
   PreA1ExamAnswersSchema,
   PreA1ExamFillSchema,
   PreA1ExamItemSchema,
   PreA1ExamSkillSchema,
+  TeacherReportRequestSchema,
   type PreA1ExamAnswers,
   type PreA1ExamFill,
   type PreA1ExamItem,
+  type TeacherReportRequest,
 } from "./schemas";
 
 export {
@@ -28,3 +31,16 @@ export {
 export { buildPreA1ExamFillMessages, fillPreA1Exam } from "./fill";
 
 export { submitPreA1ChapterExam, type SubmitPreA1ExamResult } from "./submit";
+
+export { PRE_A1_CURRICULUM_GUIDE_STUB } from "./guide-stub";
+
+export {
+  PRE_A1_EXAM_REPORT_TOPIC,
+  TeacherReportSchema,
+  buildPreA1TeacherReportMessages,
+  generatePreA1TeacherReport,
+  type TeacherReport,
+  type TeacherReportContext,
+} from "./teacher-report";
+
+export { persistPreA1ExamTeacherReport } from "./persist-report";
