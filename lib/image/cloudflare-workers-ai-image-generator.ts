@@ -5,7 +5,9 @@ import { z } from "zod";
 import { CLOUDFLARE_AI_BASE_URL, DEFAULT_CLOUDFLARE_IMAGE_MODEL } from "@/lib/ai/cloudflare";
 
 import { ImageProviderError } from "./errors";
+import { imageGenerateAbortSignal, isAbortOrTimeoutError } from "./fetch-timeout";
 import type { ImageGenerator } from "./image-generator";
+import { withProviderTiming } from "./timing";
 import type { ImageGenerateOptions, ImageGenerateResult } from "./types";
 
 /** Workers AI FLUX.1-schnell is billed/documented around 512×512 tiles. */
@@ -48,62 +50,71 @@ export class CloudflareWorkersAiImageGenerator implements ImageGenerator {
   constructor(private readonly config: CloudflareImageConfig) {}
 
   async generate(prompt: string, options: ImageGenerateOptions = {}): Promise<ImageGenerateResult> {
-    const seed = options.seed ?? 0;
-    const steps = Math.min(Math.max(options.steps ?? DEFAULT_STEPS, 1), 8);
-    const width = options.width ?? DEFAULT_CLOUDFLARE_IMAGE_SIZE;
-    const height = options.height ?? DEFAULT_CLOUDFLARE_IMAGE_SIZE;
-    const model = this.config.model ?? DEFAULT_CLOUDFLARE_IMAGE_MODEL;
-    const url = `${CLOUDFLARE_AI_BASE_URL}/${this.config.accountId}/ai/run/${model}`;
+    return withProviderTiming("cloudflare", async () => {
+      const seed = options.seed ?? 0;
+      const steps = Math.min(Math.max(options.steps ?? DEFAULT_STEPS, 1), 8);
+      const width = options.width ?? DEFAULT_CLOUDFLARE_IMAGE_SIZE;
+      const height = options.height ?? DEFAULT_CLOUDFLARE_IMAGE_SIZE;
+      const model = this.config.model ?? DEFAULT_CLOUDFLARE_IMAGE_MODEL;
+      const url = `${CLOUDFLARE_AI_BASE_URL}/${this.config.accountId}/ai/run/${model}`;
 
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.config.apiToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prompt, steps, seed }),
-      });
-    } catch (cause) {
-      throw new ImageProviderError("Cloudflare Workers AI image request failed (network)", {
-        provider: "cloudflare",
-        cause,
-      });
-    }
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.config.apiToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ prompt, steps, seed }),
+          signal: imageGenerateAbortSignal(),
+        });
+      } catch (cause) {
+        if (isAbortOrTimeoutError(cause)) {
+          throw new ImageProviderError("Cloudflare Workers AI image request timed out", {
+            provider: "cloudflare",
+            cause,
+          });
+        }
+        throw new ImageProviderError("Cloudflare Workers AI image request failed (network)", {
+          provider: "cloudflare",
+          cause,
+        });
+      }
 
-    if (!response.ok) {
-      throw new ImageProviderError(
-        `Cloudflare Workers AI image request failed (${response.status})`,
-        { status: response.status, provider: "cloudflare" },
-      );
-    }
+      if (!response.ok) {
+        throw new ImageProviderError(
+          `Cloudflare Workers AI image request failed (${response.status})`,
+          { status: response.status, provider: "cloudflare" },
+        );
+      }
 
-    let body: unknown;
-    try {
-      body = await response.json();
-    } catch (cause) {
-      throw new ImageProviderError("Cloudflare Workers AI image response was not valid JSON", {
-        provider: "cloudflare",
-        cause,
-      });
-    }
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch (cause) {
+        throw new ImageProviderError("Cloudflare Workers AI image response was not valid JSON", {
+          provider: "cloudflare",
+          cause,
+        });
+      }
 
-    const parsed = CloudflareImageResponse.safeParse(body);
-    if (!parsed.success) {
-      throw new ImageProviderError("Cloudflare Workers AI image response failed validation", {
-        provider: "cloudflare",
-      });
-    }
+      const parsed = CloudflareImageResponse.safeParse(body);
+      if (!parsed.success) {
+        throw new ImageProviderError("Cloudflare Workers AI image response failed validation", {
+          provider: "cloudflare",
+        });
+      }
 
-    const b64 = parsed.data.result?.image ?? parsed.data.image;
-    if (!b64) {
-      throw new ImageProviderError("Cloudflare Workers AI image response missing image", {
-        provider: "cloudflare",
-      });
-    }
+      const b64 = parsed.data.result?.image ?? parsed.data.image;
+      if (!b64) {
+        throw new ImageProviderError("Cloudflare Workers AI image response missing image", {
+          provider: "cloudflare",
+        });
+      }
 
-    const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    return { data, mimeType: "image/jpeg", width, height, seed };
+      const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      return { data, mimeType: "image/jpeg", width, height, seed };
+    });
   }
 }

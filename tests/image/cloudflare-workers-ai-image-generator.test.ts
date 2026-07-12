@@ -28,6 +28,8 @@ describe("CloudflareWorkersAiImageGenerator", () => {
     expect(result.mimeType).toBe("image/jpeg");
     expect(result.data).toEqual(jpegBytes);
     expect(result.seed).toBe(42);
+    expect(result.provider).toBe("cloudflare");
+    expect(result.durationMs).toBeTypeOf("number");
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://api.cloudflare.com/client/v4/accounts/abc123accountid00000000000000000/ai/run/@cf/black-forest-labs/flux-1-schnell",

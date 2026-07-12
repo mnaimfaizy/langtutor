@@ -8,17 +8,28 @@ import type { ImageGenerateOptions, ImageGenerateResult } from "./types";
  */
 export class FallbackImageGenerator implements ImageGenerator {
   constructor(
-    private readonly primary: ImageGenerator,
-    private readonly fallback: ImageGenerator,
+    readonly primary: ImageGenerator,
+    readonly fallback: ImageGenerator,
   ) {}
 
   async generate(prompt: string, options?: ImageGenerateOptions): Promise<ImageGenerateResult> {
+    const start = performance.now();
     try {
       return await this.primary.generate(prompt, options);
     } catch (err) {
       if (!shouldTryFallback(err)) throw err;
+      console.info("[image-gen]", {
+        event: "fallback",
+        primaryProvider: err instanceof ImageProviderError ? err.provider : "unknown",
+        status: err instanceof ImageProviderError ? err.status : undefined,
+      });
       try {
-        return await this.fallback.generate(prompt, options);
+        const result = await this.fallback.generate(prompt, options);
+        return {
+          ...result,
+          usedFallback: true,
+          durationMs: Math.round(performance.now() - start),
+        };
       } catch (fallbackErr) {
         throw fallbackErr instanceof ImageProviderError
           ? fallbackErr

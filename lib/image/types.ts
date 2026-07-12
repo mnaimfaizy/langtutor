@@ -1,3 +1,6 @@
+/** Concrete provider ids reported on {@link ImageGenerateResult} for admin timing. */
+export type ImageProviderId = "nvidia" | "cloudflare" | "mock";
+
 /** Options for {@link ImageGenerator.generate}. */
 export interface ImageGenerateOptions {
   width?: number;
@@ -15,4 +18,10 @@ export interface ImageGenerateResult {
   width: number;
   height: number;
   seed?: number;
+  /** Which concrete provider produced this result (admin diagnostics). */
+  provider?: ImageProviderId;
+  /** Wall-clock ms for the provider call (or total when fallback was used). */
+  durationMs?: number;
+  /** True when {@link FallbackImageGenerator} served via the secondary provider. */
+  usedFallback?: boolean;
 }

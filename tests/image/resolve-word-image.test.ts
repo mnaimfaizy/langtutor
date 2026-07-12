@@ -176,6 +176,37 @@ describe("regenerateWordImage", () => {
     expect(approved?.prompt).toBe(override);
     expect(generator.calls).toHaveLength(1);
   });
+
+  it("keeps the previous asset when generation fails", async () => {
+    const previous = {
+      kind: "image" as const,
+      key: "ball",
+      style: "kid-illustration",
+      data: new Uint8Array([1]),
+      mimeType: "image/png",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      source: "generated" as const,
+      approvalStatus: "approved" as const,
+      prompt: "keep me",
+    };
+    await repo.putMediaAsset(previous);
+
+    const generator = {
+      generate: async () => {
+        throw new Error("provider down");
+      },
+    };
+    await expect(regenerateWordImage(repo, generator, "ball")).rejects.toThrow("provider down");
+
+    const stored = await repo.getMediaAssetRaw({
+      kind: "image",
+      key: "ball",
+      style: "kid-illustration",
+    });
+    expect(stored?.data).toEqual(new Uint8Array([1]));
+    expect(stored?.approvalStatus).toBe("approved");
+    expect(stored?.prompt).toBe("keep me");
+  });
 });
 
 describe("proactiveGenerateWordImage", () => {

@@ -77,7 +77,8 @@ export async function resolveWordImage(
 }
 
 /**
- * Admin-only: delete the existing asset for @word and generate a fresh pending image.
+ * Admin-only: generate a fresh pending image and replace the store row.
+ * Does **not** delete first — if generation fails, the previous asset is kept.
  * Optional `promptOverride` steers the generation (ADR 0023); the effective prompt is
  * persisted on the new generated row (ADR 0024).
  */
@@ -91,7 +92,6 @@ export async function regenerateWordImage(
   const normalized = normalizeWord(word);
   const key = mediaKey(normalized, style);
 
-  await repo.deleteMediaAsset(key);
   const asset = await resolveMediaAsset(
     repo,
     key,

@@ -6,9 +6,16 @@ import { requireAdmin } from "@/lib/auth/guards";
 import { getServerContentRepository } from "@/lib/db/server";
 import type { MediaAssetApprovalStatus, MediaAssetKey, MediaAssetRecord } from "@/lib/db/schema";
 import { listMissingPreA1ImageWords } from "@/lib/image/curriculum-image-gaps";
+import { ImageProviderError } from "@/lib/image/errors";
+import type { ImageGenerator } from "@/lib/image/image-generator";
 import { buildKidIllustrationPrompt, resolveKidIllustrationPrompt } from "@/lib/image/prompts";
 import { proactiveGenerateWordImage, regenerateWordImage } from "@/lib/image/resolve-word-image";
 import { getImageGenerator } from "@/lib/image/server";
+import {
+  logImageGenerate,
+  timingFromImageResult,
+  type ImageGenerateTiming,
+} from "@/lib/image/timing";
 
 const DEFAULT_IMAGE_STYLE = "kid-illustration";
 
@@ -28,9 +35,46 @@ const ProactiveGenerateSchema = z.object({
   prompt: z.string().max(4000).optional(),
 });
 
+export type RegenerateMediaResult = {
+  asset: MediaAssetRecord;
+  timing: ImageGenerateTiming;
+};
+
 export type ProactiveGenerateResult =
-  | { ok: true; asset: MediaAssetRecord }
+  | { ok: true; asset: MediaAssetRecord; timing: ImageGenerateTiming }
   | { ok: false; code: "already_exists" | "error"; message: string };
+
+function adminImageProviderMessage(err: ImageProviderError): string {
+  const tip =
+    err.provider === "cloudflare"
+      ? " If this keeps happening, ensure NVIDIA_NIM_API_KEY is set so auto mode can fall back, or retry later."
+      : err.provider === "nvidia"
+        ? " NVIDIA free tier is capacity-limited; Cloudflare is preferred in auto mode."
+        : "";
+  return `${err.message}.${tip}`;
+}
+
+/**
+ * Wrap the composition-root generator so admin actions can capture provider timing
+ * without changing {@link regenerateWordImage} / learner resolve signatures.
+ */
+function timedAdminGenerator(
+  operation: "regenerate" | "proactive",
+  word: string,
+  sink: { timing: ImageGenerateTiming },
+): () => Promise<ImageGenerator> {
+  return async () => {
+    const gen = await getImageGenerator();
+    return {
+      async generate(prompt, options) {
+        const result = await gen.generate(prompt, options);
+        sink.timing = timingFromImageResult(result);
+        logImageGenerate({ operation, word }, sink.timing);
+        return result;
+      },
+    };
+  };
+}
 
 export async function listMediaAssets(
   approvalStatus?: MediaAssetApprovalStatus,
@@ -61,19 +105,27 @@ export async function purgeMediaAsset(key: MediaAssetKey): Promise<void> {
 export async function regenerateMediaAsset(
   key: MediaAssetKey,
   prompt?: string,
-): Promise<MediaAssetRecord> {
+): Promise<RegenerateMediaResult> {
   await requireAdmin();
   const parsed = RegenerateSchema.parse({ ...key, prompt });
   const repo = await getServerContentRepository();
-  const asset = await regenerateWordImage(
-    repo,
-    () => getImageGenerator(),
-    parsed.key,
-    parsed.style,
-    parsed.prompt,
-  );
-  const { data: _data, ...record } = asset;
-  return record;
+  const sink: { timing: ImageGenerateTiming } = { timing: {} };
+  try {
+    const asset = await regenerateWordImage(
+      repo,
+      timedAdminGenerator("regenerate", parsed.key, sink),
+      parsed.key,
+      parsed.style,
+      parsed.prompt,
+    );
+    const { data: _data, ...record } = asset;
+    return { asset: record, timing: sink.timing };
+  } catch (err) {
+    if (err instanceof ImageProviderError) {
+      throw new Error(adminImageProviderMessage(err));
+    }
+    throw err;
+  }
 }
 
 /**
@@ -113,16 +165,20 @@ export async function proactiveGenerateMediaAsset(
   }
 
   try {
+    const sink: { timing: ImageGenerateTiming } = { timing: {} };
     const asset = await proactiveGenerateWordImage(
       repo,
-      () => getImageGenerator(),
+      timedAdminGenerator("proactive", normalized, sink),
       parsed.word,
       parsed.style,
       parsed.prompt,
     );
     const { data: _data, ...record } = asset;
-    return { ok: true, asset: record };
+    return { ok: true, asset: record, timing: sink.timing };
   } catch (err) {
+    if (err instanceof ImageProviderError) {
+      return { ok: false, code: "error", message: adminImageProviderMessage(err) };
+    }
     const message = err instanceof Error ? err.message : "Generation failed";
     if (/already exists/i.test(message)) {
       return { ok: false, code: "already_exists", message };

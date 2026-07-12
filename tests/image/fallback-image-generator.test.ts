@@ -30,7 +30,7 @@ describe("FallbackImageGenerator", () => {
     expect(fallback.generate).not.toHaveBeenCalled();
   });
 
-  it("falls through to Cloudflare on NIM 504", async () => {
+  it("falls through to the secondary provider on primary 504", async () => {
     const primary = stub(
       vi.fn().mockRejectedValue(
         new ImageProviderError("NVIDIA NIM image request failed (504)", {
@@ -44,6 +44,8 @@ describe("FallbackImageGenerator", () => {
 
     const result = await gen.generate("apple", { seed: 7 });
     expect(result.data).toEqual(new Uint8Array([9]));
+    expect(result.usedFallback).toBe(true);
+    expect(result.durationMs).toBeTypeOf("number");
     expect(fallback.generate).toHaveBeenCalledWith("apple", { seed: 7 });
   });
 

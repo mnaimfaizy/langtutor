@@ -27,6 +27,8 @@ export class MockImageGenerator implements ImageGenerator {
       width: options?.width ?? this.opts.width ?? 1024,
       height: options?.height ?? this.opts.height ?? 1024,
       seed: options?.seed ?? this.opts.seed,
+      provider: "mock",
+      durationMs: 0,
     };
   }
 }

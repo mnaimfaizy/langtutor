@@ -69,14 +69,19 @@ do **not** offer image generation.
 
 | Candidate                                   | Endpoint                                                                       | Rate limits                                                | Licensing                                                | Kid-vocab quality                                            | Verdict                                                       |
 | ------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------- |
-| **NVIDIA NIM (FLUX.1-schnell)**             | `https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell`          | Free developer tier: rate-limited RPM (no durable credits) | FLUX.1-schnell is Apache 2.0 — outputs usable in the app | Fast, clean illustrations; allowed sizes ≥768 (default 1024) | **Primary** — `NvidiaNimImageGenerator`                       |
-| **Cloudflare Workers AI (FLUX.1-schnell)**  | `…/accounts/{id}/ai/run/@cf/black-forest-labs/flux-1-schnell`                  | ~10 000 Neurons/day free                                   | Same model family                                        | `prompt`/`steps`/`seed` only; good when NIM 404/429/5xx      | **Fallback** — `CloudflareWorkersAiImageGenerator` via `auto` |
-| **Hugging Face Inference (FLUX.1-schnell)** | `https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell` | ~300 req/hr on free accounts                               | Model Apache 2.0; HF ToS applies                         | Comparable model/quality                                     | Optional later swap behind the seam                           |
+| **Cloudflare Workers AI (FLUX.1-schnell)**  | `…/accounts/{id}/ai/run/@cf/black-forest-labs/flux-1-schnell`                  | 10 000 Neurons/day free                                    | Same model family (Apache 2.0)                           | `prompt`/`steps`/`seed` only; reliable for admin regenerate  | **Primary** — `CloudflareWorkersAiImageGenerator`             |
+| **NVIDIA NIM (FLUX.1-schnell)**             | `https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell`          | Free developer tier: RPM + shared capacity (504s under load) | FLUX.1-schnell is Apache 2.0 — outputs usable in the app | Fast when healthy; free tier often times out                 | **Follow-up** — `NvidiaNimImageGenerator` via `auto`          |
+| **Hugging Face Inference (FLUX.1-schnell)** | HF Inference Providers                                                         | ~$0.10/mo free credits                                     | Model Apache 2.0; HF ToS applies                         | Comparable model/quality                                     | Optional later swap behind the seam                           |
+
+**Default wiring (`IMAGE_GENERATOR_PROVIDER=auto`):** Cloudflare first; NVIDIA on 404/429/5xx/
+timeout/network when both credentials are set. Pin with `cloudflare` or `nvidia` to disable
+fallback.
 
 **Notes:** Older hosted SDXL models on `integrate.api.nvidia.com` return 404 / are deprecated
 (June 2026 forum reports). The cloud GenAI endpoint above (`ai.api.nvidia.com/v1/genai/…`) is
-the correct hosted path for FLUX.1-schnell. Payload is strictly `{ prompt, seed, width, height }`;
-response is `{ artifacts: [{ base64 }] }` (JPEG). API key is server-only (`NVIDIA_NIM_API_KEY`).
+the correct hosted path for FLUX.1-schnell. NIM payload is `{ prompt, seed, width, height, steps }`;
+response is `{ artifacts: [{ base64 }] }` (JPEG). Keys are server-only (`CLOUDFLARE_*`,
+`NVIDIA_NIM_API_KEY`).
 
 ## Curated illustration pack (ADR 0016, issue #70)
 

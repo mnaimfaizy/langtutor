@@ -28,8 +28,11 @@ describe("NvidiaNimImageGenerator", () => {
     expect(result.data).toEqual(jpegBytes);
     expect(result.width).toBe(768); // nearest allowed to 512
     expect(result.height).toBe(768);
+    expect(result.provider).toBe("nvidia");
+    expect(result.durationMs).toBeTypeOf("number");
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
     expect(JSON.parse(String(init.body))).toEqual({
       prompt: "an apple",
       width: 768,
@@ -48,6 +51,21 @@ describe("NvidiaNimImageGenerator", () => {
     });
     await expect(gen.generate("x")).rejects.toMatchObject({
       status: 504,
+      provider: "nvidia",
+    });
+  });
+
+  it("maps TimeoutError to a timeout ImageProviderError", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(
+      new DOMException("The operation was aborted", "TimeoutError"),
+    );
+    const gen = new NvidiaNimImageGenerator({
+      apiKey: "nvapi-test",
+      baseURL: "https://ai.api.nvidia.com/v1/genai",
+      model: "black-forest-labs/flux.1-schnell",
+    });
+    await expect(gen.generate("x")).rejects.toMatchObject({
+      message: "NVIDIA NIM image request timed out",
       provider: "nvidia",
     });
   });

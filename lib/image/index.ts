@@ -5,4 +5,11 @@
  * re-exported here.
  */
 export type { ImageGenerator } from "./image-generator";
-export type { ImageGenerateOptions, ImageGenerateResult } from "./types";
+export type { ImageGenerateOptions, ImageGenerateResult, ImageProviderId } from "./types";
+export type { ImageGenerateTiming } from "./timing";
+export {
+  formatImageGenerateTiming,
+  logImageGenerate,
+  timingFromImageResult,
+  withProviderTiming,
+} from "./timing";

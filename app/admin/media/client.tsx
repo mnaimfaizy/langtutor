@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import type { MediaAssetKey, MediaAssetRecord } from "@/lib/db/schema";
+import { formatImageGenerateTiming, type ImageGenerateTiming } from "@/lib/image/timing";
 import {
   BackLink,
   Badge,
@@ -33,6 +34,11 @@ import {
   regenerateMediaAsset,
 } from "./actions";
 
+function timingSuffix(timing: ImageGenerateTiming): string {
+  const formatted = formatImageGenerateTiming(timing);
+  return formatted ? ` (${formatted})` : "";
+}
+
 type Banner = { tone: "ok" | "error"; text: string } | null;
 
 type RegenerateTarget = {
@@ -50,6 +56,8 @@ function assetId(asset: MediaAssetRecord): string {
 function AssetPreview({ assetKey }: { assetKey: MediaAssetKey }) {
   const [src, setSrc] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const { kind, key, style } = assetKey;
 
   useEffect(() => {
@@ -81,12 +89,58 @@ function AssetPreview({ assetKey }: { assetKey: MediaAssetKey }) {
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- admin-only data URLs from server action
-    <img
-      src={src}
-      alt={`Illustration for ${key}`}
-      className="border-border h-24 w-24 rounded-lg border object-cover"
-    />
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="Click to enlarge"
+        className="border-border focus-visible:ring-accent focus-visible:ring-offset-background group relative shrink-0 overflow-hidden rounded-lg border transition-[box-shadow] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+        data-testid="media-preview-thumb"
+        aria-label={`Enlarge illustration for ${key}`}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- admin-only data URLs from server action */}
+        <img
+          src={src}
+          alt=""
+          className="h-24 w-24 rounded-[calc(0.5rem-1px)] object-cover transition-transform duration-200 group-hover:scale-105 group-focus-visible:scale-105"
+        />
+        <span
+          className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 text-xs font-medium text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+          aria-hidden
+        >
+          Enlarge
+        </span>
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          className="w-[min(96vw,42rem)] max-w-none"
+          data-testid="media-preview-dialog"
+        >
+          <DialogTitle>Illustration — {key}</DialogTitle>
+          <DialogDescription>
+            {naturalSize
+              ? `Original size ${naturalSize.width}×${naturalSize.height}px. Thumbnail on the list is scaled down for review.`
+              : "Full-size asset. Thumbnail on the list is scaled down for review."}
+          </DialogDescription>
+          <div className="bg-muted mt-4 flex max-h-[min(75vh,36rem)] items-center justify-center overflow-auto rounded-lg p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element -- admin-only data URLs from server action */}
+            <img
+              src={src}
+              alt={`Full-size illustration for ${key}`}
+              className="max-h-[min(75vh,36rem)] max-w-full object-contain"
+              onLoad={(event) => {
+                const img = event.currentTarget;
+                setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+              }}
+            />
+          </div>
+          <div className="mt-4 flex justify-end">
+            <DialogClose>Close</DialogClose>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -338,7 +392,7 @@ export function MediaReviewClient({
     setBusyId(id);
     setBanner(null);
     try {
-      const updated = await regenerateMediaAsset(key, prompt);
+      const { asset: updated, timing } = await regenerateMediaAsset(key, prompt);
       setApproved((prev) => prev.filter((a) => assetId(a) !== id));
       setPending((prev) => {
         const without = prev.filter((a) => assetId(a) !== id);
@@ -347,7 +401,7 @@ export function MediaReviewClient({
       setRegenerateTarget(null);
       setBanner({
         tone: "ok",
-        text: `Regenerated "${asset.key}" — pending approval before learners can see it.`,
+        text: `Regenerated "${asset.key}" — pending approval before learners can see it.${timingSuffix(timing)}`,
       });
     } catch (err) {
       setBanner({
@@ -411,7 +465,7 @@ export function MediaReviewClient({
       setProactivePrompt("");
       setBanner({
         tone: "ok",
-        text: `Generated "${created.key}" — pending approval before learners can see it.`,
+        text: `Generated "${created.key}" — pending approval before learners can see it.${timingSuffix(result.timing)}`,
       });
       void refreshCurriculumGaps();
     } catch (err) {

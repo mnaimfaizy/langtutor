@@ -7,13 +7,20 @@ export function wordImageSeed(word: string): number {
   return Math.abs(hash) % 2_147_483_647;
 }
 
-/** Prompt template for pre-A1 kid vocabulary illustrations (ADR 0016). */
+/**
+ * Prompt template for pre-A1 kid vocabulary illustrations (ADR 0016).
+ *
+ * FLUX.1-schnell (Cloudflare / NIM) does **not** support negative prompts. It also
+ * tends to render quoted strings as literal on-image text — so we never wrap the
+ * word in quotes, and we state the desired result positively (picture-only).
+ */
 export function buildKidIllustrationPrompt(word: string): string {
+  const subject = word.toLowerCase().trim();
   return [
-    `A simple, colorful children's book illustration of "${word}".`,
-    "Friendly, clear subject on a plain white background.",
-    "No text, no letters, no watermark.",
-    "Suitable for preschool vocabulary learning.",
+    `A simple colorful children's book illustration of a single ${subject},`,
+    "large and close-up so the subject fills most of the frame with only a thin white margin,",
+    "centered, friendly shapes, plain white background,",
+    "purely pictorial with no caption, no title, no labels, no letters, no watermark.",
   ].join(" ");
 }
 

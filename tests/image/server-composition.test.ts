@@ -8,7 +8,7 @@ describe("getImageGenerator composition", () => {
     vi.resetModules();
   });
 
-  it("uses FallbackImageGenerator in auto mode when both providers are configured", async () => {
+  it("uses Cloudflare primary and NVIDIA fallback in auto mode when both are configured", async () => {
     vi.stubEnv("IMAGE_GENERATOR_PROVIDER", "auto");
     vi.stubEnv("NVIDIA_NIM_API_KEY", "nvapi-test");
     vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
@@ -16,9 +16,15 @@ describe("getImageGenerator composition", () => {
 
     const { getImageGenerator } = await import("@/lib/image/server");
     const { FallbackImageGenerator } = await import("@/lib/image/fallback-image-generator");
+    const { CloudflareWorkersAiImageGenerator } =
+      await import("@/lib/image/cloudflare-workers-ai-image-generator");
+    const { NvidiaNimImageGenerator } = await import("@/lib/image/nvidia-nim-image-generator");
 
     const gen = await getImageGenerator();
     expect(gen).toBeInstanceOf(FallbackImageGenerator);
+    const fallback = gen as InstanceType<typeof FallbackImageGenerator>;
+    expect(fallback.primary).toBeInstanceOf(CloudflareWorkersAiImageGenerator);
+    expect(fallback.fallback).toBeInstanceOf(NvidiaNimImageGenerator);
   });
 
   it("uses Cloudflare only when IMAGE_GENERATOR_PROVIDER=cloudflare", async () => {
