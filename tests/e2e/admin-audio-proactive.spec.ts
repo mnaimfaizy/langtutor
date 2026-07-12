@@ -45,5 +45,42 @@ test.describe("admin audio proactive generate", () => {
     await expect(page.getByTestId("audio-curriculum-gaps")).toBeVisible();
     await expect(page.getByTestId("audio-gap-apple")).toBeVisible();
     await expect(page.getByTestId("audio-gap-generate-apple")).toBeVisible();
+    await expect(page.getByTestId("audio-gap-generate-apple")).toHaveText("Load");
+  });
+
+  test("proactive generate exposes say and direction fields", async ({ page }) => {
+    await page.goto("/admin/media/audio");
+    await expect(page.getByTestId("audio-proactive-say")).toBeVisible();
+    await expect(page.getByTestId("audio-proactive-direction")).toBeVisible();
+    await page.getByTestId("audio-proactive-word").fill("xylophone");
+    await page.getByTestId("audio-proactive-word").blur();
+    await expect(page.getByTestId("audio-proactive-say")).toHaveValue(/xylophone/i, {
+      timeout: 15_000,
+    });
+    await page.getByTestId("audio-proactive-direction").fill("cheerful");
+    await expect(page.getByTestId("audio-proactive-composed")).toContainText(
+      "[cheerful] xylophone",
+    );
+  });
+
+  test("edit loads an existing clip into the generate form without regenerating", async ({
+    page,
+    request,
+  }) => {
+    const seed = await request.post("/api/test/media-asset", {
+      data: { action: "put-approved", kind: "audio", key: "apple" },
+    });
+    expect(seed.ok()).toBe(true);
+
+    await page.goto("/admin/media/audio");
+    await expect(page.getByText("apple", { exact: true }).first()).toBeVisible();
+    await page.getByTestId("audio-edit-in-form").first().click();
+
+    await expect(page.getByTestId("audio-banner")).toContainText(/Loaded "apple"/i, {
+      timeout: 15_000,
+    });
+    await expect(page.getByTestId("audio-proactive-word")).toHaveValue("apple");
+    await expect(page.getByTestId("audio-proactive-say")).toHaveValue(/apple/i);
+    await expect(page.getByTestId("audio-proactive-submit")).toHaveText(/Generate replacement/i);
   });
 });

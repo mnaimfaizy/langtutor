@@ -183,8 +183,41 @@ describe("regenerateWordAudio", () => {
     expect(regenerated.data).toEqual(new Uint8Array([99]));
     expect(regenerated.approvalStatus).toBe("pending");
     expect(regenerated.source).toBe("generated");
+    expect(regenerated.prompt).toBe("apple");
     expect(await repo.getMediaAsset(AUDIO_KEY)).toBeUndefined();
     expect(await repo.getMediaAssetRaw(AUDIO_KEY)).toEqual(regenerated);
+  });
+
+  it("accepts a spoken-text override, persists it, and hides the clip until approve", async () => {
+    await repo.putMediaAsset({
+      kind: "audio",
+      key: "apple",
+      style: "default",
+      data: new Uint8Array([1]),
+      mimeType: "audio/wav",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      source: "generated",
+      approvalStatus: "approved",
+      prompt: null,
+    });
+
+    const override = "[cheerful] apple";
+    const synthesizer = new MockTtsSynthesizer({ data: new Uint8Array([55]) });
+    const regenerated = await regenerateWordAudio(repo, synthesizer, "apple", "default", {
+      prompt: override,
+      voiceUri: "hannah",
+    });
+
+    expect(synthesizer.calls[0]?.text).toBe(override);
+    expect(regenerated.approvalStatus).toBe("pending");
+    expect(regenerated.prompt).toBe(override);
+    expect(await repo.getMediaAsset(AUDIO_KEY)).toBeUndefined();
+
+    await repo.approveMediaAsset(AUDIO_KEY);
+    const approved = await resolveWordAudio(repo, synthesizer, "apple");
+    expect(approved?.data).toEqual(new Uint8Array([55]));
+    expect(approved?.prompt).toBe(override);
+    expect(synthesizer.calls).toHaveLength(1);
   });
 
   it("truncates over-long WAV using an admin maxDurationSeconds under the hard cap", async () => {
@@ -242,6 +275,7 @@ describe("proactiveGenerateWordAudio", () => {
     expect(created.key).toBe("xylophone");
     expect(created.approvalStatus).toBe("pending");
     expect(created.source).toBe("generated");
+    expect(created.prompt).toBe("xylophone");
     expect(created.data).toEqual(new Uint8Array([77]));
     expect(
       await repo.getMediaAssetRaw({ kind: "audio", key: "xylophone", style: "default" }),
@@ -249,6 +283,18 @@ describe("proactiveGenerateWordAudio", () => {
     expect(
       await repo.getMediaAsset({ kind: "audio", key: "xylophone", style: "default" }),
     ).toBeUndefined();
+  });
+
+  it("accepts a spoken-text override and persists it on the pending clip", async () => {
+    const override = "[slow carefully] xylophone";
+    const synthesizer = new MockTtsSynthesizer({ data: new Uint8Array([88]) });
+    const created = await proactiveGenerateWordAudio(repo, synthesizer, "Xylophone", "default", {
+      prompt: override,
+    });
+
+    expect(synthesizer.calls[0]?.text).toBe(override);
+    expect(created.prompt).toBe(override);
+    expect(created.approvalStatus).toBe("pending");
   });
 
   it("rejects when a media row already exists without calling the synthesizer", async () => {

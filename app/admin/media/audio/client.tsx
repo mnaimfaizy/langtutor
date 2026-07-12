@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MediaAssetKey, MediaAssetRecord } from "@/lib/db/schema";
+import {
+  composeSpokenText,
+  ORPHEUS_DIRECTION_PRESETS,
+  TTS_MAX_DIRECTION_CHARS,
+  TTS_MAX_SPOKEN_TEXT_CHARS,
+  type SpokenTextParts,
+} from "@/lib/tts/prompts";
 import { GROQ_ORPHEUS_VOICES } from "@/lib/tts/speech-synthesis";
 import { TTS_MAX_DURATION_SECONDS } from "@/lib/tts/truncate-audio";
 import {
@@ -14,11 +21,6 @@ import {
   CardContent,
   CardDescription,
   CardTitle,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
   Input,
   buttonClassName,
   cn,
@@ -27,6 +29,8 @@ import {
 import {
   approveAudioMediaAsset,
   getAudioMediaAssetPreview,
+  getProactiveAudioPromptDraft,
+  getRegenerateAudioPromptDraft,
   listAudioCurriculumGaps,
   proactiveGenerateAudioMediaAsset,
   purgeAudioMediaAsset,
@@ -37,21 +41,21 @@ import {
 
 type Banner = { tone: "ok" | "error"; text: string } | null;
 
-type RegenerateTarget = {
-  asset: MediaAssetRecord;
-};
-
 type TtsKnobState = {
   voiceUri: string;
   rate: number;
   maxDurationSeconds: number;
 };
 
+const DEFAULT_AUDIO_STYLE = "default";
+
 const DEFAULT_KNOBS: TtsKnobState = {
   voiceUri: "",
   rate: 1,
   maxDurationSeconds: TTS_MAX_DURATION_SECONDS,
 };
+
+const EMPTY_DRAFT: SpokenTextParts = { say: "", direction: "" };
 
 const TTS_RATE_MIN = 0.5;
 const TTS_RATE_MAX = 2;
@@ -64,19 +68,30 @@ function assetId(asset: MediaAssetRecord): string {
   return `${asset.kind}:${asset.key}:${asset.style}`;
 }
 
+function assetRowKey(asset: MediaAssetRecord): string {
+  const created =
+    asset.createdAt instanceof Date ? asset.createdAt.toISOString() : String(asset.createdAt ?? "");
+  return `${assetId(asset)}:${created}`;
+}
+
 function formatDuration(seconds: number | null): string {
   if (seconds === null || !Number.isFinite(seconds)) return "—";
   if (seconds < 10) return `~${seconds.toFixed(1)}s`;
   return `~${Math.round(seconds)}s`;
 }
 
-function knobsToOptions(knobs: TtsKnobState): AdminAudioTtsOptions | undefined {
+function knobsToOptions(
+  knobs: TtsKnobState,
+  parts: SpokenTextParts,
+): AdminAudioTtsOptions | undefined {
   const options: AdminAudioTtsOptions = {};
   if (knobs.voiceUri) options.voiceUri = knobs.voiceUri;
   if (knobs.rate !== 1) options.rate = knobs.rate;
   if (knobs.maxDurationSeconds !== TTS_MAX_DURATION_SECONDS) {
     options.maxDurationSeconds = knobs.maxDurationSeconds;
   }
+  const composed = composeSpokenText(parts.say, parts.direction);
+  if (composed) options.prompt = composed;
   return Object.keys(options).length > 0 ? options : undefined;
 }
 
@@ -168,13 +183,90 @@ function TtsKnobsFields({
   );
 }
 
+function SayDirectionFields({
+  idPrefix,
+  parts,
+  disabled,
+  onChange,
+}: {
+  idPrefix: string;
+  parts: SpokenTextParts;
+  disabled: boolean;
+  onChange: (next: SpokenTextParts) => void;
+}) {
+  const composed = composeSpokenText(parts.say, parts.direction);
+  const sayId = `${idPrefix}-say`;
+  const directionId = `${idPrefix}-direction`;
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <label htmlFor={sayId} className="text-foreground text-sm font-medium">
+          Say
+        </label>
+        <p className="text-muted mt-1 text-xs">
+          Exact words Orpheus will speak (usually just the vocabulary word). Max{" "}
+          {TTS_MAX_SPOKEN_TEXT_CHARS} characters total with direction.
+        </p>
+        <Input
+          id={sayId}
+          data-testid={sayId}
+          value={parts.say}
+          onChange={(event) => onChange({ ...parts, say: event.target.value })}
+          disabled={disabled}
+          placeholder="e.g. apple"
+          maxLength={TTS_MAX_SPOKEN_TEXT_CHARS}
+          className="mt-2"
+        />
+      </div>
+
+      <div>
+        <label htmlFor={directionId} className="text-foreground text-sm font-medium">
+          Direction (optional)
+        </label>
+        <p className="text-muted mt-1 text-xs">
+          Orpheus vocal tag only — not spoken. Use a short adjective like{" "}
+          <code className="text-foreground">cheerful</code>, not a full sentence. Brackets are added
+          automatically.
+        </p>
+        <Input
+          id={directionId}
+          data-testid={directionId}
+          value={parts.direction}
+          onChange={(event) => onChange({ ...parts, direction: event.target.value })}
+          disabled={disabled}
+          placeholder="e.g. cheerful"
+          maxLength={TTS_MAX_DIRECTION_CHARS}
+          list={`${idPrefix}-direction-presets`}
+          className="mt-2"
+        />
+        <datalist id={`${idPrefix}-direction-presets`}>
+          {ORPHEUS_DIRECTION_PRESETS.map((preset) => (
+            <option key={preset} value={preset} />
+          ))}
+        </datalist>
+      </div>
+
+      {parts.say.trim().length > 0 && (
+        <p className="text-muted text-xs" data-testid={`${idPrefix}-composed`}>
+          Sent to Orpheus: <code className="text-foreground">{composed}</code>
+        </p>
+      )}
+    </div>
+  );
+}
+
 function AudioPreviewPlayer({ assetKey }: { assetKey: MediaAssetKey }) {
   const [preview, setPreview] = useState<AudioPreview | null>(null);
   const [failed, setFailed] = useState(false);
+  const { kind, key, style } = assetKey;
 
   useEffect(() => {
     let cancelled = false;
-    void getAudioMediaAssetPreview(assetKey)
+    // Depend on primitives — a fresh `{ kind, key, style }` object every parent
+    // render would re-fire this effect; each server-action completion refreshes
+    // the RSC tree, which re-renders the parent and would loop forever.
+    void getAudioMediaAssetPreview({ kind, key, style })
       .then((result) => {
         if (!cancelled) setPreview(result);
       })
@@ -184,7 +276,7 @@ function AudioPreviewPlayer({ assetKey }: { assetKey: MediaAssetKey }) {
     return () => {
       cancelled = true;
     };
-  }, [assetKey]);
+  }, [kind, key, style]);
 
   if (failed) {
     return (
@@ -205,7 +297,7 @@ function AudioPreviewPlayer({ assetKey }: { assetKey: MediaAssetKey }) {
         preload="metadata"
         src={preview.dataUrl}
         className="h-10 max-w-full"
-        aria-label={`Preview audio for ${assetKey.key}`}
+        aria-label={`Preview audio for ${key}`}
       />
       <p className="text-muted text-xs" data-testid="audio-duration">
         Duration {formatDuration(preview.durationSeconds)}
@@ -219,13 +311,13 @@ function AssetRow({
   busy,
   onApprove,
   onPurge,
-  onRegenerate,
+  onEdit,
 }: {
   asset: MediaAssetRecord;
   busy: boolean;
   onApprove?: () => void;
   onPurge: () => void;
-  onRegenerate?: () => void;
+  onEdit?: () => void;
 }) {
   const assetKey: MediaAssetKey = {
     kind: asset.kind,
@@ -256,15 +348,15 @@ function AssetRow({
             Approve
           </Button>
         )}
-        {onRegenerate && (
+        {onEdit && (
           <Button
             variant="secondary"
             size="sm"
             disabled={busy}
-            onClick={onRegenerate}
-            data-testid="audio-regenerate"
+            onClick={onEdit}
+            data-testid="audio-edit-in-form"
           >
-            Regenerate
+            Edit
           </Button>
         )}
         <Button variant="secondary" size="sm" disabled={busy} onClick={onPurge}>
@@ -272,80 +364,6 @@ function AssetRow({
         </Button>
       </div>
     </li>
-  );
-}
-
-function RegenerateDialogBody({
-  asset,
-  busy,
-  onConfirm,
-}: {
-  asset: MediaAssetRecord;
-  busy: boolean;
-  onConfirm: (options: AdminAudioTtsOptions | undefined) => void;
-}) {
-  const [knobs, setKnobs] = useState<TtsKnobState>(DEFAULT_KNOBS);
-
-  return (
-    <>
-      <DialogTitle>Regenerate “{asset.key}”</DialogTitle>
-      <DialogDescription>
-        Learners will not hear audio for this word until you approve the new clip.
-      </DialogDescription>
-
-      <div className="mt-4 space-y-3">
-        <TtsKnobsFields
-          idPrefix="audio-regenerate"
-          knobs={knobs}
-          disabled={busy}
-          onChange={setKnobs}
-        />
-
-        <p className="text-warning text-sm" role="status" data-testid="audio-regenerate-warning">
-          Regenerating replaces the current clip and creates a pending gap for learners until you
-          re-approve.
-        </p>
-
-        <div className="flex justify-end gap-2">
-          <DialogClose disabled={busy}>Cancel</DialogClose>
-          <Button
-            variant="primary"
-            disabled={busy}
-            data-testid="audio-regenerate-confirm"
-            onClick={() => onConfirm(knobsToOptions(knobs))}
-          >
-            {busy ? "Regenerating…" : "Regenerate"}
-          </Button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function RegenerateDialog({
-  target,
-  busy,
-  onOpenChange,
-  onConfirm,
-}: {
-  target: RegenerateTarget | null;
-  busy: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: (options: AdminAudioTtsOptions | undefined) => void;
-}) {
-  return (
-    <Dialog open={target !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(90vw,36rem)]" data-testid="audio-regenerate-dialog">
-        {target && (
-          <RegenerateDialogBody
-            key={assetId(target.asset)}
-            asset={target.asset}
-            busy={busy}
-            onConfirm={onConfirm}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -358,15 +376,18 @@ export function AudioReviewClient({
   initialApproved: MediaAssetRecord[];
   initialCurriculumGaps: string[];
 }) {
+  const generateFormRef = useRef<HTMLDivElement | null>(null);
   const [pending, setPending] = useState(initialPending);
   const [approved, setApproved] = useState(initialApproved);
   const [curriculumGaps, setCurriculumGaps] = useState(initialCurriculumGaps);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [banner, setBanner] = useState<Banner>(null);
-  const [regenerateTarget, setRegenerateTarget] = useState<RegenerateTarget | null>(null);
-  const [proactiveWord, setProactiveWord] = useState("");
-  const [proactiveKnobs, setProactiveKnobs] = useState<TtsKnobState>(DEFAULT_KNOBS);
-  const [proactiveBusy, setProactiveBusy] = useState(false);
+  const [formWord, setFormWord] = useState("");
+  const [formParts, setFormParts] = useState<SpokenTextParts>(EMPTY_DRAFT);
+  const [formKnobs, setFormKnobs] = useState<TtsKnobState>(DEFAULT_KNOBS);
+  /** When set, Generate replaces this existing media key instead of creating a new row. */
+  const [replaceKey, setReplaceKey] = useState<string | null>(null);
+  const [generateBusy, setGenerateBusy] = useState(false);
 
   const runAction = useCallback(
     async (id: string, action: () => Promise<void>, success: string) => {
@@ -386,6 +407,24 @@ export function AudioReviewClient({
     },
     [],
   );
+
+  function clearGenerateForm() {
+    setFormWord("");
+    setFormParts(EMPTY_DRAFT);
+    setFormKnobs(DEFAULT_KNOBS);
+    setReplaceKey(null);
+  }
+
+  function scrollToGenerateForm() {
+    generateFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function assetExistsLocally(normalizedWord: string): boolean {
+    return (
+      pending.some((a) => a.key === normalizedWord && a.style === DEFAULT_AUDIO_STYLE) ||
+      approved.some((a) => a.key === normalizedWord && a.style === DEFAULT_AUDIO_STYLE)
+    );
+  }
 
   async function handleApprove(asset: MediaAssetRecord) {
     const id = assetId(asset);
@@ -416,44 +455,63 @@ export function AudioReviewClient({
         setCurriculumGaps((prev) =>
           prev.includes(asset.key) ? prev : [...prev, asset.key].sort((a, b) => a.localeCompare(b)),
         );
+        if (replaceKey === asset.key) {
+          clearGenerateForm();
+        }
       },
       `Purged "${asset.key}".`,
     );
   }
 
-  function openRegenerate(asset: MediaAssetRecord) {
-    setBanner(null);
-    setRegenerateTarget({ asset });
-  }
-
-  async function handleRegenerateConfirm(options: AdminAudioTtsOptions | undefined) {
-    const target = regenerateTarget;
-    if (!target) return;
-    const { asset } = target;
+  /** Load an existing clip into the generate form — does not call TTS yet. */
+  async function loadAssetIntoForm(asset: MediaAssetRecord) {
     const id = assetId(asset);
-    const key: MediaAssetKey = { kind: asset.kind, key: asset.key, style: asset.style };
     setBusyId(id);
     setBanner(null);
     try {
-      const updated = await regenerateAudioMediaAsset(key, options);
-      setApproved((prev) => prev.filter((a) => assetId(a) !== id));
-      setPending((prev) => {
-        const without = prev.filter((a) => assetId(a) !== id);
-        return [...without, updated];
+      const draft = await getRegenerateAudioPromptDraft({
+        kind: asset.kind,
+        key: asset.key,
+        style: asset.style,
       });
-      setRegenerateTarget(null);
+      setFormWord(asset.key);
+      setFormParts(draft);
+      setFormKnobs(DEFAULT_KNOBS);
+      setReplaceKey(asset.key);
       setBanner({
         tone: "ok",
-        text: `Regenerated "${asset.key}" — pending approval before learners can hear it.`,
+        text: `Loaded "${asset.key}" into the form — adjust voice/direction/duration, then Generate. Approve from Pending when you like the preview.`,
       });
+      scrollToGenerateForm();
     } catch (err) {
       setBanner({
         tone: "error",
-        text: err instanceof Error ? err.message : "Regeneration failed",
+        text: err instanceof Error ? err.message : "Could not load clip into form",
       });
     } finally {
       setBusyId(null);
     }
+  }
+
+  /** Prefill the form for a missing curriculum word — does not call TTS yet. */
+  async function loadWordIntoForm(word: string) {
+    const trimmed = word.trim();
+    if (!trimmed) return;
+    setBanner(null);
+    setFormWord(trimmed);
+    setReplaceKey(null);
+    setFormKnobs(DEFAULT_KNOBS);
+    try {
+      const draft = await getProactiveAudioPromptDraft(trimmed);
+      setFormParts(draft);
+    } catch {
+      setFormParts({ say: trimmed.toLowerCase(), direction: "" });
+    }
+    setBanner({
+      tone: "ok",
+      text: `Loaded "${trimmed.toLowerCase()}" into the form — choose voice/direction/duration, then Generate.`,
+    });
+    scrollToGenerateForm();
   }
 
   async function refreshCurriculumGaps() {
@@ -465,33 +523,85 @@ export function AudioReviewClient({
     }
   }
 
-  async function handleProactiveGenerate(word: string, knobs: TtsKnobState) {
+  async function loadDraftForTypedWord(word: string) {
+    const trimmed = word.trim();
+    if (!trimmed) {
+      setFormParts(EMPTY_DRAFT);
+      setReplaceKey(null);
+      return;
+    }
+    const normalized = trimmed.toLowerCase();
+    if (replaceKey !== null && replaceKey !== normalized) {
+      setReplaceKey(null);
+    }
+    try {
+      if (assetExistsLocally(normalized)) {
+        const draft = await getRegenerateAudioPromptDraft({
+          kind: "audio",
+          key: normalized,
+          style: DEFAULT_AUDIO_STYLE,
+        });
+        setFormParts(draft);
+        setReplaceKey(normalized);
+      } else {
+        const draft = await getProactiveAudioPromptDraft(trimmed);
+        setFormParts(draft);
+        setReplaceKey(null);
+      }
+    } catch {
+      setFormParts({ say: normalized, direction: "" });
+    }
+  }
+
+  async function handleGenerate(word: string, knobs: TtsKnobState, parts: SpokenTextParts) {
     const trimmed = word.trim();
     if (!trimmed) {
       setBanner({ tone: "error", text: "Enter a word to generate." });
       return;
     }
-    setProactiveBusy(true);
-    setBusyId(`proactive:${trimmed.toLowerCase()}`);
+    const normalized = trimmed.toLowerCase();
+    const say = parts.say.trim() || normalized;
+    const options = knobsToOptions(knobs, { say, direction: parts.direction });
+    const shouldReplace = replaceKey === normalized || assetExistsLocally(normalized);
+
+    setGenerateBusy(true);
+    setBusyId(`generate:${normalized}`);
     setBanner(null);
     try {
-      const result = await proactiveGenerateAudioMediaAsset(trimmed, knobsToOptions(knobs));
-      if (!result.ok) {
-        setBanner({ tone: "error", text: result.message });
-        return;
+      let updated;
+      if (shouldReplace) {
+        updated = await regenerateAudioMediaAsset(
+          { kind: "audio", key: normalized, style: DEFAULT_AUDIO_STYLE },
+          options,
+        );
+      } else {
+        const result = await proactiveGenerateAudioMediaAsset(trimmed, options);
+        if (!result.ok) {
+          if (result.code === "already_exists") {
+            updated = await regenerateAudioMediaAsset(
+              { kind: "audio", key: normalized, style: DEFAULT_AUDIO_STYLE },
+              options,
+            );
+          } else {
+            setBanner({ tone: "error", text: result.message });
+            return;
+          }
+        } else {
+          updated = result.asset;
+        }
       }
-      const created = result.asset;
-      const id = assetId(created);
+
+      const id = assetId(updated);
+      setApproved((prev) => prev.filter((a) => assetId(a) !== id));
       setPending((prev) => {
         const without = prev.filter((a) => assetId(a) !== id);
-        return [...without, created];
+        return [...without, updated];
       });
-      setCurriculumGaps((prev) => prev.filter((w) => w !== created.key));
-      setProactiveWord("");
-      setProactiveKnobs(DEFAULT_KNOBS);
+      setCurriculumGaps((prev) => prev.filter((w) => w !== updated.key));
+      clearGenerateForm();
       setBanner({
         tone: "ok",
-        text: `Generated "${created.key}" — pending approval before learners can hear it.`,
+        text: `Generated "${updated.key}" — preview it under Pending, then Approve when ready.`,
       });
       void refreshCurriculumGaps();
     } catch (err) {
@@ -500,7 +610,7 @@ export function AudioReviewClient({
         text: err instanceof Error ? err.message : "Generation failed",
       });
     } finally {
-      setProactiveBusy(false);
+      setGenerateBusy(false);
       setBusyId(null);
     }
   }
@@ -510,7 +620,8 @@ export function AudioReviewClient({
       <BackLink href="/settings" label="Settings" />
       <h1 className="text-foreground mt-2 text-2xl font-semibold">Audio review</h1>
       <p className="text-muted mt-1 text-sm">
-        Admin-only. Approve generated speech clips before learners can hear them.
+        Admin-only. Generate clips here, preview them under Pending, then Approve when they sound
+        right.
       </p>
       <nav aria-label="Admin sections" className="mt-3 flex flex-wrap gap-2">
         <Link
@@ -542,50 +653,82 @@ export function AudioReviewClient({
         </p>
       )}
 
-      <Card className="mt-6" data-testid="audio-proactive-generate">
-        <CardTitle>Proactive generate</CardTitle>
-        <CardDescription>
-          Create a pending speech clip for a word with no audio row yet — no learner miss required.
-        </CardDescription>
-        <CardContent className="space-y-3">
-          <div>
-            <label htmlFor="audio-proactive-word" className="text-foreground text-sm font-medium">
-              Word
-            </label>
-            <Input
-              id="audio-proactive-word"
-              data-testid="audio-proactive-word"
-              value={proactiveWord}
-              onChange={(event) => setProactiveWord(event.target.value)}
-              disabled={proactiveBusy}
-              placeholder="e.g. xylophone"
-              className="mt-2"
+      <div ref={generateFormRef}>
+        <Card className="mt-6" data-testid="audio-proactive-generate">
+          <CardTitle>{replaceKey ? `Update “${replaceKey}”` : "Generate audio"}</CardTitle>
+          <CardDescription>
+            {replaceKey
+              ? "Generate replaces this clip (same word) as pending. Preview under Pending, then Approve — Purge deletes it."
+              : "Create a new clip, or use Edit on an existing row to load it here first."}
+          </CardDescription>
+          <CardContent className="space-y-3">
+            <div>
+              <label htmlFor="audio-proactive-word" className="text-foreground text-sm font-medium">
+                Word
+              </label>
+              <Input
+                id="audio-proactive-word"
+                data-testid="audio-proactive-word"
+                value={formWord}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setFormWord(next);
+                  const normalized = next.trim().toLowerCase();
+                  if (replaceKey !== null && normalized !== replaceKey) {
+                    setReplaceKey(null);
+                  }
+                }}
+                onBlur={() => void loadDraftForTypedWord(formWord)}
+                disabled={generateBusy}
+                placeholder="e.g. xylophone"
+                className="mt-2"
+              />
+            </div>
+            <SayDirectionFields
+              idPrefix="audio-proactive"
+              parts={formParts}
+              disabled={generateBusy}
+              onChange={setFormParts}
             />
-          </div>
-          <TtsKnobsFields
-            idPrefix="audio-proactive"
-            knobs={proactiveKnobs}
-            disabled={proactiveBusy}
-            onChange={setProactiveKnobs}
-          />
-          <div className="flex justify-end">
-            <Button
-              variant="primary"
-              size="sm"
-              disabled={proactiveBusy || proactiveWord.trim().length === 0}
-              data-testid="audio-proactive-submit"
-              onClick={() => void handleProactiveGenerate(proactiveWord, proactiveKnobs)}
-            >
-              {proactiveBusy ? "Generating…" : "Generate"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <TtsKnobsFields
+              idPrefix="audio-proactive"
+              knobs={formKnobs}
+              disabled={generateBusy}
+              onChange={setFormKnobs}
+            />
+            <div className="flex justify-end gap-2">
+              {(formWord || replaceKey) && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={generateBusy}
+                  data-testid="audio-generate-clear"
+                  onClick={() => {
+                    clearGenerateForm();
+                    setBanner(null);
+                  }}
+                >
+                  Clear
+                </Button>
+              )}
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={generateBusy || formWord.trim().length === 0}
+                data-testid="audio-proactive-submit"
+                onClick={() => void handleGenerate(formWord, formKnobs, formParts)}
+              >
+                {generateBusy ? "Generating…" : replaceKey ? "Generate replacement" : "Generate"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="mt-6" data-testid="audio-curriculum-gaps">
         <CardTitle>Curriculum gaps</CardTitle>
         <CardDescription>
-          Pre-A1 vocabulary missing an audio row. Generate one word at a time.
+          Pre-A1 vocabulary missing an audio row. Load a word into the form, then Generate.
         </CardDescription>
         <CardContent>
           {curriculumGaps.length === 0 ? (
@@ -594,27 +737,24 @@ export function AudioReviewClient({
             </p>
           ) : (
             <ul className="divide-border divide-y" data-testid="audio-curriculum-gaps-list">
-              {curriculumGaps.map((word) => {
-                const gapBusy = busyId === `proactive:${word}`;
-                return (
-                  <li
-                    key={word}
-                    className="flex items-center justify-between gap-3 py-3"
-                    data-testid={`audio-gap-${word}`}
+              {curriculumGaps.map((word) => (
+                <li
+                  key={word}
+                  className="flex items-center justify-between gap-3 py-3"
+                  data-testid={`audio-gap-${word}`}
+                >
+                  <span className="text-foreground text-sm font-medium">{word}</span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={generateBusy}
+                    data-testid={`audio-gap-generate-${word}`}
+                    onClick={() => void loadWordIntoForm(word)}
                   >
-                    <span className="text-foreground text-sm font-medium">{word}</span>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={proactiveBusy}
-                      data-testid={`audio-gap-generate-${word}`}
-                      onClick={() => void handleProactiveGenerate(word, DEFAULT_KNOBS)}
-                    >
-                      {gapBusy ? "Generating…" : "Generate"}
-                    </Button>
-                  </li>
-                );
-              })}
+                    Load
+                  </Button>
+                </li>
+              ))}
             </ul>
           )}
         </CardContent>
@@ -623,7 +763,8 @@ export function AudioReviewClient({
       <Card className="mt-6">
         <CardTitle>Pending review</CardTitle>
         <CardDescription>
-          Generated audio awaiting approval — unavailable to learners until approved.
+          Preview generated audio here, then Approve for learners — or Edit to tweak and regenerate
+          the same clip.
         </CardDescription>
         <CardContent>
           {pending.length === 0 ? (
@@ -632,12 +773,12 @@ export function AudioReviewClient({
             <ul className="divide-border divide-y">
               {pending.map((asset) => (
                 <AssetRow
-                  key={assetId(asset)}
+                  key={assetRowKey(asset)}
                   asset={asset}
                   busy={busyId === assetId(asset)}
                   onApprove={() => void handleApprove(asset)}
                   onPurge={() => void handlePurge(asset, "pending")}
-                  onRegenerate={() => openRegenerate(asset)}
+                  onEdit={() => void loadAssetIntoForm(asset)}
                 />
               ))}
             </ul>
@@ -648,7 +789,8 @@ export function AudioReviewClient({
       <Card className="mt-6">
         <CardTitle>Approved</CardTitle>
         <CardDescription>
-          Audio visible to learners. Regenerating creates a pending gap until re-approval.
+          Audio visible to learners. Edit loads the clip into the form; Generate makes a new pending
+          version of the same word until you Approve again.
         </CardDescription>
         <CardContent>
           {approved.length === 0 ? (
@@ -657,26 +799,17 @@ export function AudioReviewClient({
             <ul className="divide-border divide-y">
               {approved.map((asset) => (
                 <AssetRow
-                  key={assetId(asset)}
+                  key={assetRowKey(asset)}
                   asset={asset}
                   busy={busyId === assetId(asset)}
                   onPurge={() => void handlePurge(asset, "approved")}
-                  onRegenerate={() => openRegenerate(asset)}
+                  onEdit={() => void loadAssetIntoForm(asset)}
                 />
               ))}
             </ul>
           )}
         </CardContent>
       </Card>
-
-      <RegenerateDialog
-        target={regenerateTarget}
-        busy={regenerateTarget !== null && busyId === assetId(regenerateTarget.asset)}
-        onOpenChange={(open) => {
-          if (!open && busyId === null) setRegenerateTarget(null);
-        }}
-        onConfirm={(options) => void handleRegenerateConfirm(options)}
-      />
     </main>
   );
 }

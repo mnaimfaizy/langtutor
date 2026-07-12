@@ -292,8 +292,9 @@ export interface MediaAsset extends MediaAssetKey {
   source: MediaAssetSource;
   approvalStatus: MediaAssetApprovalStatus;
   /**
-   * Exact prompt sent to the image provider for this generation (ADR 0024).
-   * Set only for `source: "generated"` images; null for curated-pack and audio.
+   * Exact text sent to the image or TTS provider for this generation
+   * (ADR 0024 images; ADR 0044 audio). Set for `source: "generated"` assets;
+   * null for curated-pack rows.
    */
   prompt: string | null;
 }

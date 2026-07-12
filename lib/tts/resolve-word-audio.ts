@@ -2,6 +2,7 @@ import { resolveMediaAsset } from "@/lib/content/media-assets";
 import type { ContentRepository } from "@/lib/db/content-repository";
 import { defaultMediaAssetApproval, type MediaAsset, type MediaAssetKey } from "@/lib/db/schema";
 
+import { resolveSpokenText } from "./prompts";
 import { applyTtsDurationCap, TTS_MAX_DURATION_SECONDS } from "./truncate-audio";
 import type { TtsSynthesizer } from "./tts-synthesizer";
 import type { TtsSynthesizeOptions } from "./types";
@@ -16,10 +17,13 @@ export type TtsSynthesizerSource =
 
 /**
  * Admin TTS knobs (ADR 0022): voice/rate forwarded to the synthesizer; optional
- * soft truncate target clamped to the hard ~5s cap (ADR 0030).
+ * soft truncate target clamped to the hard ~5s cap (ADR 0030); optional spoken-text
+ * / vocal-direction override persisted on the asset (ADR 0044).
  */
 export type AdminAudioGenerateOptions = TtsSynthesizeOptions & {
   maxDurationSeconds?: number;
+  /** Spoken text sent to TTS (may include Orpheus `[direction]` tags). */
+  prompt?: string;
 };
 
 function normalizeWord(word: string): string {
@@ -54,6 +58,7 @@ function toSynthesizeOptions(
 /**
  * Synthesize + truncate + build a pending generated audio asset (ADR 0028 / 0030).
  * Shared produce path for learner resolve and admin regenerate/proactive generate.
+ * Effective spoken text is persisted on `prompt` (ADR 0044).
  */
 export async function produceWordAudio(
   synthesizer: TtsSynthesizer,
@@ -63,7 +68,8 @@ export async function produceWordAudio(
 ): Promise<MediaAsset> {
   const normalized = normalizeWord(word);
   const key = mediaKey(normalized, style);
-  const generated = await synthesizer.synthesize(normalized, toSynthesizeOptions(options));
+  const spokenText = resolveSpokenText(normalized, options?.prompt);
+  const generated = await synthesizer.synthesize(spokenText, toSynthesizeOptions(options));
   const data = applyTtsDurationCap(
     generated.data,
     generated.mimeType,
@@ -77,7 +83,7 @@ export async function produceWordAudio(
     createdAt: new Date(),
     source: "generated",
     approvalStatus: defaultMediaAssetApproval("generated"),
-    prompt: null,
+    prompt: spokenText,
   };
 }
 
@@ -108,7 +114,7 @@ export async function resolveWordAudio(
 
 /**
  * Admin-only: delete the existing asset for @word and synthesize a fresh pending clip
- * with optional TTS knobs (ADR 0022 / 0028 / 0030).
+ * with optional TTS knobs and spoken-text override (ADR 0022 / 0028 / 0030 / 0044).
  */
 export async function regenerateWordAudio(
   repo: ContentRepository,
@@ -139,6 +145,7 @@ export async function regenerateWordAudio(
 /**
  * Admin-only: create a pending audio clip for a word with no store row (ADR 0020 / 0026).
  * Rejects when a row already exists — use {@link regenerateWordAudio} instead (ADR 0027).
+ * Optional `prompt` on options reuses the same produce path as regenerate (ADR 0044).
  */
 export async function proactiveGenerateWordAudio(
   repo: ContentRepository,

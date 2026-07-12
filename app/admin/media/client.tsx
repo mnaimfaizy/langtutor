@@ -50,10 +50,13 @@ function assetId(asset: MediaAssetRecord): string {
 function AssetPreview({ assetKey }: { assetKey: MediaAssetKey }) {
   const [src, setSrc] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const { kind, key, style } = assetKey;
 
   useEffect(() => {
     let cancelled = false;
-    void getMediaAssetPreview(assetKey)
+    // Depend on primitives — a fresh key object every parent render would re-fire
+    // this effect after each server-action RSC refresh and loop forever.
+    void getMediaAssetPreview({ kind, key, style })
       .then((url) => {
         if (!cancelled) setSrc(url);
       })
@@ -63,7 +66,7 @@ function AssetPreview({ assetKey }: { assetKey: MediaAssetKey }) {
     return () => {
       cancelled = true;
     };
-  }, [assetKey]);
+  }, [kind, key, style]);
 
   if (failed) {
     return (
@@ -81,7 +84,7 @@ function AssetPreview({ assetKey }: { assetKey: MediaAssetKey }) {
     // eslint-disable-next-line @next/next/no-img-element -- admin-only data URLs from server action
     <img
       src={src}
-      alt={`Illustration for ${assetKey.key}`}
+      alt={`Illustration for ${key}`}
       className="border-border h-24 w-24 rounded-lg border object-cover"
     />
   );

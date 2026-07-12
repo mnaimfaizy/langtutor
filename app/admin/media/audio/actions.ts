@@ -5,14 +5,19 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/guards";
 import { getServerContentRepository } from "@/lib/db/server";
 import type { MediaAssetApprovalStatus, MediaAssetKey, MediaAssetRecord } from "@/lib/db/schema";
-import { GROQ_ORPHEUS_VOICES } from "@/lib/tts/speech-synthesis";
 import { listMissingPreA1AudioWords } from "@/lib/tts/curriculum-audio-gaps";
+import {
+  parseSpokenText,
+  TTS_MAX_SPOKEN_TEXT_CHARS,
+  type SpokenTextParts,
+} from "@/lib/tts/prompts";
 import {
   proactiveGenerateWordAudio,
   regenerateWordAudio,
   type AdminAudioGenerateOptions,
 } from "@/lib/tts/resolve-word-audio";
 import { getTtsSynthesizer } from "@/lib/tts/server";
+import { GROQ_ORPHEUS_VOICES } from "@/lib/tts/speech-synthesis";
 import { estimateWavDurationSeconds, TTS_MAX_DURATION_SECONDS } from "@/lib/tts/truncate-audio";
 
 const DEFAULT_AUDIO_STYLE = "default";
@@ -29,6 +34,7 @@ const AdminTtsOptionsSchema = z.object({
   rate: z.number().min(0.5).max(2).optional(),
   voiceUri: z.enum(ORPHEUS_VOICE_URIS).optional(),
   maxDurationSeconds: z.number().min(0.5).max(TTS_MAX_DURATION_SECONDS).optional(),
+  prompt: z.string().max(TTS_MAX_SPOKEN_TEXT_CHARS).optional(),
 });
 
 const RegenerateSchema = AudioMediaAssetKeySchema.extend({
@@ -53,6 +59,8 @@ export type ProactiveAudioGenerateResult =
 
 export type AdminAudioTtsOptions = AdminAudioGenerateOptions;
 
+export type AudioPromptDraft = SpokenTextParts;
+
 function toAdminOptions(
   options?: z.infer<typeof AdminTtsOptionsSchema>,
 ): AdminAudioGenerateOptions | undefined {
@@ -63,6 +71,8 @@ function toAdminOptions(
   if (options.maxDurationSeconds !== undefined) {
     out.maxDurationSeconds = options.maxDurationSeconds;
   }
+  const trimmedPrompt = options.prompt?.trim();
+  if (trimmedPrompt) out.prompt = trimmedPrompt;
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
@@ -89,7 +99,7 @@ export async function purgeAudioMediaAsset(key: MediaAssetKey): Promise<void> {
 }
 
 /**
- * Admin regenerate with optional TTS knobs (ADR 0022).
+ * Admin regenerate with optional TTS knobs + spoken-text override (ADR 0022 / 0044).
  * Replaces the row as a pending generated asset (ADR 0028 / 0030).
  */
 export async function regenerateAudioMediaAsset(
@@ -173,6 +183,22 @@ export async function listAudioCurriculumGaps(
   const parsedStyle = z.string().trim().min(1).max(64).parse(style);
   const repo = await getServerContentRepository();
   return listMissingPreA1AudioWords(repo, parsedStyle);
+}
+
+/** Prior stored say + direction, or the word when missing (ADR 0044). */
+export async function getRegenerateAudioPromptDraft(key: MediaAssetKey): Promise<AudioPromptDraft> {
+  await requireAdmin();
+  const parsed = AudioMediaAssetKeySchema.parse(key);
+  const repo = await getServerContentRepository();
+  const asset = await repo.getMediaAssetRaw(parsed);
+  return parseSpokenText(asset?.prompt, parsed.key);
+}
+
+/** Default say/direction draft for proactive generate of @word. */
+export async function getProactiveAudioPromptDraft(word: string): Promise<AudioPromptDraft> {
+  await requireAdmin();
+  const parsed = z.string().trim().min(1).max(100).parse(word);
+  return parseSpokenText(null, parsed);
 }
 
 export async function getAudioMediaAssetPreview(key: MediaAssetKey): Promise<AudioPreview | null> {

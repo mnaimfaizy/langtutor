@@ -3,11 +3,10 @@ import "server-only";
 import { z } from "zod";
 
 import type { TtsConfig } from "./config";
+import { TTS_MAX_SPOKEN_TEXT_CHARS } from "./prompts";
 import { GROQ_ORPHEUS_VOICES, resolveTtsOptions } from "./speech-synthesis";
 import type { TtsSynthesizer } from "./tts-synthesizer";
 import type { TtsSynthesizeOptions, TtsSynthesizeResult } from "./types";
-
-const MAX_INPUT_CHARS = 200;
 
 /** Groq speech API error body — Zod-parsed at the boundary (hard rule #3). */
 const GroqSpeechError = z.object({
@@ -37,7 +36,7 @@ export class GroqTtsSynthesizer implements TtsSynthesizer {
       GROQ_ORPHEUS_VOICES,
     );
     const voiceId = voice?.voiceURI ?? this.config.defaultVoice;
-    const input = trimmed.slice(0, MAX_INPUT_CHARS);
+    const input = trimmed.slice(0, TTS_MAX_SPOKEN_TEXT_CHARS);
 
     const url = `${this.config.baseURL}/audio/speech`;
     const response = await fetch(url, {

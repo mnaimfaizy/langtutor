@@ -84,7 +84,9 @@
 
 **Image prompt override** — optional admin-edited text used instead of the default kid-illustration template for a single image generate/regenerate; asset key stays the word + style.
 
-**Stored generation prompt** — optional `prompt` field on a generated media-asset image row recording the exact text sent to the image provider; null for curated-pack rows.
+**Audio spoken-text override** — admin **Say** (words spoken) plus optional **Direction** (Orpheus `[tag]` that is not spoken); the app composes `[direction] say` for TTS; asset key stays the word + style.
+
+**Stored generation prompt** — optional `prompt` field on a generated media-asset row recording the exact text sent to the image or TTS provider; null for curated-pack rows.
 
 **Admin audio media page** — dedicated admin route for reviewing and managing `kind: "audio"` media assets, separate from the image media page.
 

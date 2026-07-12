@@ -127,7 +127,7 @@ export const mediaAssets = pgTable(
     approvalStatus: text("approval_status", { enum: MEDIA_ASSET_APPROVAL_STATUS_VALUES })
       .notNull()
       .default("approved"),
-    /** Generation prompt for generated images only (ADR 0024); null for curated-pack/audio. */
+    /** Generation prompt / spoken text for generated assets (ADR 0024 / 0044); null for curated-pack. */
     prompt: text("prompt"),
   },
   (t) => [primaryKey({ columns: [t.kind, t.key, t.style] })],
