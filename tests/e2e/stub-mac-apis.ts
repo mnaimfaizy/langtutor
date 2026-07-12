@@ -35,6 +35,25 @@ export const MOCK_FEEDBACK = {
 
 export const MOCK_EMBEDDING = [0.1, 0.2, 0.3];
 
+/** Fixed-shape pre-A1 exam fill (issue #115 / #120). Correct answer is always option 0. */
+export const MOCK_PRE_A1_EXAM_FILL = {
+  items: (["alphabet", "phonics", "picture-words", "listen-tap"] as const).flatMap((skill) =>
+    [1, 2, 3].map((n) => ({
+      skill,
+      prompt: `E2E ${skill} question ${n}?`,
+      options: ["A", "B", "C", "D"] as [string, string, string, string],
+      answerIndex: 0 as const,
+    })),
+  ),
+};
+
+export const MOCK_PRE_A1_TEACHER_REPORT = {
+  headline: "E2E teacher report",
+  body: "You practiced alphabet, phonics, picture words, and listen and tap. Keep going.",
+  encouragement: "Nice work — practice a little more and try again soon.",
+  focusSkills: ["phonics"] as const,
+};
+
 export interface StubMacApisOptions {
   /** Override the default empty teacher-plan response. */
   plans?: unknown[];
@@ -118,28 +137,12 @@ export async function stubMacApis(page: Page, options: StubMacApisOptions = {}):
 
   // Pre-A1 chapter exam fill (issue #115) — fixed shape, three items per skill.
   await page.route("**/api/path/exam/fill", async (route) => {
-    const skills = ["alphabet", "phonics", "picture-words", "listen-tap"] as const;
-    const items = skills.flatMap((skill) =>
-      [1, 2, 3].map((n) => ({
-        skill,
-        prompt: `E2E ${skill} question ${n}?`,
-        options: ["A", "B", "C", "D"],
-        answerIndex: 0,
-      })),
-    );
-    await json(route, { exam: { items } });
+    await json(route, { exam: MOCK_PRE_A1_EXAM_FILL });
   });
 
   // Pre-A1 chapter exam teacher report (issue #116).
   await page.route("**/api/path/exam/report", async (route) => {
-    await json(route, {
-      report: {
-        headline: "E2E teacher report",
-        body: "You practiced alphabet, phonics, picture words, and listen and tap. Keep going.",
-        encouragement: "Nice work — practice a little more and try again soon.",
-        focusSkills: ["phonics"],
-      },
-    });
+    await json(route, { report: MOCK_PRE_A1_TEACHER_REPORT });
   });
 
   await page.route("**/api/agent/research-word", async (route) => {
@@ -153,5 +156,29 @@ export async function stubMacApis(page: Page, options: StubMacApisOptions = {}):
       phonetic: null,
       audioUrl: null,
     });
+  });
+}
+
+/** Force `/api/path/exam/fill` to fail (pause / offline-buffer paths). Unroutes first. */
+export async function stubExamFillFailure(page: Page, status = 503): Promise<void> {
+  await page.unroute("**/api/path/exam/fill");
+  await page.route("**/api/path/exam/fill", async (route) => {
+    await json(route, { error: "e2e fill unavailable" }, status);
+  });
+}
+
+/** Force `/api/path/exam/report` to fail (deferred-report path). Unroutes first. */
+export async function stubExamReportFailure(page: Page, status = 503): Promise<void> {
+  await page.unroute("**/api/path/exam/report");
+  await page.route("**/api/path/exam/report", async (route) => {
+    await json(route, { error: "e2e report unavailable" }, status);
+  });
+}
+
+/** Restore the default successful exam-fill stub (after a failure override). */
+export async function stubExamFillSuccess(page: Page): Promise<void> {
+  await page.unroute("**/api/path/exam/fill");
+  await page.route("**/api/path/exam/fill", async (route) => {
+    await json(route, { exam: MOCK_PRE_A1_EXAM_FILL });
   });
 }
