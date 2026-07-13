@@ -12,6 +12,7 @@ import {
   profiles,
   questState,
   sharedPathStages,
+  sharedPathUnitTemplates,
   units,
   weakness,
 } from "@/lib/db/drizzle/schema";
@@ -26,12 +27,16 @@ import {
   profiles as postgresProfiles,
   questState as postgresQuestState,
   sharedPathStages as postgresSharedPathStages,
+  sharedPathUnitTemplates as postgresSharedPathUnitTemplates,
   units as postgresUnits,
   weakness as postgresWeakness,
 } from "@/lib/db/drizzle/schema.postgres";
 import { getPostgresDrizzleClient } from "@/lib/db/drizzle/postgres-client";
 import { getServerContentRepository } from "@/lib/db/server";
-import { buildBundledSharedPathStages } from "@/lib/path/shared-path-catalog";
+import {
+  buildBundledSharedPathStages,
+  buildBundledSharedPathUnitTemplates,
+} from "@/lib/path/shared-path-catalog";
 
 /**
  * POST /api/test/reset
@@ -80,6 +85,7 @@ export async function POST() {
     await db.delete(postgresContent);
     await db.delete(postgresUnits);
     await db.delete(postgresSharedPathStages);
+    await db.delete(postgresSharedPathUnitTemplates);
   } else {
     const db = getDrizzleClient();
 
@@ -95,16 +101,20 @@ export async function POST() {
     db.delete(content).run();
     db.delete(units).run();
     db.delete(sharedPathStages).run();
+    db.delete(sharedPathUnitTemplates).run();
   }
 
   // Restore the canonical seed (passages, prompts, cards). Synchronous under
   // better-sqlite3, so the next page load's SeedBootstrap finds a full deck.
   await loadSeedIfEmpty(repo);
 
-  // Restore starter shared-path stage ready flags (alphabet only) so e2e does not
-  // leak admin "ready for exam" marks across tests (issue #128).
+  // Restore starter shared-path catalog (stages + approved templates) so e2e does
+  // not leak admin ready flags or pending AI drafts across tests (issues #128/#132).
   for (const stage of buildBundledSharedPathStages()) {
     await repo.putSharedPathStage(stage);
+  }
+  for (const template of buildBundledSharedPathUnitTemplates()) {
+    await repo.putSharedPathUnitTemplate(template);
   }
 
   return Response.json({ ok: true });

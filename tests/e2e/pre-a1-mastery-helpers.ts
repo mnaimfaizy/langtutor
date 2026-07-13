@@ -264,26 +264,50 @@ async function completeCatalogUnit(
     else if (activityPath === "phonics") await completePhonicsActivity(page);
     else if (activityPath === "picture-match") await completePictureMatchActivity(page);
     else await completeListenTapActivity(page);
+
+    // Activity sessions router.push back to the unit page — wait before the next hop
+    // so multi-activity Alphabet runway units do not race completion writes.
+    await expect(page).toHaveURL(/\/path\/\d+\/?$/, { timeout: 20_000 });
+    if (activityIndex < activities.length - 1) {
+      await expect(page.getByTestId(`btn-start-activity-${activityIndex + 1}`)).toBeVisible({
+        timeout: 20_000,
+      });
+    }
   }
   await expect(page.getByTestId("unit-complete-message")).toBeVisible({ timeout: 20_000 });
 }
 
-/** Completes every shared-starter pre-A1 unit (standard path or kid island). */
-export async function completeAllPreA1Units(page: Page): Promise<void> {
+/**
+ * Completes every shared-starter pre-A1 unit (standard path or kid island).
+ *
+ * By default marks all shared stages ready-for-exam (mastery-gate specs). Pass
+ * `markStagesReady: false` for chapter-growing / admin-ready e2e (issue #132).
+ */
+export async function completeAllPreA1Units(
+  page: Page,
+  opts: { markStagesReady?: boolean } = {},
+): Promise<void> {
+  const markStagesReady = opts.markStagesReady ?? true;
   const templates = buildBundledSharedPathUnitTemplates();
   for (const template of templates) {
     await completeCatalogUnit(page, template.pathIndex, template.activities);
   }
-  // Starter catalog only marks Alphabet ready — exam gate needs all four stages (issue #128).
-  await markSharedStagesReadyForExam(page, true);
+  if (markStagesReady) {
+    // Starter catalog only marks Alphabet ready — exam gate needs all four stages (issue #128).
+    await markSharedStagesReadyForExam(page, true);
+  }
   await page.goto("/home");
   await expect(page.getByTestId("seed-ready")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId("learning-path")).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId("unit--1")).toHaveAttribute("data-status", "completed", {
+  await expect(
+    page.getByTestId("learning-path").or(page.getByTestId("kid-island-home")),
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("unit--1").first()).toHaveAttribute("data-status", "completed", {
     timeout: 30_000,
   });
-  // Gate CTA must appear once pre-A1 is done, stages are ready, and the gate is not passed.
-  await expect(page.getByTestId("chapter-gate-pending-cta")).toBeVisible({ timeout: 30_000 });
+  if (markStagesReady) {
+    // Gate CTA must appear once pre-A1 is done, stages are ready, and the gate is not passed.
+    await expect(page.getByTestId("chapter-gate-pending-cta")).toBeVisible({ timeout: 30_000 });
+  }
 }
 
 /** Admin enrichment bar for e2e — marks every shared pre-A1 stage ready (or not). */

@@ -54,6 +54,24 @@ export const MOCK_PRE_A1_TEACHER_REPORT = {
   focusSkills: ["phonics"] as const,
 };
 
+/** Fixed shared-pending draft payload for `/api/path/shared-draft` stubs (issue #132). */
+export const MOCK_SHARED_PATH_PENDING_TEMPLATE = {
+  id: "pre-a1.phonics.ai-e2e",
+  tier: "pre-A1" as const,
+  stageId: "phonics" as const,
+  stageOrder: 1,
+  pathIndex: -30,
+  title: "Pre-A1: Phonics — E2E draft",
+  teacherNote: "E2E stub shared pending draft.",
+  activities: [{ skill: "phonics" as const }],
+  richness: "rich" as const,
+  approvalStatus: "pending" as const,
+  provenance: "ai-draft" as const,
+  targetVocab: ["cat", "sat", "mat"],
+  createdAt: "2026-07-13T00:00:00.000Z",
+  updatedAt: "2026-07-13T00:00:00.000Z",
+};
+
 export interface StubMacApisOptions {
   /** Override the default empty teacher-plan response. */
   plans?: unknown[];
@@ -145,25 +163,12 @@ export async function stubMacApis(page: Page, options: StubMacApisOptions = {}):
     await json(route, { report: MOCK_PRE_A1_TEACHER_REPORT });
   });
 
-  // Shared pre-A1 densification drafts (issue #131) — never hit live Ollama.
+  // Shared pre-A1 densification drafts (issue #131/#132) — never hit live Ollama.
+  // Browser `page.route` cannot persist templates; admin UI approve flows seed via
+  // `/api/test/shared-path-template`. This stub only isolates Mac contact.
   await page.route("**/api/path/shared-draft", async (route) => {
     await json(route, {
-      template: {
-        id: "pre-a1.phonics.ai-e2e",
-        tier: "pre-A1",
-        stageId: "phonics",
-        stageOrder: 1,
-        pathIndex: -30,
-        title: "Pre-A1: Phonics — E2E draft",
-        teacherNote: "E2E stub shared pending draft.",
-        activities: [{ skill: "phonics" }],
-        richness: "rich",
-        approvalStatus: "pending",
-        provenance: "ai-draft",
-        targetVocab: ["cat", "sat", "mat"],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
+      template: MOCK_SHARED_PATH_PENDING_TEMPLATE,
       drafted: [],
       skippedStages: ["phonics", "picture-words", "listen-tap"],
       failures: [],
