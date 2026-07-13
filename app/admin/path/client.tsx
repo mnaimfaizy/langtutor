@@ -18,10 +18,16 @@ import {
 
 import {
   approveSharedPathDraft,
+  draftSharedPathStageUnit,
+  fillThinSharedPathStagesAction,
   listSharedPathCatalog,
   markSharedPathStageReady,
   rejectSharedPathDraft,
 } from "./actions";
+
+/** Mirrors `AI_DRAFTABLE_STAGE_IDS` — kept inline so this client file never imports guide loaders. */
+const DRAFTABLE_STAGES = ["phonics", "picture-words", "listen-tap"] as const;
+type DraftableStageId = (typeof DRAFTABLE_STAGES)[number];
 
 type Banner = { tone: "ok" | "error"; text: string } | null;
 
@@ -217,6 +223,52 @@ export function SharedPathReviewClient({
     }
   }
 
+  async function handleDraft(stageId: DraftableStageId) {
+    setBusyId(`draft:${stageId}`);
+    setBanner(null);
+    try {
+      const template = await draftSharedPathStageUnit(stageId);
+      await refresh();
+      setBanner({
+        tone: "ok",
+        text: `Drafted “${template.title}” into shared pending for everyone.`,
+      });
+    } catch (err) {
+      setBanner({
+        tone: "error",
+        text: err instanceof Error ? err.message : "Draft failed",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleBackgroundFill() {
+    setBusyId("background-fill");
+    setBanner(null);
+    try {
+      const result = await fillThinSharedPathStagesAction();
+      await refresh();
+      const n = result.drafted.length;
+      setBanner({
+        tone: n > 0 || result.failures.length === 0 ? "ok" : "error",
+        text:
+          n > 0
+            ? `Background fill enqueued ${n} shared pending draft(s).`
+            : result.failures.length > 0
+              ? `Background fill failed: ${result.failures[0]?.message ?? "unknown"}`
+              : "Later stages already have rich or pending drafts — nothing to fill.",
+      });
+    } catch (err) {
+      setBanner({
+        tone: "error",
+        text: err instanceof Error ? err.message : "Background fill failed",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
       <BackLink href="/settings" label="Settings" />
@@ -282,6 +334,39 @@ export function SharedPathReviewClient({
               ))}
             </ul>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6" data-testid="shared-path-draft">
+        <CardTitle>AI densification</CardTitle>
+        <CardDescription>
+          Draft later-stage units into the shared pending queue (Phonics / Picture words / Listen
+          &amp; tap). Alphabet stays human-authored. Never invents a private learner path.
+        </CardDescription>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {DRAFTABLE_STAGES.map((stageId) => (
+              <Button
+                key={stageId}
+                variant="secondary"
+                size="sm"
+                disabled={busyId !== null}
+                data-testid={`shared-path-draft-${stageId}`}
+                onClick={() => void handleDraft(stageId)}
+              >
+                Draft {stageId}
+              </Button>
+            ))}
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={busyId !== null}
+              data-testid="shared-path-background-fill"
+              onClick={() => void handleBackgroundFill()}
+            >
+              Fill thin stages
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

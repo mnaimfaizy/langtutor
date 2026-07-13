@@ -145,6 +145,31 @@ export async function stubMacApis(page: Page, options: StubMacApisOptions = {}):
     await json(route, { report: MOCK_PRE_A1_TEACHER_REPORT });
   });
 
+  // Shared pre-A1 densification drafts (issue #131) — never hit live Ollama.
+  await page.route("**/api/path/shared-draft", async (route) => {
+    await json(route, {
+      template: {
+        id: "pre-a1.phonics.ai-e2e",
+        tier: "pre-A1",
+        stageId: "phonics",
+        stageOrder: 1,
+        pathIndex: -30,
+        title: "Pre-A1: Phonics — E2E draft",
+        teacherNote: "E2E stub shared pending draft.",
+        activities: [{ skill: "phonics" }],
+        richness: "rich",
+        approvalStatus: "pending",
+        provenance: "ai-draft",
+        targetVocab: ["cat", "sat", "mat"],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      drafted: [],
+      skippedStages: ["phonics", "picture-words", "listen-tap"],
+      failures: [],
+    });
+  });
+
   await page.route("**/api/agent/research-word", async (route) => {
     await json(route, {
       found: true,

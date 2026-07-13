@@ -10,13 +10,20 @@ import {
   type SharedPathUnitTemplate,
 } from "@/lib/db";
 import { getServerContentRepository } from "@/lib/db/server";
+import { getLLMClient } from "@/lib/llm/server";
 import {
   approveSharedPathUnitTemplate,
   rejectSharedPathUnitTemplate,
   setSharedPathStageReadyForExam,
   SharedPathAdminError,
 } from "@/lib/path/shared-path-admin";
+import {
+  fillThinSharedPathStages,
+  type SharedPathBackgroundFillResult,
+} from "@/lib/path/shared-path-background-fill";
 import { ensureSharedPathCatalogSeeded } from "@/lib/path/shared-path-catalog";
+import { AiDraftableStageIdSchema, type AiDraftableStageId } from "@/lib/path/shared-unit-draft";
+import { draftSharedPathUnit, SharedUnitDraftError } from "@/lib/path/shared-unit-drafter";
 
 const TemplateIdSchema = z.string().trim().min(1).max(200);
 const StageIdSchema = z.enum(PRE_A1_STAGE_IDS);
@@ -88,4 +95,26 @@ export async function markSharedPathStageReady(
     if (err instanceof SharedPathAdminError) throw new Error(err.message);
     throw err;
   }
+}
+
+/** Admin-driven AI densification into shared pending (issue #131). */
+export async function draftSharedPathStageUnit(
+  stageId: AiDraftableStageId,
+): Promise<SharedPathUnitTemplate> {
+  await requireAdmin();
+  const parsed = AiDraftableStageIdSchema.parse(stageId);
+  const [repo, llmClient] = await Promise.all([getServerContentRepository(), getLLMClient()]);
+  try {
+    return await draftSharedPathUnit(repo, llmClient, parsed);
+  } catch (err) {
+    if (err instanceof SharedUnitDraftError) throw new Error(err.message);
+    throw err;
+  }
+}
+
+/** Background fill — shared pending only; never per-user curricula (issue #131). */
+export async function fillThinSharedPathStagesAction(): Promise<SharedPathBackgroundFillResult> {
+  await requireAdmin();
+  const [repo, llmClient] = await Promise.all([getServerContentRepository(), getLLMClient()]);
+  return fillThinSharedPathStages(repo, llmClient);
 }
