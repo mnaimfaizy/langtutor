@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 
-import type { ExperienceMode, Unit, UnitStatus } from "@/lib/db";
+import type { ExperienceMode, SharedPathUnitRichness, Unit, UnitStatus } from "@/lib/db";
 import { MOTION_DURATIONS, resolveMotionPreset } from "@/lib/motion";
 import { firstPendingActivityIndex } from "@/lib/path/unit-progress";
 import { isPreA1Unit } from "@/lib/path/pre-a1";
+import { shortUnitTitle } from "@/lib/path/stages";
 import { Badge, Card, ProgressRing, cn } from "@/ui";
 import { ACTIVITY_ICON } from "../path/activity-display";
 import { CheckIcon, FlagIcon, LockIcon } from "../icons";
@@ -37,17 +38,28 @@ export function PathNode({
   isCurrent,
   playFillAnimation = false,
   onFillAnimationEnd,
+  richness,
 }: {
   unit: Unit;
   mode: ExperienceMode;
   isCurrent: boolean;
   playFillAnimation?: boolean;
   onFillAnimationEnd?: () => void;
+  /** Catalog richness when known — placeholder units get intentional preview chrome. */
+  richness?: SharedPathUnitRichness;
 }) {
   const locked = unit.status === "locked";
   const kid = mode === "kid";
+  const placeholder = richness === "placeholder";
   const reducedMotion = useReducedMotion() ?? false;
   const fill = resolveMotionPreset("path-fill", reducedMotion);
+  const title = isPreA1Unit(unit) ? shortUnitTitle(unit.title) : unit.title;
+  const note = placeholder
+    ? kid
+      ? "A quick preview stop — more fun grows here soon."
+      : unit.teacherNote.replace(/\s*Placeholder — richer content comes later\.?/i, "").trim() ||
+        "Light preview — richer content lands here for everyone later."
+    : unit.teacherNote;
 
   const card = (
     <Card
@@ -56,6 +68,7 @@ export function PathNode({
       data-unit-id={unit.id}
       data-current={isCurrent || undefined}
       data-filling={playFillAnimation || undefined}
+      data-richness={richness}
       className={cn(
         "flex items-center gap-4",
         kid && "rounded-2xl",
@@ -64,6 +77,7 @@ export function PathNode({
           : "hover:border-accent/40 hover:shadow-glow transition-[colors,box-shadow]",
         isCurrent && !locked && "border-accent/50 shadow-glow",
         unit.status === "completed" && "border-success/30",
+        placeholder && "border-dashed",
       )}
     >
       <NodeMarker
@@ -76,18 +90,21 @@ export function PathNode({
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          {isPreA1Unit(unit) && (
+          {isPreA1Unit(unit) && !richness && (
             <Badge variant="neutral" size="sm" className="shrink-0">
               Pre-A1
             </Badge>
           )}
+          {placeholder && (
+            <Badge variant="warning" size="sm" className="shrink-0">
+              {kid ? "Preview" : "Growing"}
+            </Badge>
+          )}
           <p className={cn("text-foreground font-semibold", kid ? "text-base" : "text-sm")}>
-            {unit.title}
+            {title}
           </p>
         </div>
-        <p className={cn("text-muted mt-1 leading-5", kid ? "text-sm" : "text-xs")}>
-          {unit.teacherNote}
-        </p>
+        <p className={cn("text-muted mt-1 leading-5", kid ? "text-sm" : "text-xs")}>{note}</p>
       </div>
 
       <Badge variant={STATUS_BADGE_VARIANT[unit.status]} size="sm" className="shrink-0">

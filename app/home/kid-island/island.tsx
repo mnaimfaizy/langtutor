@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "framer-motion";
 
 import { ActivityIcon, SettingsIcon, TrophyIcon } from "@/app/icons";
 import type { Unit } from "@/lib/db";
+import { groupPreA1UnitsByStage, shortUnitTitle, type PathStageGroup } from "@/lib/path/stages";
 import { currentUnit } from "@/lib/path/unit-progress";
 import { cn } from "@/ui";
 import { islandBackgroundId, kidIslandAssetUrl, type KidIslandAssetId } from "./assets";
@@ -17,75 +18,108 @@ import { useKidIslandUnits } from "./use-kid-island-units";
 type MapOrientation = "portrait" | "landscape";
 type MapPosition = { x: number; y: number };
 
-/**
- * Trail nodes live in clear center corridors that match the empty-terrain BG art:
- * portrait = top→bottom zigzag, landscape = left→right zigzag.
- */
-const UNIT_POSITIONS: Record<MapOrientation, MapPosition[]> = {
-  portrait: [
-    { x: 50, y: 12 },
-    { x: 28, y: 23 },
-    { x: 68, y: 34 },
-    { x: 32, y: 45 },
-    { x: 66, y: 56 },
-    { x: 34, y: 67 },
-    { x: 64, y: 78 },
-    { x: 50, y: 90 },
-  ],
-  landscape: [
-    { x: 8, y: 52 },
-    { x: 20, y: 38 },
-    { x: 32, y: 58 },
-    { x: 44, y: 36 },
-    { x: 56, y: 58 },
-    { x: 68, y: 38 },
-    { x: 80, y: 56 },
-    { x: 92, y: 42 },
-  ],
+type TrailNode = {
+  unit: Unit;
+  position: MapPosition;
+  stage: PathStageGroup;
+  globalIndex: number;
 };
 
-/** Landmarks sit off the trail in beach/edge pockets — not on top of nodes. */
+/**
+ * Packs multi-unit stages into corridor bands so Alphabet's runway clusters together and
+ * later placeholder stages read as distinct shores — not one long "next next" checklist.
+ */
+function layoutIslandTrail(
+  stages: PathStageGroup[],
+  orientation: MapOrientation,
+): { nodes: TrailNode[]; stageMarkers: { stage: PathStageGroup; position: MapPosition }[] } {
+  const portrait = orientation === "portrait";
+  const start = portrait ? 14 : 12;
+  const end = portrait ? 76 : 86;
+  const span = end - start;
+  const nodes: TrailNode[] = [];
+  const stageMarkers: { stage: PathStageGroup; position: MapPosition }[] = [];
+  let globalIndex = 0;
+
+  stages.forEach((stage, stageIndex) => {
+    const stageStart = stageIndex / Math.max(stages.length, 1);
+    const stageEnd = (stageIndex + 1) / Math.max(stages.length, 1);
+    const markerAlong = start + (stageStart + 0.08 * (stageEnd - stageStart)) * span;
+
+    stageMarkers.push({
+      stage,
+      position: portrait
+        ? { x: stageIndex % 2 === 0 ? 82 : 16, y: markerAlong }
+        : { x: markerAlong, y: stageIndex % 2 === 0 ? 16 : 80 },
+    });
+
+    stage.units.forEach((unit, i) => {
+      const t = stage.units.length <= 1 ? 0.55 : (i + 0.45) / stage.units.length;
+      const along = start + (stageStart + t * (stageEnd - stageStart)) * span;
+      const zigzag = i % 2 === 0;
+      nodes.push({
+        unit,
+        stage,
+        globalIndex,
+        position: portrait
+          ? {
+              x: stage.units.length === 1 ? 50 : zigzag ? 34 : 66,
+              y: along,
+            }
+          : {
+              x: along,
+              y: stage.units.length === 1 ? 50 : zigzag ? 38 : 60,
+            },
+      });
+      globalIndex += 1;
+    });
+  });
+
+  return { nodes, stageMarkers };
+}
+
+/** Decorative landmarks sit off the trail — labels match the four stage shores. */
 const LANDMARKS: Record<
   MapOrientation,
   { id: KidIslandAssetId; label: string; position: MapPosition; className: string }[]
 > = {
   portrait: [
     {
-      id: "sandcastle",
-      label: "Picture Words",
-      position: { x: 82, y: 18 },
-      className: "w-20 opacity-95 sm:w-24",
-    },
-    {
       id: "monkey-palms",
-      label: "Phonics Cove",
-      position: { x: 16, y: 52 },
+      label: "Letter Shore",
+      position: { x: 14, y: 22 },
       className: "w-[5.5rem] opacity-95 sm:w-28",
     },
     {
+      id: "sandcastle",
+      label: "Picture Bay",
+      position: { x: 86, y: 48 },
+      className: "w-20 opacity-95 sm:w-24",
+    },
+    {
       id: "pirate-wreck",
-      label: "Action Bay",
-      position: { x: 84, y: 72 },
+      label: "Listen Lagoon",
+      position: { x: 84, y: 78 },
       className: "w-[5.5rem] opacity-95 sm:w-28",
     },
   ],
   landscape: [
     {
-      id: "sandcastle",
-      label: "Picture Words",
-      position: { x: 14, y: 18 },
-      className: "w-24 opacity-95 xl:w-28",
-    },
-    {
       id: "monkey-palms",
-      label: "Phonics Cove",
-      position: { x: 50, y: 16 },
+      label: "Letter Shore",
+      position: { x: 18, y: 16 },
       className: "w-28 opacity-95 xl:w-32",
     },
     {
+      id: "sandcastle",
+      label: "Picture Bay",
+      position: { x: 52, y: 82 },
+      className: "w-24 opacity-95 xl:w-28",
+    },
+    {
       id: "pirate-wreck",
-      label: "Action Bay",
-      position: { x: 78, y: 78 },
+      label: "Listen Lagoon",
+      position: { x: 88, y: 18 },
       className: "w-28 opacity-95 xl:w-32",
     },
   ],
@@ -93,9 +127,8 @@ const LANDMARKS: Record<
 
 const TRAIL_PATHS: Record<MapOrientation, string> = {
   portrait:
-    "M50 12 C38 14 28 20 28 23 S55 28 68 34 S48 40 32 45 S55 50 66 56 S45 62 34 67 S55 72 64 78 S55 86 50 90",
-  landscape:
-    "M8 52 C12 42 16 38 20 38 S28 58 32 58 S38 34 44 36 S50 58 56 58 S62 36 68 38 S74 56 80 56 S88 40 92 42",
+    "M50 14 C38 16 34 22 34 26 S60 30 66 36 S40 42 34 48 S58 54 66 58 S42 64 34 68 S58 72 50 76",
+  landscape: "M12 50 C18 40 24 38 30 38 S42 58 48 58 S58 36 64 40 S74 58 80 58 S88 42 86 50",
 };
 
 /** The kid-only Pre-A1 home (ADR 0016) — hands off to the standard path home at unit 0. */
@@ -107,7 +140,10 @@ export function KidIslandHome() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const reduced = useReducedMotion() ?? false;
   const current = currentUnit(units);
+  const stages = groupPreA1UnitsByStage(units);
   const done = units.filter((unit) => unit.status === "completed").length;
+  const currentStage =
+    stages.find((s) => s.units.some((u) => u.id === current?.id)) ?? stages[0] ?? null;
 
   useEffect(() => {
     const ids: KidIslandAssetId[] = [
@@ -130,6 +166,7 @@ export function KidIslandHome() {
 
   const mapProps = {
     units,
+    stages,
     current,
     muted,
     reduced,
@@ -161,10 +198,10 @@ export function KidIslandHome() {
               />
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] font-black tracking-[0.12em] text-[#267052] uppercase">
-                  You are here
+                  {currentStage ? currentStage.islandLabel : "You are here"}
                 </p>
                 <p className="truncate text-sm font-black sm:text-base">
-                  {current?.title ?? "Choose an adventure"}
+                  {current ? shortUnitTitle(current.title) : "Choose an adventure"}
                 </p>
                 <div
                   className="mt-1.5 h-2 overflow-hidden rounded-full border border-[#bf9665] bg-[#e9d9bc]"
@@ -224,6 +261,43 @@ export function KidIslandHome() {
           </div>
         </div>
 
+        {stages.length > 0 && (
+          <ol
+            data-testid="kid-island-stages"
+            className="mt-3 flex list-none gap-1.5 overflow-x-auto pb-1 sm:justify-center"
+            aria-label="Island stages"
+          >
+            {stages.map((stage, i) => {
+              const active = stage.stageId === currentStage?.stageId;
+              const placeholder = stage.richness === "placeholder";
+              return (
+                <li key={stage.stageId} className="shrink-0">
+                  <div
+                    data-testid={`kid-island-stage-${stage.stageId}`}
+                    data-richness={stage.richness}
+                    data-active={active || undefined}
+                    className={cn(
+                      "rounded-lg border-2 px-2.5 py-1.5 text-center shadow-sm",
+                      active
+                        ? "border-[#d6902b] bg-[#fff0b2]"
+                        : placeholder
+                          ? "border-dashed border-[#b6a58e] bg-[#fff8e8]/90"
+                          : "border-[#8b552f]/70 bg-[#fff7dc]/90",
+                    )}
+                  >
+                    <p className="text-[9px] font-black tracking-wide text-[#267052] uppercase">
+                      {placeholder ? "Preview" : `Shore ${i + 1}`}
+                    </p>
+                    <p className="text-[11px] font-black whitespace-nowrap sm:text-xs">
+                      {stage.islandLabel}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+
         {(loading || !bgReady || bgFailed) && (
           <p className="mt-2 text-center text-[10px] font-bold text-white/90">
             {bgFailed ? "Island artwork failed to load" : "Loading your island…"}
@@ -231,7 +305,7 @@ export function KidIslandHome() {
         )}
       </header>
 
-      <div className="relative z-10 mx-auto mt-2 w-full max-w-368 lg:-mt-12 lg:px-4">
+      <div className="relative z-10 mx-auto mt-2 w-full max-w-368 lg:-mt-8 lg:px-4">
         <div className="lg:hidden">
           <IslandMap orientation="portrait" {...mapProps} />
         </div>
@@ -246,6 +320,7 @@ export function KidIslandHome() {
 interface IslandMapProps {
   orientation: MapOrientation;
   units: Unit[];
+  stages: PathStageGroup[];
   current: Unit | null;
   muted: boolean;
   reduced: boolean;
@@ -258,6 +333,7 @@ interface IslandMapProps {
 function IslandMap({
   orientation,
   units,
+  stages,
   current,
   muted,
   reduced,
@@ -267,7 +343,7 @@ function IslandMap({
   onSelectUnit,
 }: IslandMapProps) {
   const portrait = orientation === "portrait";
-  const positions = UNIT_POSITIONS[orientation];
+  const { nodes, stageMarkers } = layoutIslandTrail(stages, orientation);
   const bgId = islandBackgroundId(orientation);
   const trailPathRef = useRef<SVGPathElement>(null);
   const [tiles, setTiles] = useState<TrailTile[]>([]);
@@ -276,7 +352,7 @@ function IslandMap({
     const el = trailPathRef.current;
     if (!el) return;
     setTiles(sampleTrailTiles(el, portrait ? 3.1 : 2.6));
-  }, [orientation, portrait]);
+  }, [orientation, portrait, stages.length]);
 
   return (
     <section
@@ -367,18 +443,23 @@ function IslandMap({
         <MapLandmark key={landmark.id} {...landmark} />
       ))}
 
+      {stageMarkers.map(({ stage, position }) => (
+        <StageShoreMarker key={stage.stageId} stage={stage} position={position} />
+      ))}
+
       <ol className="absolute inset-0 z-20 list-none">
-        {units.slice(0, positions.length).map((unit, index) => (
+        {nodes.map((node) => (
           <MapUnit
-            key={unit.id}
-            unit={unit}
-            index={index}
+            key={node.unit.id}
+            unit={node.unit}
+            stage={node.stage}
+            index={node.globalIndex}
             total={units.length}
-            position={positions[index]!}
-            current={unit.id === current?.id}
+            position={node.position}
+            current={node.unit.id === current?.id}
             muted={muted}
             reduced={reduced}
-            selected={selectedId === unit.id}
+            selected={selectedId === node.unit.id}
             portrait={portrait}
             onSelect={onSelectUnit}
           />
@@ -412,6 +493,28 @@ function IslandMap({
         />
       </nav>
     </section>
+  );
+}
+
+function StageShoreMarker({ stage, position }: { stage: PathStageGroup; position: MapPosition }) {
+  const placeholder = stage.richness === "placeholder";
+  return (
+    <div
+      className="pointer-events-none absolute z-[15] -translate-x-1/2 -translate-y-1/2"
+      style={positionStyle(position)}
+      data-testid={`kid-island-shore-${stage.stageId}`}
+    >
+      <span
+        className={cn(
+          "block max-w-28 rounded-md border-2 px-2 py-1 text-center text-[9px] leading-tight font-black shadow-md sm:text-[10px]",
+          placeholder
+            ? "border-dashed border-[#b6a58e] bg-[#fff8e8]/92 text-[#67574c]"
+            : "border-[#8b552f]/80 bg-[#fff0ce]/95 text-[#442713]",
+        )}
+      >
+        {placeholder ? `Preview · ${stage.islandLabel}` : stage.islandLabel}
+      </span>
+    </div>
   );
 }
 
@@ -450,6 +553,7 @@ function MapLandmark({
 
 function MapUnit({
   unit,
+  stage,
   index,
   total,
   position,
@@ -461,6 +565,7 @@ function MapUnit({
   onSelect,
 }: {
   unit: Unit;
+  stage: PathStageGroup;
   index: number;
   total: number;
   position: MapPosition;
@@ -472,7 +577,9 @@ function MapUnit({
   onSelect: (unit: Unit) => void;
 }) {
   const locked = unit.status === "locked";
+  const placeholder = stage.richness === "placeholder";
   const spriteId: KidIslandAssetId = locked ? "chest-locked" : "chest-open";
+  const label = shortUnitTitle(unit.title);
   const content = (
     <motion.div
       className="relative flex flex-col items-center"
@@ -508,21 +615,33 @@ function MapUnit({
             current && "w-18 sm:w-20",
             !portrait && "xl:w-20",
             locked && "opacity-85 grayscale-25",
+            placeholder && !current && "opacity-90",
             selected && "brightness-110",
           )}
         />
       </span>
       <span
+        data-testid={`kid-island-unit-${unit.index}`}
+        data-richness={stage.richness}
         className={cn(
           "relative mt-1 max-w-28 rounded-md border-2 px-2 py-1 text-center text-[9px] leading-[1.08] font-black shadow-md sm:max-w-32 sm:text-[10px]",
           current
             ? "border-[#d6902b] bg-[#fff0b2]"
-            : locked
-              ? "border-[#b6a58e] bg-[#fff8e8]/95 text-[#67574c]"
-              : "border-[#d29a55] bg-[#fff2d4]/95",
+            : placeholder
+              ? "border-dashed border-[#b6a58e] bg-[#fff8e8]/95 text-[#67574c]"
+              : locked
+                ? "border-[#b6a58e] bg-[#fff8e8]/95 text-[#67574c]"
+                : "border-[#d29a55] bg-[#fff2d4]/95",
         )}
       >
-        {unit.title}
+        {placeholder ? (
+          <>
+            <span className="block text-[8px] tracking-wide uppercase opacity-80">Preview</span>
+            {label}
+          </>
+        ) : (
+          label
+        )}
       </span>
       {current && (
         <span className="relative mt-1 rounded-full border border-white/80 bg-[#37a6cb] px-2 py-0.5 text-[9px] font-black text-white shadow">
@@ -535,7 +654,11 @@ function MapUnit({
   return (
     <li className="absolute -translate-x-1/2 -translate-y-1/2" style={positionStyle(position)}>
       {locked ? (
-        <button type="button" onClick={() => onSelect(unit)} aria-label={`${unit.title}: locked`}>
+        <button
+          type="button"
+          onClick={() => onSelect(unit)}
+          aria-label={placeholder ? `${label}: preview stop, locked` : `${label}: locked`}
+        >
           {content}
         </button>
       ) : (
@@ -544,7 +667,7 @@ function MapUnit({
           onClick={() => {
             playIslandSound("whoosh", muted);
           }}
-          aria-label={`${unit.title}: ${unit.status}`}
+          aria-label={placeholder ? `${label}: preview ${unit.status}` : `${label}: ${unit.status}`}
         >
           {content}
         </Link>

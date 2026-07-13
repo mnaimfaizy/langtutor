@@ -19,12 +19,14 @@ import {
 import { groupUnitsByChapter } from "@/lib/path/chapters";
 import { replenishPathBuffer } from "@/lib/path/replenish";
 import { ensurePath } from "@/lib/path/seed";
+import { groupPreA1UnitsByStage, richnessForPathIndex } from "@/lib/path/stages";
 import { currentUnit } from "@/lib/path/unit-progress";
 import { getContentRepository } from "@/lib/registry";
 import { PathChapterGatePendingCta } from "./path-chapter-gate-cta";
 import { PathChapterMilestone } from "./path-chapter-milestone";
 import { PathContinue } from "./path-continue";
 import { PathNode } from "./path-node";
+import { PathStageHeader } from "./path-stage-header";
 import { usePathProgression } from "./use-path-progression";
 
 const MODE_HEADING: Record<ExperienceMode, string> = {
@@ -129,34 +131,64 @@ export function LearningPath() {
       )}
 
       <ol className="mt-4 flex flex-col gap-2">
-        {chapters.map((chapter, chapterIndex) => (
-          <li key={chapter.tier}>
-            <ol className="flex flex-col gap-2">
-              {chapter.units.map((unit) => (
-                <li key={unit.id}>
-                  <PathNode
-                    unit={unit}
+        {chapters.map((chapter, chapterIndex) => {
+          const preA1Stages =
+            chapter.tier === "pre-A1" ? groupPreA1UnitsByStage(chapter.units) : null;
+
+          return (
+            <li key={chapter.tier}>
+              {preA1Stages && preA1Stages.length > 0 ? (
+                <ol className="flex flex-col gap-4" data-testid="pre-a1-stage-path">
+                  {preA1Stages.map((stage) => (
+                    <li key={stage.stageId} className="flex flex-col gap-2">
+                      <PathStageHeader stage={stage} mode={mode} />
+                      <ol className="flex flex-col gap-2 ps-1 sm:ps-2">
+                        {stage.units.map((unit) => (
+                          <li key={unit.id}>
+                            <PathNode
+                              unit={unit}
+                              mode={mode}
+                              isCurrent={unit.id === current?.id}
+                              playFillAnimation={fillingUnitIds.has(unit.id)}
+                              onFillAnimationEnd={() => clearUnitFill(unit.id)}
+                              richness={richnessForPathIndex(unit.index)}
+                            />
+                          </li>
+                        ))}
+                      </ol>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <ol className="flex flex-col gap-2">
+                  {chapter.units.map((unit) => (
+                    <li key={unit.id}>
+                      <PathNode
+                        unit={unit}
+                        mode={mode}
+                        isCurrent={unit.id === current?.id}
+                        playFillAnimation={fillingUnitIds.has(unit.id)}
+                        onFillAnimationEnd={() => clearUnitFill(unit.id)}
+                        richness={richnessForPathIndex(unit.index)}
+                      />
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {chapter.isComplete && (
+                <div className="mt-2">
+                  <PathChapterMilestone
+                    tier={chapter.tier}
+                    nextTier={chapters[chapterIndex + 1]?.tier}
                     mode={mode}
-                    isCurrent={unit.id === current?.id}
-                    playFillAnimation={fillingUnitIds.has(unit.id)}
-                    onFillAnimationEnd={() => clearUnitFill(unit.id)}
+                    animateIn={animatingChapterTiers.has(chapter.tier)}
+                    onAnimationEnd={() => clearChapterAnim(chapter.tier)}
                   />
-                </li>
-              ))}
-            </ol>
-            {chapter.isComplete && (
-              <div className="mt-2">
-                <PathChapterMilestone
-                  tier={chapter.tier}
-                  nextTier={chapters[chapterIndex + 1]?.tier}
-                  mode={mode}
-                  animateIn={animatingChapterTiers.has(chapter.tier)}
-                  onAnimationEnd={() => clearChapterAnim(chapter.tier)}
-                />
-              </div>
-            )}
-          </li>
-        ))}
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ol>
     </section>
   );
