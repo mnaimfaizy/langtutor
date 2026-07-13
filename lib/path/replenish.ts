@@ -27,7 +27,11 @@ import {
   isActivityReady,
   PATH_BUFFER_DEPTH,
 } from "./buffer";
-import { PRE_A1_CHAPTER_TIER, resolveChapterGateStatus } from "./chapter-gate";
+import {
+  PRE_A1_CHAPTER_TIER,
+  arePreA1StagesReadyForExam,
+  resolveChapterGateStatus,
+} from "./chapter-gate";
 import { shouldBufferPreA1Exam } from "./exam/buffer";
 import {
   drainDeferredPreA1TeacherReports,
@@ -151,10 +155,12 @@ export async function replenishPathBuffer(
       const gate = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
       const gateStatus = resolveChapterGateStatus(gate);
       const hasBuffer = await hasBufferedPreA1Exam(repo);
+      const stagesReadyForExam = arePreA1StagesReadyForExam(await repo.getSharedPathStages());
       const needsExamBuffer = shouldBufferPreA1Exam({
         units: await repo.getUnits(),
         gateStatus,
         hasBufferedExam: hasBuffer,
+        stagesReadyForExam,
       });
       providerReachable = fetchExamFill
         ? await replenishPreA1ExamBuffer(repo, needsExamBuffer, fetchExamFill)

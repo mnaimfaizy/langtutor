@@ -13,6 +13,7 @@ type FakeRepo = ContentRepository & {
   units: Unit[];
   setProfile: (profile: Profile | undefined) => void;
   getSavedGate: (tier: string) => ChapterGate | undefined;
+  setStagesReady: (ready: boolean) => void;
 };
 
 /** Minimal in-memory stand-in — only the methods completeUnitActivity touches are real. */
@@ -22,11 +23,15 @@ function makeFakeRepo(initial: Unit[]): FakeRepo {
     questState: undefined as QuestState | undefined,
     profile: undefined as Profile | undefined,
     chapterGates: new Map<string, ChapterGate>(),
+    stagesReady: true,
   };
   return {
     units: state.units,
     setProfile(profile: Profile | undefined) {
       state.profile = profile;
+    },
+    setStagesReady(ready: boolean) {
+      state.stagesReady = ready;
     },
     getSavedGate(tier: string) {
       return state.chapterGates.get(tier);
@@ -53,6 +58,18 @@ function makeFakeRepo(initial: Unit[]): FakeRepo {
     },
     async saveChapterGate(gate: ChapterGate) {
       state.chapterGates.set(gate.tier, gate);
+    },
+    async getSharedPathStages() {
+      const ids = ["alphabet", "phonics", "picture-words", "listen-tap"] as const;
+      return ids.map((id, order) => ({
+        id,
+        tier: "pre-A1" as const,
+        title: id,
+        spineSectionKey: `spine.stages.${id}`,
+        order,
+        readyForExam: state.stagesReady,
+        updatedAt: new Date(0),
+      }));
     },
   } as unknown as FakeRepo;
 }
@@ -258,6 +275,23 @@ describe("completeUnitActivity — pre-A1 chapter gate hold (issue #114)", () =>
 
     const units = await repo.getUnits();
     expect(units.find((u) => u.id === 5)?.status).toBe("available");
+    expect(repo.getSavedGate("pre-A1")?.status).toBe("pending");
+  });
+
+  it("holds A1 in open mode when shared stages are not exam-ready (issue #128)", async () => {
+    const repo = makeFakeRepo(preA1Path());
+    repo.setStagesReady(false);
+    repo.setProfile({
+      goals: [],
+      createdAt: new Date(0),
+      settings: { progressionMode: "open", enablePreA1: true },
+      experienceMode: "adult",
+    });
+
+    await completeUnitActivity(repo, repo.units, 4, 0, noopReplenish);
+
+    const units = await repo.getUnits();
+    expect(units.find((u) => u.id === 5)?.status).toBe("locked");
     expect(repo.getSavedGate("pre-A1")?.status).toBe("pending");
   });
 

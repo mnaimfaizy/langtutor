@@ -385,9 +385,19 @@ test("completing every pre-A1 unit leaves A1 locked until the chapter gate passe
   await completePictureMatchUnit(page);
   await completeListenTapUnit(page);
 
-  // Kid island hands off once pre-A1 is done; standard home shows the gate hold (issue #114).
+  // Placeholders alone: chapter growing, A1 locked, no exam CTA (issue #128).
   await page.goto("/home");
   await expect(page.getByTestId("unit--1")).toHaveAttribute("data-status", "completed");
   await expect(page.getByTestId("unit-0")).toHaveAttribute("data-status", "locked");
+  await expect(page.getByTestId("chapter-growing-banner")).toBeVisible();
+  await expect(page.getByTestId("chapter-gate-pending-cta")).toHaveCount(0);
+
+  // Once stages are admin-ready, the exam CTA appears and A1 stays locked until pass.
+  const ready = await page.request.post("/api/test/shared-path-stages-ready", {
+    data: { readyForExam: true },
+  });
+  expect(ready.ok()).toBe(true);
+  await page.goto("/home");
   await expect(page.getByTestId("chapter-gate-pending-cta")).toBeVisible();
+  await expect(page.getByTestId("unit-0")).toHaveAttribute("data-status", "locked");
 });

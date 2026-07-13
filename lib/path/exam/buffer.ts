@@ -24,13 +24,16 @@ export const PRE_A1_EXAM_DEFERRED_REPORT_TOPIC = "chapter-exam-report-deferred:p
 /**
  * True when the learner is at (or past) the pre-A1 gate and still needs a playable exam —
  * replenishment should keep a filled buffer when the provider is reachable.
+ * Stages must be admin-ready (issue #128) before we fill or pause for the exam.
  */
 export function shouldBufferPreA1Exam(args: {
   units: readonly Unit[];
   gateStatus: ChapterGateStatus | undefined;
   hasBufferedExam: boolean;
+  stagesReadyForExam: boolean;
 }): boolean {
   if (args.hasBufferedExam) return false;
+  if (!args.stagesReadyForExam) return false;
   const status = resolveChapterGateStatus(
     args.gateStatus !== undefined ? { status: args.gateStatus } : undefined,
   );
@@ -48,12 +51,19 @@ export function isPreA1ExamGatePaused(args: {
   gateStatus: ChapterGateStatus | undefined;
   hasBufferedExam: boolean;
   providerReachable: boolean;
+  stagesReadyForExam: boolean;
 }): boolean {
   if (args.providerReachable || args.hasBufferedExam) return false;
   const status = resolveChapterGateStatus(
     args.gateStatus !== undefined ? { status: args.gateStatus } : undefined,
   );
-  if (!shouldShowPreA1ChapterGatePendingCta({ units: args.units, gateStatus: status })) {
+  if (
+    !shouldShowPreA1ChapterGatePendingCta({
+      units: args.units,
+      gateStatus: status,
+      stagesReadyForExam: args.stagesReadyForExam,
+    })
+  ) {
     return false;
   }
   // Only pause when the learner could otherwise start the exam (pending / ready_retake).

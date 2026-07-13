@@ -35,14 +35,26 @@ function completedPreA1Units(): Unit[] {
 }
 
 describe("shouldBufferPreA1Exam", () => {
-  it("buffers when pre-A1 is complete, gate startable, and buffer empty", () => {
+  it("buffers when pre-A1 is complete, stages ready, gate startable, and buffer empty", () => {
     expect(
       shouldBufferPreA1Exam({
         units: completedPreA1Units(),
         gateStatus: "pending",
         hasBufferedExam: false,
+        stagesReadyForExam: true,
       }),
     ).toBe(true);
+  });
+
+  it("does not buffer when stages are not exam-ready", () => {
+    expect(
+      shouldBufferPreA1Exam({
+        units: completedPreA1Units(),
+        gateStatus: "pending",
+        hasBufferedExam: false,
+        stagesReadyForExam: false,
+      }),
+    ).toBe(false);
   });
 
   it("does not buffer when a playable exam is already stored", () => {
@@ -51,6 +63,7 @@ describe("shouldBufferPreA1Exam", () => {
         units: completedPreA1Units(),
         gateStatus: "pending",
         hasBufferedExam: true,
+        stagesReadyForExam: true,
       }),
     ).toBe(false);
   });
@@ -61,6 +74,7 @@ describe("shouldBufferPreA1Exam", () => {
         units: completedPreA1Units(),
         gateStatus: "passed",
         hasBufferedExam: false,
+        stagesReadyForExam: true,
       }),
     ).toBe(false);
   });
@@ -71,6 +85,7 @@ describe("shouldBufferPreA1Exam", () => {
         units: completedPreA1Units(),
         gateStatus: "failed_review",
         hasBufferedExam: false,
+        stagesReadyForExam: true,
       }),
     ).toBe(false);
   });
@@ -81,6 +96,7 @@ describe("shouldBufferPreA1Exam", () => {
         units: completedPreA1Units(),
         gateStatus: "ready_retake",
         hasBufferedExam: false,
+        stagesReadyForExam: true,
       }),
     ).toBe(true);
   });
@@ -93,6 +109,7 @@ describe("shouldBufferPreA1Exam", () => {
         units,
         gateStatus: "pending",
         hasBufferedExam: false,
+        stagesReadyForExam: true,
       }),
     ).toBe(false);
   });
@@ -106,8 +123,21 @@ describe("isPreA1ExamGatePaused", () => {
         gateStatus: "pending",
         hasBufferedExam: false,
         providerReachable: false,
+        stagesReadyForExam: true,
       }),
     ).toBe(true);
+  });
+
+  it("does not pause when stages are not exam-ready", () => {
+    expect(
+      isPreA1ExamGatePaused({
+        units: completedPreA1Units(),
+        gateStatus: "pending",
+        hasBufferedExam: false,
+        providerReachable: false,
+        stagesReadyForExam: false,
+      }),
+    ).toBe(false);
   });
 
   it("does not pause when a buffered exam is available", () => {
@@ -117,6 +147,7 @@ describe("isPreA1ExamGatePaused", () => {
         gateStatus: "pending",
         hasBufferedExam: true,
         providerReachable: false,
+        stagesReadyForExam: true,
       }),
     ).toBe(false);
   });
@@ -128,6 +159,7 @@ describe("isPreA1ExamGatePaused", () => {
         gateStatus: "pending",
         hasBufferedExam: false,
         providerReachable: true,
+        stagesReadyForExam: true,
       }),
     ).toBe(false);
   });
@@ -139,6 +171,7 @@ describe("isPreA1ExamGatePaused", () => {
         gateStatus: "failed_review",
         hasBufferedExam: false,
         providerReachable: false,
+        stagesReadyForExam: true,
       }),
     ).toBe(false);
   });

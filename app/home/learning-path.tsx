@@ -12,17 +12,21 @@ import {
 } from "@/lib/db";
 import {
   PRE_A1_CHAPTER_TIER,
+  arePreA1StagesReadyForExam,
   effectiveProgressionMode,
   resolveChapterGateStatus,
   shouldShowPreA1ChapterGatePendingCta,
+  shouldShowPreA1ChapterGrowingState,
 } from "@/lib/path/chapter-gate";
 import { groupUnitsByChapter } from "@/lib/path/chapters";
+import { reconcilePreA1ChapterBoundary } from "@/lib/path/reconcile-pre-a1-gate";
 import { replenishPathBuffer } from "@/lib/path/replenish";
 import { ensurePath } from "@/lib/path/seed";
 import { groupPreA1UnitsByStage, richnessForPathIndex } from "@/lib/path/stages";
 import { currentUnit } from "@/lib/path/unit-progress";
 import { getContentRepository } from "@/lib/registry";
 import { PathChapterGatePendingCta } from "./path-chapter-gate-cta";
+import { PathChapterGrowingBanner } from "./path-chapter-growing-banner";
 import { PathChapterMilestone } from "./path-chapter-milestone";
 import { PathContinue } from "./path-continue";
 import { PathNode } from "./path-node";
@@ -48,15 +52,18 @@ const MODE_HEADING: Record<ExperienceMode, string> = {
  * units, issue #58, and pre-generates their activity content, issue #61) and re-renders with
  * whatever it managed to fill in.
  *
- * Chapter-gate pending CTA (issues #114/#119) surfaces when pre-A1 is complete and the gate
- * is not yet passed — including the strict-mode hold that keeps unit 0 locked. Open mode
- * still shows the CTA for exam + teacher report without blocking A1.
+ * Chapter-gate pending CTA (issues #114/#119/#128) surfaces when pre-A1 is complete, shared
+ * stages are admin-ready for exam, and the gate is not yet passed — including the strict-mode
+ * hold that keeps unit 0 locked. Open mode still shows the CTA for exam + teacher report
+ * without blocking A1 once the enrichment bar clears. Until then, a chapter-growing banner
+ * explains the wait.
  */
 export function LearningPath() {
   const [units, setUnits] = useState<Unit[] | null>(null);
   const [mode, setMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
   const [progressionMode, setProgressionMode] = useState<ProgressionMode>(DEFAULT_PROGRESSION_MODE);
   const [gateStatus, setGateStatus] = useState<ChapterGateStatus>("pending");
+  const [stagesReadyForExam, setStagesReadyForExam] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -78,11 +85,14 @@ export function LearningPath() {
         settings: profile?.settings ?? {},
         experienceMode: profile?.experienceMode,
       });
+      await reconcilePreA1ChapterBoundary(repo);
       const loaded = await repo.getUnits();
       const gate = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
+      const stagesReady = arePreA1StagesReadyForExam(await repo.getSharedPathStages());
       if (active) {
         setUnits(loaded);
         setGateStatus(resolveChapterGateStatus(gate));
+        setStagesReadyForExam(stagesReady);
       }
 
       await replenishPathBuffer(repo, undefined, undefined, async () => {
@@ -93,6 +103,7 @@ export function LearningPath() {
       if (active) {
         setUnits(await repo.getUnits());
         setGateStatus(resolveChapterGateStatus(await repo.getChapterGate(PRE_A1_CHAPTER_TIER)));
+        setStagesReadyForExam(arePreA1StagesReadyForExam(await repo.getSharedPathStages()));
       }
     })();
 
@@ -108,7 +119,16 @@ export function LearningPath() {
 
   const chapters = groupUnitsByChapter(units);
   const current = currentUnit(units);
-  const showGateCta = shouldShowPreA1ChapterGatePendingCta({ units, gateStatus });
+  const showGateCta = shouldShowPreA1ChapterGatePendingCta({
+    units,
+    gateStatus,
+    stagesReadyForExam,
+  });
+  const showGrowing = shouldShowPreA1ChapterGrowingState({
+    units,
+    gateStatus,
+    stagesReadyForExam,
+  });
 
   return (
     <section data-testid="learning-path" data-experience-mode={mode} className="mt-10 w-full">
@@ -117,6 +137,12 @@ export function LearningPath() {
       {current && (
         <div className="mt-4">
           <PathContinue unit={current} mode={mode} />
+        </div>
+      )}
+
+      {showGrowing && (
+        <div className="mt-4">
+          <PathChapterGrowingBanner mode={mode} />
         </div>
       )}
 

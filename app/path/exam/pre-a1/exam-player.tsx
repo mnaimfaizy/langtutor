@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { DEFAULT_EXPERIENCE_MODE, type ExperienceMode } from "@/lib/db";
-import { PRE_A1_CHAPTER_TIER, resolveChapterGateStatus } from "@/lib/path/chapter-gate";
+import {
+  PRE_A1_CHAPTER_TIER,
+  arePreA1StagesReadyForExam,
+  resolveChapterGateStatus,
+} from "@/lib/path/chapter-gate";
 import {
   isPreA1ExamGatePaused,
   isPreA1ExamStartAllowed,
@@ -32,6 +36,7 @@ import { BackLink, Button, Card, SelectPill } from "@/ui";
 type Phase =
   | "loading"
   | "already-passed"
+  | "not-ready"
   | "review-required"
   | "paused"
   | "answering"
@@ -87,10 +92,11 @@ export function PreA1ExamPlayer() {
 
     void (async () => {
       const repo = getContentRepository();
-      const [gate, profile, units] = await Promise.all([
+      const [gate, profile, units, stages] = await Promise.all([
         repo.getChapterGate(PRE_A1_CHAPTER_TIER),
         repo.getProfile(),
         repo.getUnits(),
+        repo.getSharedPathStages(),
       ]);
       if (!active) return;
 
@@ -99,6 +105,11 @@ export function PreA1ExamPlayer() {
       const status = resolveChapterGateStatus(gate);
       if (status === "passed") {
         setPhase("already-passed");
+        return;
+      }
+      const stagesReadyForExam = arePreA1StagesReadyForExam(stages);
+      if (!stagesReadyForExam) {
+        setPhase("not-ready");
         return;
       }
       if (!isPreA1ExamStartAllowed(status)) {
@@ -142,6 +153,7 @@ export function PreA1ExamPlayer() {
           gateStatus: status,
           hasBufferedExam: hasBuffer,
           providerReachable: false,
+          stagesReadyForExam: true,
         })
       ) {
         if (!active) return;
@@ -252,6 +264,24 @@ export function PreA1ExamPlayer() {
           <h1 className="text-foreground text-xl font-semibold">Chapter exam already passed</h1>
           <p className="text-muted mt-2 text-sm">
             You already cleared the Pre-A1 gate. Continue into A1 on your path.
+          </p>
+          <Link href="/home" className="mt-6 inline-block">
+            <Button variant="primary">Back to home</Button>
+          </Link>
+        </Card>
+      </main>
+    );
+  }
+
+  if (phase === "not-ready") {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-8" data-testid="pre-a1-exam-not-ready">
+        <BackLink href="/home" label="Home" className="mb-6" />
+        <Card>
+          <h1 className="text-foreground text-xl font-semibold">Chapter still growing</h1>
+          <p className="text-muted mt-2 text-sm">
+            The chapter exam opens once every pre-A1 stage is marked ready. Head home — you are not
+            stuck; shared enrichment is still landing for everyone.
           </p>
           <Link href="/home" className="mt-6 inline-block">
             <Button variant="primary">Back to home</Button>

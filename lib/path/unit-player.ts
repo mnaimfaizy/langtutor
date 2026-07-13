@@ -5,13 +5,15 @@
  * completion event (`lib/path/unit-events.ts`). Called from the embedded review/reading
  * experiences when the learner finishes an activity inside a unit.
  *
- * Chapter mastery-gate hold (ADR 0043, issue #114): completing the last pre-A1 unit in
- * strict mode does not unlock A1 until the chapter gate is marked passed.
+ * Chapter mastery-gate hold (ADR 0043 / 0054, issues #114/#128): completing the last
+ * pre-A1 unit does not unlock A1 until shared stages are exam-ready; strict mode also
+ * waits until the chapter gate is marked passed.
  */
 import type { ContentRepository, Unit } from "@/lib/db";
 import { recordCelebration } from "@/lib/gamification";
 
 import {
+  arePreA1StagesReadyForExam,
   effectiveProgressionMode,
   isPreA1ChapterComplete,
   isPreA1ToA1Boundary,
@@ -97,6 +99,7 @@ export async function completeUnitActivity(
     if (isPreA1ToA1Boundary(unit, next)) {
       const profile = await repo.getProfile();
       const gate = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
+      const stagesReadyForExam = arePreA1StagesReadyForExam(await repo.getSharedPathStages());
       hold = shouldHoldUnlockForChapterGate({
         completedUnit: unit,
         nextUnit: next,
@@ -104,6 +107,7 @@ export async function completeUnitActivity(
           profile ?? { experienceMode: undefined, settings: {} },
         ),
         gateStatus: resolveChapterGateStatus(gate),
+        stagesReadyForExam,
       });
     }
     if (!hold) {

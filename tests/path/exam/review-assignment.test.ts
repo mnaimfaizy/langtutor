@@ -159,6 +159,7 @@ describe("strict fail → review → retake → pass state machine (issue #117)"
         profile: kidProfile(),
         units: [...completedPreA1, unit({ id: 10, index: 0, status: "locked" })],
         gateStatus: "failed_review",
+        stagesReadyForExam: true,
       }),
     ).toBe(true);
   });
