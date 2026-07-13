@@ -7,6 +7,7 @@
 import type { Cefr, ContentRepository, Profile } from "@/lib/db";
 
 import { seedBackbonePath } from "./backbone-planner";
+import { migrateLegacyPreA1Units } from "./migrate-legacy-pre-a1";
 import { hasReachedFirstA1Unit, shouldSeedPreA1 } from "./pre-a1";
 import {
   ensureSharedPathCatalogSeeded,
@@ -59,6 +60,8 @@ export async function syncPreA1Units(repo: ContentRepository, profile: Profile):
 
 async function _doSyncPreA1Units(repo: ContentRepository, profile: Profile): Promise<void> {
   const anchorLevel = profile.cefrLevel ?? "A1";
+  // Legacy four-unit profiles must migrate before the A1-handoff early-return (ADR 0056).
+  await migrateLegacyPreA1Units(repo);
   const units = await repo.getUnits();
   if (hasReachedFirstA1Unit(units)) return;
 

@@ -84,6 +84,8 @@
 
 **First mastery-gate slice** — Pre-A1 chapter exam + teacher report + strict review/re-pass on the existing four units, before expanding pre-A1 content or gating A1+ (ADR 0043).
 
+**Legacy four-unit pre-A1 path** — the pre-shared-catalog starter (exactly four single-activity units at indices `−4…−1`). On home/`ensurePath`, these profiles migrate onto the shared multi-unit starter: stage completion is mapped, gate status and A1 unlock are preserved, and gate-passed learners are not forced to replay the Alphabet runway (ADR 0056).
+
 **Media asset store** — shared storage of generated/curated images and TTS audio, keyed by word/phrase; generate once, reuse forever across users.
 
 **Media regenerate** — admin action that deletes (or overwrites) an existing media asset for a `(kind, key, style)` and produces a fresh generation for the same key.

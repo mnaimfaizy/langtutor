@@ -48,6 +48,19 @@ export function arePreA1StagesReadyForExam(
   return PRE_A1_STAGE_IDS.every((id) => byId.get(id) === true);
 }
 
+/**
+ * Effective enrichment readiness for one learner (ADR 0056). Shared stages must be
+ * admin-ready for new completers; an existing gate row grandfathers learners who
+ * already entered the exam lifecycle (including legacy four-unit profiles).
+ */
+export function resolveStagesReadyForExam(
+  stages: readonly Pick<SharedPathStage, "id" | "readyForExam">[],
+  gate: Pick<ChapterGate, "status"> | undefined,
+): boolean {
+  if (gate != null) return true;
+  return arePreA1StagesReadyForExam(stages);
+}
+
 /** Completing @completedUnit would unlock the first unit of a different chapter. */
 export function isChapterBoundaryUnlock(completedUnit: Unit, nextUnit: Unit): boolean {
   return unitTier(completedUnit) !== unitTier(nextUnit);

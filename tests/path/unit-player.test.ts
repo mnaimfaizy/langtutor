@@ -292,7 +292,8 @@ describe("completeUnitActivity — pre-A1 chapter gate hold (issue #114)", () =>
 
     const units = await repo.getUnits();
     expect(units.find((u) => u.id === 5)?.status).toBe("locked");
-    expect(repo.getSavedGate("pre-A1")?.status).toBe("pending");
+    // No gate row until the enrichment bar clears — growing state, not exam CTA.
+    expect(repo.getSavedGate("pre-A1")).toBeUndefined();
   });
 
   it("unlocks A1 in strict mode once the gate is already passed", async () => {

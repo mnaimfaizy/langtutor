@@ -6,8 +6,8 @@ import Link from "next/link";
 import { DEFAULT_EXPERIENCE_MODE, type ExperienceMode } from "@/lib/db";
 import {
   PRE_A1_CHAPTER_TIER,
-  arePreA1StagesReadyForExam,
   resolveChapterGateStatus,
+  resolveStagesReadyForExam,
 } from "@/lib/path/chapter-gate";
 import {
   isPreA1ExamGatePaused,
@@ -107,7 +107,7 @@ export function PreA1ExamPlayer() {
         setPhase("already-passed");
         return;
       }
-      const stagesReadyForExam = arePreA1StagesReadyForExam(stages);
+      const stagesReadyForExam = resolveStagesReadyForExam(stages, gate);
       if (!stagesReadyForExam) {
         setPhase("not-ready");
         return;

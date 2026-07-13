@@ -12,9 +12,9 @@ import {
 } from "@/lib/db";
 import {
   PRE_A1_CHAPTER_TIER,
-  arePreA1StagesReadyForExam,
   effectiveProgressionMode,
   resolveChapterGateStatus,
+  resolveStagesReadyForExam,
   shouldShowPreA1ChapterGatePendingCta,
   shouldShowPreA1ChapterGrowingState,
 } from "@/lib/path/chapter-gate";
@@ -88,7 +88,7 @@ export function LearningPath() {
       await reconcilePreA1ChapterBoundary(repo);
       const loaded = await repo.getUnits();
       const gate = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
-      const stagesReady = arePreA1StagesReadyForExam(await repo.getSharedPathStages());
+      const stagesReady = resolveStagesReadyForExam(await repo.getSharedPathStages(), gate);
       if (active) {
         setUnits(loaded);
         setGateStatus(resolveChapterGateStatus(gate));
@@ -102,8 +102,11 @@ export function LearningPath() {
       });
       if (active) {
         setUnits(await repo.getUnits());
-        setGateStatus(resolveChapterGateStatus(await repo.getChapterGate(PRE_A1_CHAPTER_TIER)));
-        setStagesReadyForExam(arePreA1StagesReadyForExam(await repo.getSharedPathStages()));
+        const nextGate = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
+        setGateStatus(resolveChapterGateStatus(nextGate));
+        setStagesReadyForExam(
+          resolveStagesReadyForExam(await repo.getSharedPathStages(), nextGate),
+        );
       }
     })();
 
