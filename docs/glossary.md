@@ -66,9 +66,21 @@
 
 **Curriculum constants** — slow-changing assets the teacher plans around: grammar constructions and a general vocabulary base (extra vocab retrieved gradually).
 
-**Pre-A1 tier** — content tier below A1 for true beginners; planned to grow beyond the initial four single-activity units into a richer multi-unit, multi-activity chapter with a chapter exam (ADR 0016, ADR 0040).
+**Pre-A1 tier** — content tier below A1 for true beginners; planned to grow beyond the initial four single-activity units into a richer multi-unit, multi-activity chapter with a chapter exam (ADR 0016, ADR 0040). The syllabus SoT is **kids-first**; adults on pre-A1 share the same fundamentals, with a friendly/entertaining path for both (ADR 0046).
 
-**Curriculum guide** — a verified reference syllabus/course framework (by tier) that orients the AI teacher’s planning, exams, and reports; fundamental guidance, not a rigid script. In v1, guides are bundled/retrieved into prompts with model-knowledge adaptation — no live web search (ADR 0040, ADR 0041). First product slice may use a minimal pre-A1 guide stub (ADR 0043).
+**Curriculum guide** — a verified reference syllabus/course framework (by tier) that is the **shared source of truth** for humans and the AI teacher (planning, exams, reports, inventing units). Fundamental orientation, not a rigid script; in v1, guides are bundled/retrieved into prompts with model-knowledge adaptation — no live web search (ADR 0040, ADR 0041). AI invent/add-unit behaviour for pre-A1 waits until a real guide SoT exists (ADR 0045); the first mastery-gate slice may still use a minimal stub (ADR 0043). **v1 stance:** hybrid blueprint (cite Starters + distilled phonics + Lang-Tutor-authored spine); own AI-generated content with **human admin approval** before learner trust — not a full commercial curriculum dump (ADR 0047).
+
+**Syllabus spine (blueprint)** — Lang-Tutor-authored structural outline of the pre-A1 (and later tier) chapter — topics, skill order, phonics phases, exam alignment — oriented by external frameworks but owned by us; the AI follows this when generating content (ADR 0047).
+
+**Pre-A1 starter plan** — the human-approved, **shared** opening path every kid pre-A1 learner gets on first login (not AI-generated per account); routine fills inside it need not wait on admin, but AI expansions beyond it come later and are admin-gated (ADR 0048, ADR 0049). Pedagogical shape: **multi-unit stages** for the four skill families, with a long Alphabet → gentle letters & sounds runway before harder Phonics (ADR 0050).
+
+**Pre-A1 stage** — a skill family within the pre-A1 chapter (Alphabet, Phonics, Picture words, Listen & tap) made of several small units rather than a single unit (ADR 0050).
+
+**Shared path cache** — store of admin-approved pre-A1 (and later) unit/chapter templates reused by all learners; new signups consume this cache instead of getting a per-user AI-generated path (ADR 0051). v1 ships a **full four-stage skeleton** with a **rich Alphabet runway** and light placeholders for later stages (ADR 0053). The pre-A1 chapter exam stays after all four stages, but the A1 gate waits until later stages meet a **shared enrichment minimum bar** (ADR 0054).
+
+**Stage enrichment bar** — shared (not per-user) readiness threshold for a pre-A1 stage’s content in the path cache; until later stages clear this bar, the chapter exam / A1 unlock is not offered (ADR 0054). **v1:** admin **“ready for exam”** flag only — not an automatic unit-count rule (ADR 0055).
+
+**Weakness practice session** — future, on-demand extra practice generated from a learner’s weaknesses; session-scoped personalization that does not fork the shared chapter spine (ADR 0051).
 
 **First mastery-gate slice** — Pre-A1 chapter exam + teacher report + strict review/re-pass on the existing four units, before expanding pre-A1 content or gating A1+ (ADR 0043).
 
