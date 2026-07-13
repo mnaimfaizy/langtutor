@@ -1,12 +1,17 @@
 /**
- * Path-buffer state (ADR 0015, glossary "Path buffer"; issue #61). Pure and side-effect
- * free: derives buffer readiness from a unit's own fields and decides what a replenishment
- * pass should plan/generate next, given the current path and a buffer depth. Orchestration
- * (the actual network calls) lives in `lib/path/replenish.ts`; this module never touches the
- * network or the repository.
+ * Path-buffer state (ADR 0015, glossary "Path buffer"; issue #61; pre-A1 ADR 0051 / #126).
+ * Pure and side-effect free: derives buffer readiness from a unit's own fields and decides
+ * what a replenishment pass should plan/generate next, given the current path and a buffer
+ * depth. Orchestration (the actual network calls) lives in `lib/path/replenish.ts`; this
+ * module never touches the network or the repository.
+ *
+ * Pre-A1 units are shared-catalog materializations: replenishment may fill activity content
+ * / exam buffers inside them, but never treats them as unplanned backbone slots that need a
+ * per-learner teacher invent.
  */
 import type { Unit, UnitActivityRef, UnitBufferStatus } from "@/lib/db";
 
+import { isPreA1Unit } from "./pre-a1";
 import { firstPendingActivityIndex } from "./unit-progress";
 
 /**
@@ -37,14 +42,24 @@ export function isActivityReady(activity: UnitActivityRef): boolean {
 }
 
 /**
- * Derives a unit's buffer status from its own fields: `"buffered"` once the teacher has
- * planned it (non-empty `targetVocab`) **and** every activity slot is ready; `"empty"`
- * otherwise (unplanned backbone placeholder, or planned but only partially generated).
+ * Derives a unit's buffer status from its own fields.
+ *
+ * - A1+: `"buffered"` once the teacher has planned it (non-empty `targetVocab`) **and**
+ *   every activity slot is ready; `"empty"` otherwise.
+ * - Pre-A1: catalog metadata is the plan — `"buffered"` once every activity slot is ready
+ *   (media-store skills are always ready; generated skills wait on `contentId`). Empty
+ *   `targetVocab` does **not** mark pre-A1 as unplanned.
+ *
  * Pure — callers persist the result via `ContentRepository.updateUnit`.
  */
 export function computeUnitBufferStatus(
-  unit: Pick<Unit, "targetVocab" | "activities">,
+  unit: Pick<Unit, "index" | "targetVocab" | "activities">,
 ): UnitBufferStatus {
+  if (isPreA1Unit(unit)) {
+    return unit.activities.length > 0 && unit.activities.every(isActivityReady)
+      ? "buffered"
+      : "empty";
+  }
   if (unit.targetVocab.length === 0) return "empty";
   return unit.activities.every(isActivityReady) ? "buffered" : "empty";
 }
@@ -71,6 +86,10 @@ export interface ReplenishmentPlan {
  * (`lib/path/replenish.ts`). A unit already `"buffered"` appears in neither list. Units beyond
  * the depth window, and units that are `in-progress`/`completed`, are never touched — the
  * buffer only ever looks ahead, never at the unit currently being played.
+ *
+ * Pre-A1 units are never queued for teacher planning (shared catalog is the curriculum SoT).
+ * They may still appear in `toGenerateContent` when a slot needs routine fill inside an
+ * approved template.
  */
 export function decideReplenishment(
   units: readonly Unit[],
@@ -78,10 +97,12 @@ export function decideReplenishment(
 ): ReplenishmentPlan {
   const window = futureUnits(units).slice(0, Math.max(depth, 0));
   return {
-    toPlan: window.filter((u) => u.targetVocab.length === 0),
-    toGenerateContent: window.filter(
-      (u) => u.targetVocab.length > 0 && computeUnitBufferStatus(u) !== "buffered",
-    ),
+    toPlan: window.filter((u) => !isPreA1Unit(u) && u.targetVocab.length === 0),
+    toGenerateContent: window.filter((u) => {
+      if (computeUnitBufferStatus(u) === "buffered") return false;
+      // A1+ must be teacher-planned first; pre-A1 catalog units may fill content immediately.
+      return isPreA1Unit(u) || u.targetVocab.length > 0;
+    }),
   };
 }
 

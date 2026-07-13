@@ -1,10 +1,15 @@
 /**
- * LLM-teacher planning orchestration (ADR 0015, issue #58).
+ * LLM-teacher planning orchestration (ADR 0015, issue #58; pre-A1 shared catalog ADR 0051 /
+ * issue #126).
  *
  * Consumes the existing content pipeline (`lib/content/pipeline.ts`): chat → Zod-parse the
  * plan → corrective retry on invalid output. Plan text is teacher-voice metadata (a title,
  * a note, a vocab list) rather than CEFR-gated prose, so validation is schema-only —
  * `skipValidation: true`, same convention as `lib/content/prompt.ts` (writing prompts).
+ *
+ * Pre-A1 units are never planned here — their title / note / activities come from the
+ * shared path catalog (ADR 0051). This pass only fills A1+ backbone placeholders; it never
+ * invents or appends private curriculum units.
  *
  * Only ever called server-side (hard rule 1) — see `app/api/path/plan/route.ts`, the sole
  * caller. This module has no `server-only` import itself because the safety comes from that
@@ -19,6 +24,7 @@ import { generateContent } from "@/lib/content/pipeline";
 import { DEFAULT_EXPERIENCE_MODE, type Profile, type Unit, type Weakness } from "@/lib/db";
 import type { LLMClient } from "@/lib/llm/llm-client";
 
+import { isPreA1Unit } from "./pre-a1";
 import { buildTeacherPlanMessages, UnitPlanSchema } from "./teacher-plan";
 
 /** Cap on LLM calls per planning pass — keeps a single home-load request bounded. */
@@ -32,21 +38,29 @@ export interface PlannedUnit {
   targetVocab: string[];
 }
 
-/** Future (not completed, not in-progress), backbone-seeded units with no plan yet. */
+/**
+ * Future A1+ backbone units with no plan yet. Pre-A1 (negative index) is excluded — those
+ * units are shared-catalog materializations, not teacher-planned private paths.
+ */
 function unplannedFutureUnits(units: Unit[]): Unit[] {
   return units
     .filter(
-      (u) => (u.status === "locked" || u.status === "available") && u.targetVocab.length === 0,
+      (u) =>
+        !isPreA1Unit(u) &&
+        (u.status === "locked" || u.status === "available") &&
+        u.targetVocab.length === 0,
     )
     .sort((a, b) => a.index - b.index)
     .slice(0, UNITS_TO_PLAN_PER_PASS);
 }
 
 /**
- * Plans up to {@link UNITS_TO_PLAN_PER_PASS} unplanned future units. Each unit is planned
+ * Plans up to {@link UNITS_TO_PLAN_PER_PASS} unplanned future A1+ units. Each unit is planned
  * independently: a corrective-retry failure or provider outage on one unit is caught and
  * skipped (leaving its backbone placeholder untouched) so it never blocks the rest of the
  * pass or surfaces an error to the caller — the whole point is "no user-facing error".
+ *
+ * Never invents new units and never rewrites pre-A1 catalog metadata.
  */
 export async function planFutureUnits(
   units: Unit[],
@@ -60,7 +74,7 @@ export async function planFutureUnits(
   const planned: PlannedUnit[] = [];
   for (const unit of unplannedFutureUnits(units)) {
     const construction = lookupConstruction(unit.targetGrammarIds[0] ?? "");
-    if (!construction) continue; // no known backbone anchor to plan against (e.g. a future pre-A1 unit)
+    if (!construction) continue; // no known backbone anchor to plan against
 
     try {
       const result = await generateContent(

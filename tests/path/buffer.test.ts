@@ -205,6 +205,64 @@ describe("decideReplenishment", () => {
     expect(plan.toPlan.map((u) => u.id)).toEqual([1]);
     expect(plan.toGenerateContent.map((u) => u.id)).toEqual([2]);
   });
+
+  it("never queues pre-A1 catalog units for teacher planning (issue #126)", () => {
+    const units = [
+      unit({
+        id: 1,
+        index: -2,
+        status: "available",
+        targetVocab: [],
+        activities: [activity({ skill: "alphabet" })],
+      }),
+      unit({
+        id: 2,
+        index: -1,
+        status: "locked",
+        targetVocab: [],
+        activities: [activity({ skill: "phonics" })],
+      }),
+      unit({ id: 3, index: 0, status: "locked", targetVocab: [] }),
+    ];
+    const plan = decideReplenishment(units, 3);
+    expect(plan.toPlan.map((u) => u.id)).toEqual([3]);
+    expect(plan.toGenerateContent).toEqual([]);
+  });
+
+  it("may queue pre-A1 units for routine content fill inside approved templates", () => {
+    const units = [
+      unit({
+        id: 1,
+        index: -1,
+        status: "available",
+        targetVocab: [],
+        activities: [activity({ skill: "reading" })],
+      }),
+    ];
+    const plan = decideReplenishment(units, 1);
+    expect(plan.toPlan).toEqual([]);
+    expect(plan.toGenerateContent.map((u) => u.id)).toEqual([1]);
+  });
+});
+
+describe("computeUnitBufferStatus — pre-A1 catalog units", () => {
+  it("treats media-store pre-A1 units as buffered without teacher vocab", () => {
+    const u = unit({
+      index: -1,
+      targetVocab: [],
+      activities: [activity({ skill: "alphabet" }), activity({ skill: "phonics" })],
+    });
+    expect(computeUnitBufferStatus(u)).toBe("buffered");
+  });
+
+  it("is empty for a pre-A1 unit whose generated skill still needs content", () => {
+    const u = unit({
+      index: -1,
+      targetVocab: [],
+      activities: [activity({ skill: "alphabet" }), activity({ skill: "reading" })],
+    });
+    expect(computeUnitBufferStatus(u)).toBe("empty");
+  });
 });
 
 // ── currentPlayableUnit / nextActivityNeedsGeneration / isPathPaused ────────────

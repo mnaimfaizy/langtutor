@@ -1,10 +1,16 @@
 /**
- * Path-buffer replenishment orchestration (ADR 0015, issue #61; exam buffer ADR 0037 / #118).
- * Plans any unplanned units in the buffer window (extending issue #58's `/api/path/plan`) and
- * generates missing activity content for planned-but-not-yet-buffered units (extending issue
- * #59/#60's generate-and-cache pattern), up to `PATH_BUFFER_DEPTH` future units. Also
- * pre-buffers the next pre-A1 chapter exam when the gate is pending and drains deferred
- * teacher reports when the provider is reachable again.
+ * Path-buffer replenishment orchestration (ADR 0015, issue #61; exam buffer ADR 0037 / #118;
+ * shared pre-A1 catalog ADR 0051 / issue #126).
+ *
+ * Plans any unplanned **A1+** units in the buffer window (extending issue #58's
+ * `/api/path/plan`) and generates missing activity content for planned-but-not-yet-buffered
+ * units (extending issue #59/#60's generate-and-cache pattern), up to `PATH_BUFFER_DEPTH`
+ * future units. Also pre-buffers the next pre-A1 chapter exam when the gate is pending and
+ * drains deferred teacher reports when the provider is reachable again.
+ *
+ * Never invents or appends private pre-A1 path units — progression consumes the shared
+ * catalog ladder; this pass only fills content **inside** approved templates and routine
+ * exam buffers.
  *
  * Called on two triggers (both best-effort, both silent): authed session start
  * (`app/home/learning-path.tsx`) and unit completion (`lib/path/unit-player.ts`). Never throws
@@ -100,15 +106,17 @@ async function bufferUnitContent(
 }
 
 /**
- * Runs one best-effort path-buffer replenishment pass: plan, then generate content for up to
- * @depth future units, then (when needed) pre-buffer the pre-A1 chapter exam and drain any
- * deferred teacher reports. Always resolves — never throws, never rejects — so callers can
- * fire it without awaiting (unit completion) or await it in a background effect that already
- * rendered (session start) without either path ever blocking or erroring the UI.
+ * Runs one best-effort path-buffer replenishment pass: plan A1+ placeholders when needed,
+ * then generate content for up to @depth future units, then (when needed) pre-buffer the
+ * pre-A1 chapter exam and drain any deferred teacher reports. Always resolves — never
+ * throws, never rejects — so callers can fire it without awaiting (unit completion) or await
+ * it in a background effect that already rendered (session start) without either path ever
+ * blocking or erroring the UI.
  *
- * @param onAfterPlan optional hook fired after planning is persisted and before content
- *   generation. Session-start UI uses this to re-render teacher titles/notes immediately —
- *   content generation (and any slow embeddings) must not gate the planned metadata.
+ * @param onAfterPlan optional hook fired after planning is persisted (or skipped) and before
+ *   content generation. Session-start UI uses this to re-render teacher titles/notes
+ *   immediately — content generation (and any slow embeddings) must not gate the planned
+ *   metadata.
  */
 export async function replenishPathBuffer(
   repo: ContentRepository,
@@ -119,10 +127,16 @@ export async function replenishPathBuffer(
   fetchTeacherReport: FetchTeacherReportFn | undefined = undefined,
 ): Promise<void> {
   try {
-    await planUnplannedUnits(repo);
+    const beforePlan = await repo.getUnits();
+    const { toPlan } = decideReplenishment(beforePlan, depth);
+    // Skip the plan API entirely when the buffer window has no A1+ units needing a teacher
+    // plan (e.g. mid-pre-A1 — catalog units must not trigger per-learner invent calls).
+    if (toPlan.length > 0) {
+      await planUnplannedUnits(repo);
+    }
     await onAfterPlan?.();
 
-    const units = await repo.getUnits();
+    const units = toPlan.length > 0 ? await repo.getUnits() : beforePlan;
     const { toGenerateContent } = decideReplenishment(units, depth);
 
     let providerReachable = true;

@@ -148,6 +148,49 @@ describe("planFutureUnits — unit selection", () => {
 
     expect(Object.keys(plans[0])).toEqual(["unitId", "title", "teacherNote", "targetVocab"]);
   });
+
+  it("never plans pre-A1 units — shared catalog is the curriculum SoT (issue #126)", async () => {
+    const chatSpy = vi.fn();
+    const llm: LLMClient = {
+      chat: (async <T>(_msgs: ChatMessage[], opts?: ChatOptions | ChatObjectOptions<T>) => {
+        chatSpy();
+        if (opts && "schema" in opts) return opts.schema.parse(VALID_PLAN) as T;
+        return "";
+      }) as LLMClient["chat"],
+      streamChat: async () =>
+        (async function* () {
+          yield "";
+        })(),
+      embed: async () => [],
+      listModels: async () => [],
+    };
+
+    const units = [
+      unit({
+        id: 10,
+        index: -2,
+        status: "available",
+        targetVocab: [],
+        targetGrammarIds: [],
+        title: "Pre-A1: Alphabet",
+      }),
+      unit({
+        id: 11,
+        index: -1,
+        status: "locked",
+        targetVocab: [],
+        // Even a stray grammar id must not trigger a private pre-A1 invent/rewrite.
+        targetGrammarIds: ["simple_present"],
+        title: "Pre-A1: Phonics",
+      }),
+      unit({ id: 0, index: 0, status: "locked", targetVocab: [] }),
+    ];
+    const plans = await planFutureUnits(units, profile(), [], llm);
+
+    expect(plans).toHaveLength(1);
+    expect(plans[0]?.unitId).toBe(0);
+    expect(chatSpy).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ── corrective retry / failure surfacing ──────────────────────────────────────
