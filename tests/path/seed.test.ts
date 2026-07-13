@@ -1,16 +1,37 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import type { ContentRepository, NewUnit, Profile, Unit } from "@/lib/db";
-import { PRE_A1_UNIT_COUNT } from "@/lib/path/pre-a1";
+import type {
+  ContentRepository,
+  NewUnit,
+  Profile,
+  SharedPathStage,
+  SharedPathUnitTemplate,
+  Unit,
+} from "@/lib/db";
+import { PRE_A1_FIRST_PATH_INDEX, PRE_A1_UNIT_COUNT, seedPreA1Units } from "@/lib/path/pre-a1";
+import {
+  buildBundledSharedPathUnitTemplates,
+  ensureSharedPathCatalogSeeded,
+} from "@/lib/path/shared-path-catalog";
 import { ensurePath, loadPathIfEmpty, syncPreA1Units } from "@/lib/path/seed";
 
 /** Minimal in-memory stand-in — only the methods seeding touches are real. */
-function makeFakeRepo(): ContentRepository & { units: Unit[] } {
-  const state: { units: Unit[] } = { units: [] };
+function makeFakeRepo(): ContentRepository & {
+  units: Unit[];
+  stages: SharedPathStage[];
+  templates: SharedPathUnitTemplate[];
+} {
+  const state: {
+    units: Unit[];
+    stages: SharedPathStage[];
+    templates: SharedPathUnitTemplate[];
+  } = { units: [], stages: [], templates: [] };
   let nextId = 1;
 
   return {
     units: state.units,
+    stages: state.stages,
+    templates: state.templates,
     async getProfile() {
       return undefined;
     },
@@ -30,7 +51,40 @@ function makeFakeRepo(): ContentRepository & { units: Unit[] } {
       if (idx === -1) return;
       state.units[idx] = { ...state.units[idx]!, ...changes };
     },
-  } as unknown as ContentRepository & { units: Unit[] };
+    async getSharedPathStages() {
+      return state.stages.slice().sort((a, b) => a.order - b.order);
+    },
+    async putSharedPathStage(stage: SharedPathStage) {
+      const idx = state.stages.findIndex((s) => s.id === stage.id);
+      if (idx === -1) state.stages.push(stage);
+      else state.stages[idx] = stage;
+    },
+    async querySharedPathUnitTemplates(query?: {
+      tier?: "pre-A1";
+      stageId?: SharedPathUnitTemplate["stageId"];
+      approvalStatus?: SharedPathUnitTemplate["approvalStatus"];
+    }) {
+      let rows = state.templates.slice();
+      if (query?.tier) rows = rows.filter((r) => r.tier === query.tier);
+      if (query?.stageId) rows = rows.filter((r) => r.stageId === query.stageId);
+      if (query?.approvalStatus) {
+        rows = rows.filter((r) => r.approvalStatus === query.approvalStatus);
+      }
+      return rows.sort((a, b) => a.pathIndex - b.pathIndex);
+    },
+    async putSharedPathUnitTemplate(template: SharedPathUnitTemplate) {
+      const idx = state.templates.findIndex((t) => t.id === template.id);
+      if (idx === -1) state.templates.push(template);
+      else state.templates[idx] = template;
+    },
+    async deleteSharedPathUnitTemplate(id: string) {
+      state.templates = state.templates.filter((t) => t.id !== id);
+    },
+  } as unknown as ContentRepository & {
+    units: Unit[];
+    stages: SharedPathStage[];
+    templates: SharedPathUnitTemplate[];
+  };
 }
 
 function profile(overrides: Partial<Profile> = {}): Profile {
@@ -41,6 +95,13 @@ function profile(overrides: Partial<Profile> = {}): Profile {
     cefrLevel: "A1",
     ...overrides,
   };
+}
+
+function stripIds(units: Unit[]) {
+  return units
+    .filter((u) => u.index < 0)
+    .map(({ id: _id, createdAt: _createdAt, ...rest }) => rest)
+    .sort((a, b) => a.index - b.index);
 }
 
 describe("loadPathIfEmpty", () => {
@@ -99,6 +160,7 @@ describe("syncPreA1Units", () => {
     const preA1 = units.filter((u) => u.index < 0);
     expect(preA1).toHaveLength(PRE_A1_UNIT_COUNT);
     expect(preA1[0]?.status).toBe("available");
+    expect(preA1[0]?.index).toBe(PRE_A1_FIRST_PATH_INDEX);
     expect(units.find((u) => u.index === 0)?.status).toBe("locked");
   });
 
@@ -163,6 +225,30 @@ describe("syncPreA1Units", () => {
 
     expect((await repo.getUnits()).every((u) => u.index >= 0)).toBe(true);
   });
+
+  it("two fresh kid profiles get identical shared starters", async () => {
+    const repoA = makeFakeRepo();
+    const repoB = makeFakeRepo();
+
+    await ensurePath(repoA, profile({ experienceMode: "kid" }));
+    await ensurePath(repoB, profile({ experienceMode: "kid" }));
+
+    expect(stripIds(await repoA.getUnits())).toEqual(stripIds(await repoB.getUnits()));
+  });
+
+  it("day-one shared starter seed does not call an LLM", async () => {
+    const llmChat = vi.fn();
+    const repo = makeFakeRepo();
+
+    await ensurePath(repo, profile({ experienceMode: "kid" }));
+
+    expect(llmChat).not.toHaveBeenCalled();
+    expect((await repo.getUnits()).filter((u) => u.index < 0)).toHaveLength(PRE_A1_UNIT_COUNT);
+    expect(await repo.getSharedPathStages()).toHaveLength(4);
+    expect(await repo.querySharedPathUnitTemplates({ approvalStatus: "approved" })).toHaveLength(
+      PRE_A1_UNIT_COUNT,
+    );
+  });
 });
 
 describe("ensurePath", () => {
@@ -174,5 +260,32 @@ describe("ensurePath", () => {
     const units = await repo.getUnits();
     expect(units.filter((u) => u.index < 0)).toHaveLength(PRE_A1_UNIT_COUNT);
     expect(units.some((u) => u.index === 0)).toBe(true);
+  });
+});
+
+describe("ensureSharedPathCatalogSeeded", () => {
+  it("is idempotent and preserves existing catalog rows", async () => {
+    const repo = makeFakeRepo();
+    await ensureSharedPathCatalogSeeded(repo);
+    const first = await repo.querySharedPathUnitTemplates();
+    await repo.putSharedPathUnitTemplate({
+      ...first[0]!,
+      teacherNote: "admin-edited note",
+    });
+
+    await ensureSharedPathCatalogSeeded(repo);
+
+    const again = await repo.querySharedPathUnitTemplates();
+    expect(again).toHaveLength(PRE_A1_UNIT_COUNT);
+    expect(again.find((t) => t.id === first[0]!.id)?.teacherNote).toBe("admin-edited note");
+  });
+});
+
+describe("seedPreA1Units (bundled)", () => {
+  it("matches the bundled shared catalog templates", () => {
+    const seeded = seedPreA1Units(new Date("2026-01-01T00:00:00.000Z"));
+    const templates = buildBundledSharedPathUnitTemplates();
+    expect(seeded.map((u) => u.index)).toEqual(templates.map((t) => t.pathIndex));
+    expect(seeded.map((u) => u.title)).toEqual(templates.map((t) => t.title));
   });
 });

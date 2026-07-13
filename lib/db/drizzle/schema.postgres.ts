@@ -26,6 +26,10 @@ import {
   CHAPTER_GATE_STATUS_VALUES,
   CHAPTER_TIER_VALUES,
   COLLECTION_KIND_VALUES,
+  PRE_A1_STAGE_ID_VALUES,
+  SHARED_PATH_APPROVAL_STATUS_VALUES,
+  SHARED_PATH_PROVENANCE_VALUES,
+  SHARED_PATH_RICHNESS_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   UNIT_BUFFER_STATUS_VALUES,
@@ -54,6 +58,10 @@ export {
   CHAPTER_GATE_STATUS_VALUES,
   CHAPTER_TIER_VALUES,
   COLLECTION_KIND_VALUES,
+  PRE_A1_STAGE_ID_VALUES,
+  SHARED_PATH_APPROVAL_STATUS_VALUES,
+  SHARED_PATH_PROVENANCE_VALUES,
+  SHARED_PATH_RICHNESS_VALUES,
   SKILL_VALUES,
   STT_PROVIDER_VALUES,
   UNIT_BUFFER_STATUS_VALUES,
@@ -283,4 +291,39 @@ export const chapterGates = pgTable(
     reviewAssignment: text("review_assignment"),
   },
   (t) => [primaryKey({ columns: [t.userId, t.tier] })],
+);
+
+/** Shared pre-A1 path catalog stages (ADR 0051, issue #125). */
+export const sharedPathStages = pgTable("shared_path_stages", {
+  id: text("id", { enum: PRE_A1_STAGE_ID_VALUES }).primaryKey(),
+  tier: text("tier", { enum: CHAPTER_TIER_VALUES }).notNull().default("pre-A1"),
+  title: text("title").notNull(),
+  spineSectionKey: text("spine_section_key").notNull(),
+  order: integer("stage_order").notNull(),
+  readyForExam: boolean("ready_for_exam").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+/** Shared pre-A1 path catalog unit templates (ADR 0051, issue #125). */
+export const sharedPathUnitTemplates = pgTable(
+  "shared_path_unit_templates",
+  {
+    id: text("id").primaryKey(),
+    tier: text("tier", { enum: CHAPTER_TIER_VALUES }).notNull().default("pre-A1"),
+    stageId: text("stage_id", { enum: PRE_A1_STAGE_ID_VALUES }).notNull(),
+    stageOrder: integer("stage_order").notNull(),
+    pathIndex: integer("path_index").notNull(),
+    title: text("title").notNull(),
+    teacherNote: text("teacher_note").notNull(),
+    activities: text("activities").notNull().default("[]"),
+    richness: text("richness", { enum: SHARED_PATH_RICHNESS_VALUES }).notNull(),
+    approvalStatus: text("approval_status", { enum: SHARED_PATH_APPROVAL_STATUS_VALUES })
+      .notNull()
+      .default("approved"),
+    provenance: text("provenance", { enum: SHARED_PATH_PROVENANCE_VALUES }).notNull(),
+    targetVocab: text("target_vocab").notNull().default("[]"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [uniqueIndex("idx_shared_path_unit_templates_path_index").on(t.pathIndex)],
 );

@@ -1,12 +1,17 @@
 /**
- * Learning-path seeding orchestration (ADR 0015, issue #57; pre-A1 tier issue #66). Mirrors
- * the `lib/content/seed.ts` pattern: idempotent, safe to call on every authed-home visit,
- * and mutex-guarded against concurrent callers seeding twice.
+ * Learning-path seeding orchestration (ADR 0015, issue #57; pre-A1 tier issues #66 / #125).
+ * Mirrors the `lib/content/seed.ts` pattern: idempotent, safe to call on every authed-home
+ * visit, and mutex-guarded against concurrent callers seeding twice. Pre-A1 units materialize
+ * from the shared path catalog — never from a per-signup LLM invent.
  */
 import type { Cefr, ContentRepository, Profile } from "@/lib/db";
 
 import { seedBackbonePath } from "./backbone-planner";
-import { hasReachedFirstA1Unit, seedPreA1Units, shouldSeedPreA1 } from "./pre-a1";
+import { hasReachedFirstA1Unit, shouldSeedPreA1 } from "./pre-a1";
+import {
+  ensureSharedPathCatalogSeeded,
+  materializePreA1UnitsFromCatalog,
+} from "./shared-path-catalog";
 
 let _seedingPromise: Promise<void> | null = null;
 let _preA1SyncPromise: Promise<void> | null = null;
@@ -61,7 +66,12 @@ async function _doSyncPreA1Units(repo: ContentRepository, profile: Profile): Pro
   const existingPreA1 = units.filter((u) => u.index < 0);
 
   if (wantPreA1 && existingPreA1.length === 0) {
-    for (const unit of seedPreA1Units()) {
+    await ensureSharedPathCatalogSeeded(repo);
+    const templates = await repo.querySharedPathUnitTemplates({
+      tier: "pre-A1",
+      approvalStatus: "approved",
+    });
+    for (const unit of materializePreA1UnitsFromCatalog(templates)) {
       await repo.addUnit(unit);
     }
     const unit0 = (await repo.getUnits()).find((u) => u.index === 0);

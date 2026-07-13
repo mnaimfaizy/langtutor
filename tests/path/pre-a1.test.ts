@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { Profile, Unit } from "@/lib/db";
 import {
+  PRE_A1_FIRST_PATH_INDEX,
   PRE_A1_UNIT_COUNT,
   hasReachedFirstA1Unit,
   seedPreA1Units,
   shouldSeedPreA1,
   shouldShowKidIsland,
 } from "@/lib/path/pre-a1";
+import { buildBundledSharedPathUnitTemplates } from "@/lib/path/shared-path-catalog";
 
 function profile(overrides: Partial<Profile> = {}): Profile {
   return {
@@ -36,11 +38,14 @@ function unit(overrides: Partial<Unit> = {}): Unit {
 }
 
 describe("seedPreA1Units", () => {
-  it("produces negative indices ending at -1", () => {
+  it("produces negative indices ending at -1 for the four-stage starter", () => {
     const units = seedPreA1Units(new Date("2026-01-01T00:00:00.000Z"));
+    const expected = buildBundledSharedPathUnitTemplates().map((t) => t.pathIndex);
 
     expect(units).toHaveLength(PRE_A1_UNIT_COUNT);
-    expect(units.map((u) => u.index)).toEqual([-4, -3, -2, -1]);
+    expect(units.map((u) => u.index)).toEqual(expected);
+    expect(units[0]?.index).toBe(PRE_A1_FIRST_PATH_INDEX);
+    expect(units.at(-1)?.index).toBe(-1);
   });
 
   it("unlocks only the first pre-A1 unit", () => {
@@ -50,14 +55,19 @@ describe("seedPreA1Units", () => {
     expect(units.slice(1).every((u) => u.status === "locked")).toBe(true);
   });
 
-  it("uses dedicated pre-A1 activity slots with no grammar anchors", () => {
+  it("keeps a rich Alphabet runway and light later-stage placeholders", () => {
     const units = seedPreA1Units();
+    const templates = buildBundledSharedPathUnitTemplates();
 
     expect(units.every((u) => u.targetGrammarIds.length === 0)).toBe(true);
-    expect(units[0]?.activities).toEqual([{ skill: "alphabet" }]);
-    expect(units[1]?.activities).toEqual([{ skill: "phonics" }]);
-    expect(units[2]?.activities).toEqual([{ skill: "picture-match" }]);
-    expect(units[3]?.activities).toEqual([{ skill: "listen-tap" }]);
+    expect(
+      templates.filter((t) => t.stageId === "alphabet").every((t) => t.richness === "rich"),
+    ).toBe(true);
+    expect(
+      templates.filter((t) => t.stageId !== "alphabet").every((t) => t.richness === "placeholder"),
+    ).toBe(true);
+    expect(units[0]?.activities.length).toBeGreaterThan(1);
+    expect(units.at(-1)?.activities).toEqual([{ skill: "listen-tap" }]);
   });
 });
 

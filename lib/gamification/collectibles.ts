@@ -1,4 +1,5 @@
 import type { ContentRepository, CollectibleGrant } from "@/lib/db";
+import { lastPathIndexForStage, stageIdForPathIndex } from "@/lib/path/shared-path-catalog";
 
 export interface CollectibleDef {
   id: string;
@@ -72,22 +73,26 @@ export const COLLECTIBLE_DEFS: CollectibleDef[] = [
 
 const COLLECTIBLE_BY_ID = new Map(COLLECTIBLE_DEFS.map((d) => [d.id, d]));
 
-/** Pre-A1 units map to themed starters; A1+ units cycle through the path pool. */
-const PRE_A1_COLLECTIBLE_IDS: Record<number, string> = {
-  [-4]: "creature-alphie",
-  [-3]: "creature-phonix",
-  [-2]: "creature-picto",
-  [-1]: "creature-tappy",
+/** Pre-A1 stages map to themed starters on completing the stage's last unit. */
+const PRE_A1_STAGE_COLLECTIBLE_IDS: Record<string, string> = {
+  alphabet: "creature-alphie",
+  phonics: "creature-phonix",
+  "picture-words": "creature-picto",
+  "listen-tap": "creature-tappy",
 };
 
 const PATH_POOL_IDS = ["creature-fox", "creature-owl", "creature-bunny", "creature-frog"] as const;
 
 /** Resolves the collectible definition earned by completing a unit at @unitIndex. */
 export function getCollectibleDefForUnitIndex(unitIndex: number): CollectibleDef | undefined {
-  const preA1Id = PRE_A1_COLLECTIBLE_IDS[unitIndex];
-  if (preA1Id) return COLLECTIBLE_BY_ID.get(preA1Id);
-
-  if (unitIndex < 0) return undefined;
+  if (unitIndex < 0) {
+    const stageId = stageIdForPathIndex(unitIndex);
+    if (!stageId) return undefined;
+    // Grant the themed creature when finishing the stage (last unit), not mid-runway.
+    if (lastPathIndexForStage(stageId) !== unitIndex) return undefined;
+    const preA1Id = PRE_A1_STAGE_COLLECTIBLE_IDS[stageId];
+    return preA1Id ? COLLECTIBLE_BY_ID.get(preA1Id) : undefined;
+  }
 
   const poolIndex =
     ((unitIndex % PATH_POOL_IDS.length) + PATH_POOL_IDS.length) % PATH_POOL_IDS.length;

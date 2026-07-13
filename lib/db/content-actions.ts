@@ -10,6 +10,7 @@ import type {
   NewContent,
   NewErrorEvent,
   NewUnit,
+  SharedPathUnitTemplateQuery,
 } from "@/lib/db/content-repository";
 import type {
   Card,
@@ -27,6 +28,8 @@ import type {
   Profile,
   ProfileSettings,
   QuestState,
+  SharedPathStage,
+  SharedPathUnitTemplate,
   Unit,
   Weakness,
 } from "@/lib/db/schema";
@@ -237,6 +240,30 @@ export async function repoGetChapterGate(tier: ChapterTier): Promise<ChapterGate
 
 export async function repoSaveChapterGate(gate: ChapterGate): Promise<void> {
   return (await getServerContentRepository()).saveChapterGate(gate);
+}
+
+export async function repoGetSharedPathStages(): Promise<SharedPathStage[]> {
+  return (await getServerContentRepository()).getSharedPathStages();
+}
+
+export async function repoPutSharedPathStage(stage: SharedPathStage): Promise<void> {
+  return (await getServerContentRepository()).putSharedPathStage(stage);
+}
+
+export async function repoQuerySharedPathUnitTemplates(
+  query?: SharedPathUnitTemplateQuery,
+): Promise<SharedPathUnitTemplate[]> {
+  return (await getServerContentRepository()).querySharedPathUnitTemplates(query);
+}
+
+export async function repoPutSharedPathUnitTemplate(
+  template: SharedPathUnitTemplate,
+): Promise<void> {
+  return (await getServerContentRepository()).putSharedPathUnitTemplate(template);
+}
+
+export async function repoDeleteSharedPathUnitTemplate(id: string): Promise<void> {
+  return (await getServerContentRepository()).deleteSharedPathUnitTemplate(id);
 }
 
 export async function repoClear(): Promise<void> {

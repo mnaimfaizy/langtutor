@@ -377,3 +377,59 @@ export interface Unit {
   bufferStatus: UnitBufferStatus;
   createdAt: Date;
 }
+
+/**
+ * Pre-A1 skill-family stages (ADR 0050 / 0053). Exam sections stay aligned to these four
+ * ids even when a stage spans multiple catalog units.
+ */
+export const PRE_A1_STAGE_IDS = ["alphabet", "phonics", "picture-words", "listen-tap"] as const;
+export type PreA1StageId = (typeof PRE_A1_STAGE_IDS)[number];
+
+/** Approval gate for shared path catalog templates (ADR 0051 — media-store spirit). */
+export type SharedPathCatalogApprovalStatus = "pending" | "approved" | "rejected";
+
+/** How a shared path catalog unit entered the store. */
+export type SharedPathProvenance = "human" | "ai-draft";
+
+/** Whether a catalog unit is richly authored or a thin reachable placeholder (ADR 0053). */
+export type SharedPathUnitRichness = "rich" | "placeholder";
+
+/**
+ * Shared stage metadata in the path catalog (ADR 0051 / 0055). Not per-learner — one row
+ * serves every profile. `readyForExam` is the admin enrichment bar (issue #128 wires the gate).
+ */
+export interface SharedPathStage {
+  id: PreA1StageId;
+  tier: "pre-A1";
+  title: string;
+  /** Curriculum guide spine section key (issue #124) this stage aligns to. */
+  spineSectionKey: string;
+  /** Display / path order among stages (0 = Alphabet runway). */
+  order: number;
+  readyForExam: boolean;
+  updatedAt: Date;
+}
+
+/**
+ * Shared unit template in the path catalog (ADR 0051). Learner `Unit` rows materialize from
+ * approved templates; they never invent a private curriculum tree.
+ */
+export interface SharedPathUnitTemplate {
+  id: string;
+  tier: "pre-A1";
+  stageId: PreA1StageId;
+  /** Order within the stage (0-based). */
+  stageOrder: number;
+  /** Absolute learning-path index (negative for pre-A1). */
+  pathIndex: number;
+  title: string;
+  teacherNote: string;
+  /** Activity slots — `done` / `contentId` are learner progress, not catalog fields. */
+  activities: UnitActivityRef[];
+  richness: SharedPathUnitRichness;
+  approvalStatus: SharedPathCatalogApprovalStatus;
+  provenance: SharedPathProvenance;
+  targetVocab: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}

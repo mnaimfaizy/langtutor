@@ -15,6 +15,7 @@ import type {
   NewContent,
   NewErrorEvent,
   NewUnit,
+  SharedPathUnitTemplateQuery,
 } from "./content-repository";
 import type { PostgresDrizzleClient } from "./drizzle/postgres-client";
 import { withUserRlsScope, type PostgresDrizzleScope } from "./drizzle/postgres-rls-scope";
@@ -33,6 +34,8 @@ import {
   questState as questStateTable,
   chapterGates as chapterGatesTable,
   profiles as profilesTable,
+  sharedPathStages as sharedPathStagesTable,
+  sharedPathUnitTemplates as sharedPathUnitTemplatesTable,
   units as unitsTable,
   weakness as weaknessTable,
 } from "./drizzle/schema.postgres";
@@ -51,6 +54,8 @@ import type {
   MediaAsset,
   MediaAssetKey,
   MediaAssetRecord,
+  SharedPathStage,
+  SharedPathUnitTemplate,
   Profile,
   ProfileSettings,
   QuestProgressEntry,
@@ -1209,6 +1214,134 @@ export class SupabaseContentRepository implements ContentRepository {
     });
   }
 
+  // ─── shared path catalog ──────────────────────────────────────────────────
+
+  async getSharedPathStages(): Promise<SharedPathStage[]> {
+    return this.scoped(async (db) => {
+      const rows = await db
+        .select()
+        .from(sharedPathStagesTable)
+        .orderBy(asc(sharedPathStagesTable.order));
+      return rows.map((row) => ({
+        id: row.id,
+        tier: "pre-A1" as const,
+        title: row.title,
+        spineSectionKey: row.spineSectionKey,
+        order: row.order,
+        readyForExam: row.readyForExam,
+        updatedAt: row.updatedAt,
+      }));
+    });
+  }
+
+  async putSharedPathStage(stage: SharedPathStage): Promise<void> {
+    await this.scoped(async (db) => {
+      await db
+        .insert(sharedPathStagesTable)
+        .values({
+          id: stage.id,
+          tier: stage.tier,
+          title: stage.title,
+          spineSectionKey: stage.spineSectionKey,
+          order: stage.order,
+          readyForExam: stage.readyForExam,
+          updatedAt: stage.updatedAt,
+        })
+        .onConflictDoUpdate({
+          target: sharedPathStagesTable.id,
+          set: {
+            tier: stage.tier,
+            title: stage.title,
+            spineSectionKey: stage.spineSectionKey,
+            order: stage.order,
+            readyForExam: stage.readyForExam,
+            updatedAt: stage.updatedAt,
+          },
+        });
+    });
+  }
+
+  async querySharedPathUnitTemplates(
+    query?: SharedPathUnitTemplateQuery,
+  ): Promise<SharedPathUnitTemplate[]> {
+    return this.scoped(async (db) => {
+      let rows = await db.select().from(sharedPathUnitTemplatesTable);
+      if (query?.tier) rows = rows.filter((r) => r.tier === query.tier);
+      if (query?.stageId) rows = rows.filter((r) => r.stageId === query.stageId);
+      if (query?.approvalStatus) {
+        rows = rows.filter((r) => r.approvalStatus === query.approvalStatus);
+      }
+      return rows
+        .map(
+          (row): SharedPathUnitTemplate => ({
+            id: row.id,
+            tier: "pre-A1",
+            stageId: row.stageId,
+            stageOrder: row.stageOrder,
+            pathIndex: row.pathIndex,
+            title: row.title,
+            teacherNote: row.teacherNote,
+            activities: JSON.parse(row.activities) as UnitActivityRef[],
+            richness: row.richness,
+            approvalStatus: row.approvalStatus,
+            provenance: row.provenance,
+            targetVocab: JSON.parse(row.targetVocab) as string[],
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          }),
+        )
+        .sort((a, b) => a.pathIndex - b.pathIndex);
+    });
+  }
+
+  async putSharedPathUnitTemplate(template: SharedPathUnitTemplate): Promise<void> {
+    const activitiesJson = JSON.stringify(template.activities.map((a) => ({ skill: a.skill })));
+    const targetVocabJson = JSON.stringify(template.targetVocab);
+    await this.scoped(async (db) => {
+      await db
+        .insert(sharedPathUnitTemplatesTable)
+        .values({
+          id: template.id,
+          tier: template.tier,
+          stageId: template.stageId,
+          stageOrder: template.stageOrder,
+          pathIndex: template.pathIndex,
+          title: template.title,
+          teacherNote: template.teacherNote,
+          activities: activitiesJson,
+          richness: template.richness,
+          approvalStatus: template.approvalStatus,
+          provenance: template.provenance,
+          targetVocab: targetVocabJson,
+          createdAt: template.createdAt,
+          updatedAt: template.updatedAt,
+        })
+        .onConflictDoUpdate({
+          target: sharedPathUnitTemplatesTable.id,
+          set: {
+            tier: template.tier,
+            stageId: template.stageId,
+            stageOrder: template.stageOrder,
+            pathIndex: template.pathIndex,
+            title: template.title,
+            teacherNote: template.teacherNote,
+            activities: activitiesJson,
+            richness: template.richness,
+            approvalStatus: template.approvalStatus,
+            provenance: template.provenance,
+            targetVocab: targetVocabJson,
+            updatedAt: template.updatedAt,
+          },
+        });
+    });
+  }
+
+  async deleteSharedPathUnitTemplate(id: string): Promise<void> {
+    await this.scoped(async (db) => {
+      await db.delete(sharedPathUnitTemplatesTable).where(eq(sharedPathUnitTemplatesTable.id, id));
+    });
+  }
+
   // ─── maintenance ──────────────────────────────────────────────────────────
 
   async clear(): Promise<void> {
@@ -1228,6 +1361,8 @@ export class SupabaseContentRepository implements ContentRepository {
       await db.delete(chapterGatesTable).where(eq(chapterGatesTable.userId, this.userId));
       await db.delete(lexiconCacheTable);
       await db.delete(mediaAssetsTable);
+      await db.delete(sharedPathStagesTable);
+      await db.delete(sharedPathUnitTemplatesTable);
       await db.delete(unitsTable).where(eq(unitsTable.userId, this.userId));
     });
   }

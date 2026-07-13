@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ChapterGate, ContentRepository, NewContent, NewUnit, Profile, Unit } from "@/lib/db";
 import {
+  PRE_A1_SKILL_TO_UNIT_INDEX,
   buildPreA1ReviewAssignment,
   isPreA1ExamStartAllowed,
   isReviewAssignmentComplete,
@@ -117,7 +118,9 @@ describe("selectReviewSkills / buildPreA1ReviewAssignment", () => {
     });
     expect(assignment.items.length).toBeGreaterThanOrEqual(1);
     expect(assignment.items.every((i) => i.done === false)).toBe(true);
-    expect(assignment.items.find((i) => i.skill === "alphabet")?.unitIndex).toBe(-4);
+    expect(assignment.items.find((i) => i.skill === "alphabet")?.unitIndex).toBe(
+      PRE_A1_SKILL_TO_UNIT_INDEX.alphabet,
+    );
     expect(assignment.attemptContentId).toBe(9);
   });
 

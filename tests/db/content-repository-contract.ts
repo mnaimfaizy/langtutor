@@ -823,6 +823,81 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
     });
 
     // -------------------------------------------------------------------------
+    describe("shared path catalog", () => {
+      const stage = {
+        id: "alphabet" as const,
+        tier: "pre-A1" as const,
+        title: "Alphabet",
+        spineSectionKey: "spine.stages.alphabet",
+        order: 0,
+        readyForExam: true,
+        updatedAt: new Date("2026-07-01T00:00:00.000Z"),
+      };
+
+      const template = {
+        id: "pre-a1.alphabet.meet-letters",
+        tier: "pre-A1" as const,
+        stageId: "alphabet" as const,
+        stageOrder: 0,
+        pathIndex: -6,
+        title: "Pre-A1: Alphabet — Meet the letters",
+        teacherNote: "Learn letter names.",
+        activities: [{ skill: "alphabet" as const }, { skill: "alphabet" as const }],
+        richness: "rich" as const,
+        approvalStatus: "approved" as const,
+        provenance: "human" as const,
+        targetVocab: [] as string[],
+        createdAt: new Date("2026-07-01T00:00:00.000Z"),
+        updatedAt: new Date("2026-07-01T00:00:00.000Z"),
+      };
+
+      it("returns no stages before any are stored", async () => {
+        expect(await repo.getSharedPathStages()).toEqual([]);
+      });
+
+      it("round-trips a shared path stage", async () => {
+        await repo.putSharedPathStage(stage);
+        expect(await repo.getSharedPathStages()).toEqual([stage]);
+      });
+
+      it("round-trips a shared path unit template", async () => {
+        await repo.putSharedPathUnitTemplate(template);
+        expect(await repo.querySharedPathUnitTemplates()).toEqual([template]);
+      });
+
+      it("filters templates by stage and approval status", async () => {
+        await repo.putSharedPathUnitTemplate(template);
+        await repo.putSharedPathUnitTemplate({
+          ...template,
+          id: "pre-a1.phonics.draft",
+          stageId: "phonics",
+          stageOrder: 0,
+          pathIndex: -3,
+          title: "Draft phonics",
+          richness: "placeholder",
+          approvalStatus: "pending",
+          provenance: "ai-draft",
+        });
+
+        expect(
+          await repo.querySharedPathUnitTemplates({
+            stageId: "alphabet",
+            approvalStatus: "approved",
+          }),
+        ).toHaveLength(1);
+        expect(await repo.querySharedPathUnitTemplates({ approvalStatus: "pending" })).toHaveLength(
+          1,
+        );
+      });
+
+      it("deleteSharedPathUnitTemplate removes the row", async () => {
+        await repo.putSharedPathUnitTemplate(template);
+        await repo.deleteSharedPathUnitTemplate(template.id);
+        expect(await repo.querySharedPathUnitTemplates()).toEqual([]);
+      });
+    });
+
+    // -------------------------------------------------------------------------
     describe("clear()", () => {
       it("wipes every table", async () => {
         await repo.saveProfile(makeProfile());
@@ -853,6 +928,15 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
           status: "pending",
           updatedAt: new Date(0),
         });
+        await repo.putSharedPathStage({
+          id: "alphabet",
+          tier: "pre-A1",
+          title: "Alphabet",
+          spineSectionKey: "spine.stages.alphabet",
+          order: 0,
+          readyForExam: false,
+          updatedAt: new Date(0),
+        });
 
         await repo.clear();
 
@@ -867,6 +951,7 @@ export function runContentRepositoryContract(factory: () => ContentRepository): 
         expect(await repo.getCollectibles()).toEqual([]);
         expect(await repo.getCollections()).toEqual([]);
         expect(await repo.getChapterGate("pre-A1")).toBeUndefined();
+        expect(await repo.getSharedPathStages()).toEqual([]);
       });
     });
 

@@ -4,6 +4,8 @@
  */
 import { type Page, expect, test } from "./fixtures";
 
+import { PRE_A1_FIRST_PATH_INDEX } from "@/lib/path/shared-path-catalog";
+
 const BATCH_SIZE = 6;
 const ALPHABET_LENGTH = 26;
 
@@ -56,7 +58,7 @@ test("pre-A1 alphabet unit renders letters with media and completes the slot", a
   await signUpKid(page);
   await completeOnboardingToHome(page);
 
-  const firstPreA1 = page.getByTestId("unit--4");
+  const firstPreA1 = page.getByTestId(`unit-${PRE_A1_FIRST_PATH_INDEX}`);
   await expect(firstPreA1).toBeVisible();
   await firstPreA1.click();
 

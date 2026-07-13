@@ -4,6 +4,8 @@
  */
 import { type Page, expect, test } from "./fixtures";
 
+import { PRE_A1_FIRST_PATH_INDEX } from "@/lib/path/shared-path-catalog";
+
 import { LISTEN_TAP_ROUNDS } from "@/lib/listen-tap/vocab";
 import { PICTURE_MATCH_ROUNDS } from "@/lib/picture-match/vocab";
 
@@ -79,7 +81,7 @@ async function completeOnboardingToHome(page: Page): Promise<void> {
 }
 
 async function completeAlphabetUnit(page: Page): Promise<void> {
-  await page.getByTestId("unit--4").click();
+  await page.getByTestId(`unit-${PRE_A1_FIRST_PATH_INDEX}`).click();
   await page.getByTestId("btn-start-activity-0").click();
   for (let i = 0; i < ALPHABET_LENGTH - 1; i++) {
     await page.getByTestId("btn-alphabet-next").click();

@@ -18,9 +18,13 @@ import type {
   MediaAssetKey,
   MediaAssetKind,
   MediaAssetRecord,
+  PreA1StageId,
   Profile,
   ProfileSettings,
   QuestState,
+  SharedPathCatalogApprovalStatus,
+  SharedPathStage,
+  SharedPathUnitTemplate,
   Skill,
   Unit,
   Weakness,
@@ -52,6 +56,13 @@ export interface ErrorEventQuery {
 export interface MediaAssetQuery {
   kind?: MediaAssetKind;
   approvalStatus?: MediaAssetApprovalStatus;
+}
+
+/** Optional filters for {@link ContentRepository.querySharedPathUnitTemplates}. */
+export interface SharedPathUnitTemplateQuery {
+  tier?: "pre-A1";
+  stageId?: PreA1StageId;
+  approvalStatus?: SharedPathCatalogApprovalStatus;
 }
 
 /**
@@ -154,6 +165,15 @@ export interface ContentRepository extends ContentSink {
   getChapterGate(tier: ChapterTier): Promise<ChapterGate | undefined>;
   /** Upserts the gate row for @gate.tier (pending / passed at minimum). */
   saveChapterGate(gate: ChapterGate): Promise<void>;
+
+  // shared path catalog (ADR 0051, issue #125) — shared across learners, like media assets
+  getSharedPathStages(): Promise<SharedPathStage[]>;
+  putSharedPathStage(stage: SharedPathStage): Promise<void>;
+  querySharedPathUnitTemplates(
+    query?: SharedPathUnitTemplateQuery,
+  ): Promise<SharedPathUnitTemplate[]>;
+  putSharedPathUnitTemplate(template: SharedPathUnitTemplate): Promise<void>;
+  deleteSharedPathUnitTemplate(id: string): Promise<void>;
 
   /** Wipe every table. Used by import/restore (Phase 8.2) and tests. */
   clear(): Promise<void>;

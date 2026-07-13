@@ -19,9 +19,9 @@ afterEach(async () => {
 });
 
 describe("DexieContentRepository — schema versioning", () => {
-  it("opens at version 8 with chapter gates", async () => {
+  it("opens at version 9 with shared path catalog", async () => {
     await db.open();
-    expect(db.verno).toBe(8);
+    expect(db.verno).toBe(9);
     expect(db.tables.map((t) => t.name).sort()).toEqual([
       "cardCollectionMembers",
       "cards",
@@ -35,6 +35,8 @@ describe("DexieContentRepository — schema versioning", () => {
       "mediaAssets",
       "profile",
       "questState",
+      "sharedPathStages",
+      "sharedPathUnitTemplates",
       "units",
       "weakness",
     ]);

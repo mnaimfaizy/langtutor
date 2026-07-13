@@ -5,6 +5,8 @@
  */
 import { type Page, expect, test } from "./fixtures";
 
+import { PRE_A1_FIRST_PATH_INDEX } from "@/lib/path/shared-path-catalog";
+
 const BATCH_SIZE = 6;
 
 test.beforeEach(async ({ request }) => {
@@ -41,7 +43,7 @@ test("kid-mode home starts with pre-A1 units before unit 0", async ({ page }) =>
   await signUpKid(page);
   await completeOnboardingToHome(page);
 
-  const firstPreA1 = page.getByTestId("unit--4");
+  const firstPreA1 = page.getByTestId(`unit-${PRE_A1_FIRST_PATH_INDEX}`);
   const unit0 = page.getByTestId("unit-0");
 
   await expect(firstPreA1).toBeVisible();
@@ -54,7 +56,7 @@ test("adult opt-in toggle seeds pre-A1 units without affecting A1+ nodes", async
   await completeOnboardingToHome(page);
 
   await expect(page.getByTestId("unit-0")).toHaveAttribute("data-status", "available");
-  await expect(page.getByTestId("unit--4")).toHaveCount(0);
+  await expect(page.getByTestId(`unit-${PRE_A1_FIRST_PATH_INDEX}`)).toHaveCount(0);
 
   await page.goto("/settings");
   await expect(page.getByTestId("pre-a1-settings-section")).toBeVisible();
@@ -63,7 +65,10 @@ test("adult opt-in toggle seeds pre-A1 units without affecting A1+ nodes", async
   await expect(page.getByRole("status")).toHaveText("Beginner path updated.");
 
   await page.goto("/home");
-  await expect(page.getByTestId("unit--4")).toHaveAttribute("data-status", "available");
+  await expect(page.getByTestId(`unit-${PRE_A1_FIRST_PATH_INDEX}`)).toHaveAttribute(
+    "data-status",
+    "available",
+  );
   await expect(page.getByTestId("unit-0")).toHaveAttribute("data-status", "locked");
   await expect(page.getByTestId("unit-1")).toHaveAttribute("data-status", "locked");
 });

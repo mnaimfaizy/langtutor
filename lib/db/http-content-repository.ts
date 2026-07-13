@@ -9,6 +9,7 @@ import type {
   NewContent,
   NewErrorEvent,
   NewUnit,
+  SharedPathUnitTemplateQuery,
 } from "./content-repository";
 import type {
   Card,
@@ -26,6 +27,8 @@ import type {
   Profile,
   ProfileSettings,
   QuestState,
+  SharedPathStage,
+  SharedPathUnitTemplate,
   Unit,
   Weakness,
 } from "./schema";
@@ -37,6 +40,7 @@ import {
   repoClear,
   repoDeleteCard,
   repoDeleteMediaAsset,
+  repoDeleteSharedPathUnitTemplate,
   repoSuspendCard,
   repoUnsuspendCard,
   repoResetCardProgress,
@@ -61,6 +65,7 @@ import {
   repoGetProfile,
   repoGetQuestState,
   repoGetSettings,
+  repoGetSharedPathStages,
   repoGetUnits,
   repoGetWeaknesses,
   repoGrantCollectible,
@@ -68,10 +73,13 @@ import {
   repoPutContent,
   repoPutLexiconEntry,
   repoPutMediaAsset,
+  repoPutSharedPathStage,
+  repoPutSharedPathUnitTemplate,
   repoPutWeakness,
   repoQueryContent,
   repoQueryErrorEvents,
   repoQueryMediaAssets,
+  repoQuerySharedPathUnitTemplates,
   repoSaveChapterGate,
   repoSaveGamification,
   repoSaveProfile,
@@ -223,6 +231,23 @@ export class HttpContentRepository implements ContentRepository {
   }
   saveChapterGate(gate: ChapterGate): Promise<void> {
     return repoSaveChapterGate(gate);
+  }
+  getSharedPathStages(): Promise<SharedPathStage[]> {
+    return repoGetSharedPathStages();
+  }
+  putSharedPathStage(stage: SharedPathStage): Promise<void> {
+    return repoPutSharedPathStage(stage);
+  }
+  querySharedPathUnitTemplates(
+    query?: SharedPathUnitTemplateQuery,
+  ): Promise<SharedPathUnitTemplate[]> {
+    return repoQuerySharedPathUnitTemplates(query);
+  }
+  putSharedPathUnitTemplate(template: SharedPathUnitTemplate): Promise<void> {
+    return repoPutSharedPathUnitTemplate(template);
+  }
+  deleteSharedPathUnitTemplate(id: string): Promise<void> {
+    return repoDeleteSharedPathUnitTemplate(id);
   }
   clear(): Promise<void> {
     return repoClear();

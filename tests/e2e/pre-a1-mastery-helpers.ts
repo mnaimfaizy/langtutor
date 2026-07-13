@@ -10,6 +10,10 @@ import { type Page, expect } from "./fixtures";
 import { LISTEN_TAP_ROUNDS } from "@/lib/listen-tap/vocab";
 import { PICTURE_MATCH_ROUNDS } from "@/lib/picture-match/vocab";
 import { preA1ExamItemCount } from "@/lib/path/exam";
+import {
+  PRE_A1_FIRST_PATH_INDEX,
+  buildBundledSharedPathUnitTemplates,
+} from "@/lib/path/shared-path-catalog";
 
 export const BATCH_SIZE = 6;
 export const ALPHABET_LENGTH = 26;
@@ -99,9 +103,13 @@ export async function configureAdultPreA1(
   await page.goto("/home");
   await expect(page.getByTestId("seed-ready")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("learning-path")).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId("unit--4")).toHaveAttribute("data-status", "available", {
-    timeout: 30_000,
-  });
+  await expect(page.getByTestId(`unit-${PRE_A1_FIRST_PATH_INDEX}`)).toHaveAttribute(
+    "data-status",
+    "available",
+    {
+      timeout: 30_000,
+    },
+  );
   await expect(page.getByTestId("unit-0")).toHaveAttribute("data-status", "locked", {
     timeout: 30_000,
   });
@@ -134,7 +142,7 @@ export async function switchToKidMode(page: Page): Promise<void> {
   await expect(page.getByTestId("seed-ready")).toBeVisible({ timeout: 15_000 });
 }
 
-type PreA1Index = -4 | -3 | -2 | -1;
+type PreA1Index = number;
 
 /**
  * Opens a specific pre-A1 unit from the standard path, or the current unit via kid-island Play!.
@@ -178,13 +186,13 @@ async function startPreA1Activity(
   page: Page,
   index: PreA1Index,
   activityPath: "alphabet" | "phonics" | "picture-match" | "listen-tap",
+  activityIndex = 0,
 ): Promise<void> {
   const unitId = await openPreA1Unit(page, index);
-  await page.goto(`/${activityPath}?unit=${unitId}&activity=0`);
+  await page.goto(`/${activityPath}?unit=${unitId}&activity=${activityIndex}`);
 }
 
-async function completeAlphabetUnit(page: Page): Promise<void> {
-  await startPreA1Activity(page, -4, "alphabet");
+async function completeAlphabetActivity(page: Page): Promise<void> {
   await expect(page.getByTestId("alphabet-letter")).toHaveText("A");
   for (let i = 0; i < ALPHABET_LENGTH - 1; i++) {
     const next = String.fromCharCode(65 + i + 1);
@@ -192,11 +200,9 @@ async function completeAlphabetUnit(page: Page): Promise<void> {
     await expect(page.getByTestId("alphabet-letter")).toHaveText(next);
   }
   await page.getByTestId("btn-alphabet-next").click();
-  await expect(page.getByTestId("unit-complete-message")).toBeVisible({ timeout: 20_000 });
 }
 
-async function completePhonicsUnit(page: Page): Promise<void> {
-  await startPreA1Activity(page, -3, "phonics");
+async function completePhonicsActivity(page: Page): Promise<void> {
   await expect(page.getByTestId("phonics-choices")).toBeVisible();
   for (let i = 0; i < ALPHABET_LENGTH; i++) {
     const letter = String.fromCharCode(97 + i);
@@ -208,28 +214,23 @@ async function completePhonicsUnit(page: Page): Promise<void> {
       await expect(page.getByTestId("phonics-choices")).toBeVisible();
     }
   }
-  await expect(page.getByTestId("unit-complete-message")).toBeVisible({ timeout: 20_000 });
 }
 
-async function completePictureMatchUnit(page: Page): Promise<void> {
-  await startPreA1Activity(page, -2, "picture-match");
+async function completePictureMatchActivity(page: Page): Promise<void> {
   await expect(page.getByTestId("picture-match-choices")).toBeVisible();
   for (let i = 0; i < PICTURE_MATCH_ROUNDS.length; i++) {
     const target = PICTURE_MATCH_ROUNDS[i]!.targetWord;
     await page.getByTestId(`picture-match-choice-${target}`).click();
     await expect(page.getByTestId("picture-match-feedback")).toBeVisible();
     await page.getByTestId("btn-picture-match-next").click();
-    // Last round navigates back to the unit player; earlier rounds remount choices.
     if (i < PICTURE_MATCH_ROUNDS.length - 1) {
       await expect(page.getByTestId("picture-match-feedback")).toHaveCount(0);
       await expect(page.getByTestId("picture-match-choices")).toBeVisible();
     }
   }
-  await expect(page.getByTestId("unit-complete-message")).toBeVisible({ timeout: 20_000 });
 }
 
-async function completeListenTapUnit(page: Page): Promise<void> {
-  await startPreA1Activity(page, -1, "listen-tap");
+async function completeListenTapActivity(page: Page): Promise<void> {
   await expect(page.getByTestId("listen-tap-choices")).toBeVisible();
   for (let i = 0; i < LISTEN_TAP_ROUNDS.length; i++) {
     const target = LISTEN_TAP_ROUNDS[i]!.targetWord;
@@ -241,15 +242,38 @@ async function completeListenTapUnit(page: Page): Promise<void> {
       await expect(page.getByTestId("listen-tap-choices")).toBeVisible();
     }
   }
+}
+
+async function completeCatalogUnit(
+  page: Page,
+  pathIndex: number,
+  activities: readonly { skill: string }[],
+): Promise<void> {
+  for (let activityIndex = 0; activityIndex < activities.length; activityIndex++) {
+    const skill = activities[activityIndex]!.skill;
+    const activityPath =
+      skill === "picture-match"
+        ? "picture-match"
+        : skill === "listen-tap"
+          ? "listen-tap"
+          : skill === "phonics"
+            ? "phonics"
+            : "alphabet";
+    await startPreA1Activity(page, pathIndex, activityPath, activityIndex);
+    if (activityPath === "alphabet") await completeAlphabetActivity(page);
+    else if (activityPath === "phonics") await completePhonicsActivity(page);
+    else if (activityPath === "picture-match") await completePictureMatchActivity(page);
+    else await completeListenTapActivity(page);
+  }
   await expect(page.getByTestId("unit-complete-message")).toBeVisible({ timeout: 20_000 });
 }
 
-/** Completes all four pre-A1 units (standard path or kid island). */
+/** Completes every shared-starter pre-A1 unit (standard path or kid island). */
 export async function completeAllPreA1Units(page: Page): Promise<void> {
-  await completeAlphabetUnit(page);
-  await completePhonicsUnit(page);
-  await completePictureMatchUnit(page);
-  await completeListenTapUnit(page);
+  const templates = buildBundledSharedPathUnitTemplates();
+  for (const template of templates) {
+    await completeCatalogUnit(page, template.pathIndex, template.activities);
+  }
   await page.goto("/home");
   await expect(page.getByTestId("seed-ready")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("learning-path")).toBeVisible({ timeout: 30_000 });

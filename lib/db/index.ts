@@ -39,13 +39,19 @@ export type {
   QuestProgressEntry,
   QuestState,
   Skill,
+  SharedPathStage,
+  SharedPathUnitTemplate,
+  SharedPathCatalogApprovalStatus,
+  SharedPathProvenance,
+  SharedPathUnitRichness,
+  PreA1StageId,
   Unit,
   UnitActivityRef,
   UnitBufferStatus,
   UnitStatus,
   Weakness,
 } from "./schema";
-export { DEFAULT_EXPERIENCE_MODE, DEFAULT_PROGRESSION_MODE } from "./schema";
+export { DEFAULT_EXPERIENCE_MODE, DEFAULT_PROGRESSION_MODE, PRE_A1_STAGE_IDS } from "./schema";
 
 export type { BackupData } from "../backup/schema";
 
@@ -60,4 +66,5 @@ export type {
   NewContent,
   NewErrorEvent,
   NewUnit,
+  SharedPathUnitTemplateQuery,
 } from "./content-repository";

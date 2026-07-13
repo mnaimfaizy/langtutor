@@ -15,15 +15,16 @@ import type {
 } from "@/lib/db";
 
 import { PRE_A1_CHAPTER_TIER } from "../chapter-gate";
+import { reviewPathIndexForStage } from "../shared-path-catalog";
 import { PreA1ExamSkillSchema, type PreA1ExamSkill } from "./schemas";
 import type { ExamScoreBreakdown } from "./scoring";
 import { PRE_A1_EXAM_SKILLS } from "./shape";
 
 export const PRE_A1_SKILL_TO_UNIT_INDEX: Record<PreA1ExamSkill, number> = {
-  alphabet: -4,
-  phonics: -3,
-  "picture-words": -2,
-  "listen-tap": -1,
+  alphabet: reviewPathIndexForStage("alphabet"),
+  phonics: reviewPathIndexForStage("phonics"),
+  "picture-words": reviewPathIndexForStage("picture-words"),
+  "listen-tap": reviewPathIndexForStage("listen-tap"),
 };
 
 export const PRE_A1_REVIEW_SKILL_LABEL: Record<PreA1ExamSkill, string> = {

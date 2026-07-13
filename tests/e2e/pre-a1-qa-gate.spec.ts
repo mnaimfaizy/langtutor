@@ -4,6 +4,8 @@
  * all four activity types, and handoff from the last pre-A1 unit into unit 0.
  */
 import { type Page, expect, test } from "./fixtures";
+
+import { PRE_A1_FIRST_PATH_INDEX } from "@/lib/path/shared-path-catalog";
 import { stubMacApis } from "./stub-mac-apis";
 
 import { ALPHABET_ENTRIES } from "@/lib/alphabet/vocab";
@@ -128,7 +130,7 @@ async function expectImageLoaded(page: Page, testId: string): Promise<void> {
 }
 
 async function completeAlphabetUnit(page: Page): Promise<void> {
-  await page.getByTestId("unit--4").click();
+  await page.getByTestId(`unit-${PRE_A1_FIRST_PATH_INDEX}`).click();
   await page.getByTestId("btn-start-activity-0").click();
   for (let i = 0; i < ALPHABET_LENGTH - 1; i++) {
     await page.getByTestId("btn-alphabet-next").click();
@@ -195,7 +197,7 @@ test("seeded pack images render while the image generator is unreachable", async
   });
   expect(generatorDownStatus).toBe(502);
 
-  await page.getByTestId("unit--4").click();
+  await page.getByTestId(`unit-${PRE_A1_FIRST_PATH_INDEX}`).click();
   await page.getByTestId("btn-start-activity-0").click();
 
   await expect(page.getByTestId("alphabet-letter")).toHaveText("A");
@@ -260,7 +262,7 @@ test("pending asset is hidden from learners until admin approval", async ({ brow
 
     await signUpKid(kidPage);
     await completeOnboardingToHome(kidPage);
-    await kidPage.getByTestId("unit--4").click();
+    await kidPage.getByTestId(`unit-${PRE_A1_FIRST_PATH_INDEX}`).click();
     await kidPage.getByTestId("btn-start-activity-0").click();
     await expect(kidPage.getByTestId("alphabet-letter")).toHaveText("A");
     await expectImageNotLoaded(kidPage, "alphabet-picture");

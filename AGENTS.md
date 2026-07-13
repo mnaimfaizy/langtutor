@@ -70,6 +70,8 @@ Full detail in `docs/architecture.md`. Key points:
   of the client graph — environment splitting does.
 - **`lib/content/`:** `grammar-map.ts` (39-entry A1–C2 map) · `content-validator.ts` ·
   `embeddings.ts` · `pipeline.ts`.
+- **`lib/path/`:** backbone + shared pre-A1 path catalog (`shared-path-catalog.ts`) seed the
+  learning path; learner units materialize from approved catalog templates (ADR 0051).
 - **`lib/lexicon/`:** `wordnet-query.ts` / `cefr-lookup.ts` (pure fns, data injected) ·
   `lexicon-provider.ts` (interface) · `local-lexicon-provider.ts` (impl) ·
   `data-loader.ts` (server-only) · `server.ts` (server-only singleton).

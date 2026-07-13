@@ -11,8 +11,11 @@ import type {
   LexiconCacheEntry,
   MediaAsset,
   MediaAssetKind,
+  PreA1StageId,
   Profile,
   QuestState,
+  SharedPathStage,
+  SharedPathUnitTemplate,
   Skill,
   Unit,
   Weakness,
@@ -70,6 +73,10 @@ export class LangTutorDB extends Dexie {
   cardCollectionMembers!: Table<CardCollectionMember, CardCollectionMemberKey>;
   /** Keyed by chapter tier (`pre-A1`, `A1`, …). */
   chapterGates!: Table<ChapterGate, string>;
+  /** Shared path catalog stages (ADR 0051, issue #125) — keyed by stage id. */
+  sharedPathStages!: Table<SharedPathStage, PreA1StageId>;
+  /** Shared path catalog unit templates — keyed by template id. */
+  sharedPathUnitTemplates!: Table<SharedPathUnitTemplate, string>;
 
   constructor(name = "lang-tutor") {
     super(name);
@@ -124,6 +131,11 @@ export class LangTutorDB extends Dexie {
     // v8: chapter mastery-gate status (ADR 0043, issue #114).
     this.version(8).stores({
       chapterGates: "tier",
+    });
+    // v9: shared pre-A1 path catalog (ADR 0051, issue #125).
+    this.version(9).stores({
+      sharedPathStages: "id, order",
+      sharedPathUnitTemplates: "id, stageId, pathIndex, approvalStatus",
     });
   }
 }

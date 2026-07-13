@@ -97,6 +97,18 @@ describe("per-user isolation", () => {
       await repo2.getMediaAsset({ kind: "image", key: "apple", style: "default" }),
     ).toBeDefined();
 
+    // Shared: path catalog written by user1 is readable by user2
+    await repo1.putSharedPathStage({
+      id: "alphabet",
+      tier: "pre-A1",
+      title: "Alphabet",
+      spineSectionKey: "spine.stages.alphabet",
+      order: 0,
+      readyForExam: true,
+      updatedAt: new Date(),
+    });
+    expect(await repo2.getSharedPathStages()).toHaveLength(1);
+
     // Per-user: user1's learning path is invisible to user2
     await repo1.addUnit({
       index: 0,

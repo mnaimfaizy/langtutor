@@ -10,6 +10,7 @@ import type {
   NewContent,
   NewErrorEvent,
   NewUnit,
+  SharedPathUnitTemplateQuery,
 } from "./content-repository";
 import type {
   Card,
@@ -27,6 +28,8 @@ import type {
   Profile,
   ProfileSettings,
   QuestState,
+  SharedPathStage,
+  SharedPathUnitTemplate,
   Unit,
   Weakness,
 } from "./schema";
@@ -337,6 +340,39 @@ export class DexieContentRepository implements ContentRepository {
       ...gate,
       reviewAssignment: gate.reviewAssignment ?? null,
     });
+  }
+
+  // shared path catalog -----------------------------------------------------
+  async getSharedPathStages(): Promise<SharedPathStage[]> {
+    return this.db.sharedPathStages.orderBy("order").toArray();
+  }
+
+  async putSharedPathStage(stage: SharedPathStage): Promise<void> {
+    await this.db.sharedPathStages.put(stage);
+  }
+
+  async querySharedPathUnitTemplates(
+    query?: SharedPathUnitTemplateQuery,
+  ): Promise<SharedPathUnitTemplate[]> {
+    let rows = await this.db.sharedPathUnitTemplates.toArray();
+    if (query?.tier) rows = rows.filter((r) => r.tier === query.tier);
+    if (query?.stageId) rows = rows.filter((r) => r.stageId === query.stageId);
+    if (query?.approvalStatus) {
+      rows = rows.filter((r) => r.approvalStatus === query.approvalStatus);
+    }
+    return rows.sort((a, b) => a.pathIndex - b.pathIndex);
+  }
+
+  async putSharedPathUnitTemplate(template: SharedPathUnitTemplate): Promise<void> {
+    await this.db.sharedPathUnitTemplates.put({
+      ...template,
+      activities: template.activities.map((a) => ({ skill: a.skill })),
+      targetVocab: template.targetVocab.slice(),
+    });
+  }
+
+  async deleteSharedPathUnitTemplate(id: string): Promise<void> {
+    await this.db.sharedPathUnitTemplates.delete(id);
   }
 
   // maintenance -------------------------------------------------------------

@@ -21,6 +21,15 @@ export const CHAPTER_GATE_STATUS_VALUES = [
   "passed",
 ] as const;
 export const PROGRESSION_MODE_VALUES = ["strict", "open"] as const;
+export const PRE_A1_STAGE_ID_VALUES = [
+  "alphabet",
+  "phonics",
+  "picture-words",
+  "listen-tap",
+] as const;
+export const SHARED_PATH_APPROVAL_STATUS_VALUES = ["pending", "approved", "rejected"] as const;
+export const SHARED_PATH_PROVENANCE_VALUES = ["human", "ai-draft"] as const;
+export const SHARED_PATH_RICHNESS_VALUES = ["rich", "placeholder"] as const;
 
 export type ChatProvider = (typeof CHAT_PROVIDER_VALUES)[number];
 export type SttProvider = (typeof STT_PROVIDER_VALUES)[number];

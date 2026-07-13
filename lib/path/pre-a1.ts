@@ -1,7 +1,7 @@
 /**
- * Pre-A1 tier path plumbing (ADR 0016, issue #66). Backbone placeholder units at negative
- * indices ahead of unit 0 — real activity content arrives in later slices; this slice proves
- * the tier, adult opt-in, and handoff into A1 via the existing unlock state machine.
+ * Pre-A1 tier path plumbing (ADR 0016 / 0049–0053, issues #66 / #125). Negative-index
+ * units ahead of unit 0 materialize from the shared path catalog — same four-stage
+ * skeleton for every kid / enablePreA1 adult, with no LLM on day one.
  */
 import {
   DEFAULT_EXPERIENCE_MODE,
@@ -9,43 +9,24 @@ import {
   type NewUnit,
   type Profile,
   type Unit,
-  type UnitActivityRef,
 } from "@/lib/db";
 
-import { backboneActivities } from "./backbone-planner";
+import {
+  buildBundledSharedPathUnitTemplates,
+  materializePreA1UnitsFromCatalog,
+} from "./shared-path-catalog";
+
+export {
+  alphabetActivities,
+  listenTapActivities,
+  phonicsActivities,
+  pictureMatchActivities,
+} from "./pre-a1-activities";
+
+export { PRE_A1_UNIT_COUNT, PRE_A1_FIRST_PATH_INDEX } from "./shared-path-catalog";
 
 /** Display / chapter tier — negative-index units are pre-A1 regardless of `targetCefr`. */
 export type PathTier = Cefr | "pre-A1";
-
-/** Single alphabet activity slot for the first pre-A1 unit (issue #71). */
-export function alphabetActivities(): UnitActivityRef[] {
-  return [{ skill: "alphabet" }];
-}
-
-/** Single phonics activity slot for the second pre-A1 unit (issue #72). */
-export function phonicsActivities(): UnitActivityRef[] {
-  return [{ skill: "phonics" }];
-}
-
-/** Single picture-match activity slot for the third pre-A1 unit (issue #74). */
-export function pictureMatchActivities(): UnitActivityRef[] {
-  return [{ skill: "picture-match" }];
-}
-
-/** Single listen-and-tap activity slot for the fourth pre-A1 unit (issue #73). */
-export function listenTapActivities(): UnitActivityRef[] {
-  return [{ skill: "listen-tap" }];
-}
-
-/** Placeholder backbone topics for the four pre-A1 activity slices (issues #71–#74). */
-const PRE_A1_TOPICS = [
-  { title: "Alphabet", note: "Learn letters, sounds, and pictures." },
-  { title: "Phonics", note: "Connect sounds to letters and words." },
-  { title: "Picture words", note: "Match pictures and words." },
-  { title: "Listen & tap", note: "Listen and tap the right choice." },
-] as const;
-
-export const PRE_A1_UNIT_COUNT = PRE_A1_TOPICS.length;
 
 export function isPreA1Unit(unit: Pick<Unit, "index">): boolean {
   return unit.index < 0;
@@ -97,27 +78,10 @@ export function shouldShowKidIsland(
   return mode === "kid" && !hasReachedFirstA1Unit(units);
 }
 
-/** Deterministic backbone placeholders at indices `-count … -1`; only the first unlocks. */
+/**
+ * Deterministic shared starter units (ADR 0053). Pure — no LLM. Uses the bundled catalog
+ * templates so two fresh profiles always receive identical structure.
+ */
 export function seedPreA1Units(now: Date = new Date()): NewUnit[] {
-  return PRE_A1_TOPICS.map((topic, i) => ({
-    index: i - PRE_A1_UNIT_COUNT,
-    title: `Pre-A1: ${topic.title}`,
-    teacherNote: topic.note,
-    targetGrammarIds: [],
-    targetVocab: [],
-    targetCefr: "A1",
-    activities:
-      i === 0
-        ? alphabetActivities()
-        : i === 1
-          ? phonicsActivities()
-          : i === 2
-            ? pictureMatchActivities()
-            : i === 3
-              ? listenTapActivities()
-              : backboneActivities(),
-    status: i === 0 ? "available" : "locked",
-    bufferStatus: "empty",
-    createdAt: now,
-  }));
+  return materializePreA1UnitsFromCatalog(buildBundledSharedPathUnitTemplates(), now);
 }
