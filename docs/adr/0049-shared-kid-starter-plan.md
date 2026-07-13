@@ -10,7 +10,7 @@ account** waits on **per-user AI plan generation** plus **admin approval**, the
 path sticks whenever the Mac or admin is unavailable.
 
 Pedagogically, the current four pre-A1 units (Alphabet → Phonics → Picture words
-→ Listen & tap) are the right *skill families*, but the jump after Alphabet into
+→ Listen & tap) are the right _skill families_, but the jump after Alphabet into
 phonics/word work is too steep for kindergarten beginners (“Kennedy” / KG kids)
 who do not yet know those words/sounds.
 

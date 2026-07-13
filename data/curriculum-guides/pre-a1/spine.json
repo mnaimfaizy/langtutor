@@ -1,0 +1,47 @@
+{
+  "id": "pre-a1-spine",
+  "title": "Pre-A1 syllabus spine (Lang-Tutor blueprint)",
+  "version": 1,
+  "sections": [
+    {
+      "key": "spine.overview",
+      "title": "Chapter overview",
+      "body": "Pre-A1 is the shared beginner chapter before CEFR A1. It builds letter knowledge, gentle letter–sound links, concrete picture vocabulary, and single-word / short-phrase listening recognition. The spine is kids-first; adults who opt into pre-A1 follow the same fundamental ladder. Teaching stance: short concrete practice, celebrate small wins, name specific skills to revisit. Do not treat A1 grammar constructions (present-simple narratives, articles as a focus topic, etc.) as chapter goals."
+    },
+    {
+      "key": "spine.stages.alphabet",
+      "title": "Stage: Alphabet runway",
+      "body": "Opening stage — a longer Alphabet / early-literacy runway. Learners recognise and order letters A–Z, pair upper/lower case, and meet letter names with pictures. Early GPC work appears only as gentle letters & sounds inside or immediately after this runway — not as an abrupt leap into a hard phonics unit. Prefer multi-unit practice over a single shallow alphabet activity."
+    },
+    {
+      "key": "spine.stages.letters-and-sounds",
+      "title": "Stage bridge: Letters & sounds",
+      "body": "Bridge inside/after the Alphabet runway. Oral sound play, first simple letter–sound links, and very light blending of short CVC-style items when ready. Keep prompts playful and concrete. Defer denser alternative spellings and long word work to later literacy (beyond this chapter’s core bar)."
+    },
+    {
+      "key": "spine.stages.phonics",
+      "title": "Stage: Phonics",
+      "body": "Explicit Phonics stage after the Alphabet / letters & sounds runway. Focus on reliable single-letter GPCs, short vowels, and blending/segmenting of very short words. Stay within the distilled early-phase ladder in phonics.json. Avoid introducing complex digraph sets or spelling rules as pre-A1 chapter goals."
+    },
+    {
+      "key": "spine.stages.picture-words",
+      "title": "Stage: Picture words",
+      "body": "High-frequency concrete nouns and everyday labels (colours, family, food, animals, classroom objects). Match picture ↔ word without long sentences. Prefer original Lang-Tutor vocab sets oriented by Starters-style topic families — do not inject commercial wordlists into prompts."
+    },
+    {
+      "key": "spine.stages.listen-tap",
+      "title": "Stage: Listen & tap",
+      "body": "Recognise spoken letters/words from a short spoken prompt. Prefer clear, slow, single-word or short-phrase recognition over full dialogues. Tap/select the matching picture or letter; keep distractors visually and phonically fair for beginners."
+    },
+    {
+      "key": "spine.exam-alignment",
+      "title": "Chapter exam alignment",
+      "body": "The pre-A1 chapter exam still maps to the four skill families (Alphabet, Phonics, Picture words, Listen & tap) even when each family spans multiple units. Exam items stay short and concrete. A1 unlock waits on product gate rules (pass thresholds, progression mode, and any admin enrichment readiness flags) — the spine orients content, it does not bypass the gate."
+    },
+    {
+      "key": "spine.teaching-stance",
+      "title": "Teaching stance for AI / humans",
+      "body": "Use this spine as fundamental orientation, not a rigid script. Invent original Lang-Tutor activities and wording that follow the stage order. You may adapt with model knowledge, but do not contradict the grammar backbone, exam skill shape, or hybrid licensing rules (no full commercial corpora in prompts)."
+    }
+  ]
+}

@@ -31,6 +31,5 @@ unengaging for both audiences.
   not adult CEFR A0 coursebooks as the primary reference.
 - Adult `enablePreA1` content aligns to the kid syllabus; do not fork two
   pre-A1 spines.
-- Richer units, multi-activity practice, and later AI-invented units (ADR 0040,
-  0045) are judged partly on engagement, not only coverage.
+- Richer units, multi-activity practice, and later AI-invented units (ADR 0040, 0045) are judged partly on engagement, not only coverage.
 - Licensing and title selection still follow ADR 0040 / 0041 / 0045.

@@ -24,7 +24,7 @@ media (admin gate before learners see assets).
    - Do **not** commit full commercial corpora or rely on CC BY-NC as primary.
 
 2. **Blueprint, not borrowed curriculum:** the in-product SoT is a
-   Lang-Tutor-authored **syllabus spine / blueprint** *oriented by* Starters (and
+   Lang-Tutor-authored **syllabus spine / blueprint** _oriented by_ Starters (and
    the phonics distillation). We create our own units, vocab sets, activities,
    exams, and teacher plans — we do not need or ship Cambridge’s full curriculum
    as content.

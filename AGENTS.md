@@ -127,11 +127,12 @@ Not sure which skill to use? Start with **`/ask-matt`**.
 
 ```
 app/        Next.js App Router. app/api/* = the ONLY callers of the Mac.
-lib/        Seams + pure logic (llm, lexicon, content, srs, diagnostics,
-            gamification, db, agent, transcriber, audio, tts, placement,
-            deck, backup) + registry.ts (composition root).
+lib/        Seams + pure logic (llm, lexicon, content, curriculum-guides,
+            srs, diagnostics, gamification, db, agent, transcriber, audio,
+            tts, placement, deck, backup) + registry.ts (composition root).
 ui/         Our component layer wrapping Base UI.
-data/       Bundled datasets (WordNet, Words-CEFR, grammar map, seed).
+data/       Bundled datasets (WordNet, Words-CEFR, grammar map, seed,
+            curriculum-guides/pre-a1).
 workers/    Web workers (WER, audio normalize).
 tests/      Vitest unit + Playwright e2e.
 docs/       Architecture, conventions, roadmap history, decisions.

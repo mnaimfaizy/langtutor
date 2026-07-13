@@ -1,0 +1,38 @@
+{
+  "id": "pre-a1-phonics",
+  "title": "Pre-A1 phonics distillation (Letters and Sounds–style)",
+  "version": 1,
+  "attribution": "Distilled pedagogical structure oriented by Letters and Sounds (DfES-00281-2007, Crown copyright 2007). See SOURCES.md. Lang-Tutor rewrite — not a PDF republication.",
+  "sections": [
+    {
+      "key": "phonics.ladder.overview",
+      "title": "Early phonics ladder overview",
+      "body": "Pre-A1 uses a gentle phase ladder: (1) oral sound awareness and blending without letters; (2) first simple GPCs with short practice words; (3) remaining single letters and a few common digraphs only when ready; (4) adjacent consonants (CVCC/CCVC) as a stretch, not a day-one goal. Later Letters and Sounds phases (broad alternative spellings, longer morphology) are out of scope for this chapter’s core bar."
+    },
+    {
+      "key": "phonics.phase.oral",
+      "title": "Phase: Oral awareness",
+      "body": "Environmental sounds, voice sounds, rhythm and rhyme, oral blending and segmenting of short spoken words. No letter symbols required. Goal: hear and play with sounds before mapping them to print."
+    },
+    {
+      "key": "phonics.phase.early-gpcs",
+      "title": "Phase: Early GPCs",
+      "body": "Introduce a small set of high-utility single-letter GPCs (classic early set includes letters such as s, a, t, p, i, n, m, d) with short practice words. Keep grapheme–phoneme links consistent; celebrate accurate sounding and blending of very short words."
+    },
+    {
+      "key": "phonics.phase.more-letters",
+      "title": "Phase: More letters (gentle)",
+      "body": "Add remaining single letters and only a few common digraphs when the learner is steady on early GPCs. Prefer accuracy and confidence over coverage speed. Do not dump full digraph charts into beginner prompts."
+    },
+    {
+      "key": "phonics.phase.adjacent-consonants",
+      "title": "Phase: Adjacent consonants (stretch)",
+      "body": "Optional stretch for stronger beginners: CVCC and CCVC shapes (e.g. lamp, stop). Still keep vocabulary concrete and short. Skip if the Alphabet runway or early GPCs are not yet secure."
+    },
+    {
+      "key": "phonics.out-of-scope",
+      "title": "Out of scope for pre-A1 core",
+      "body": "Broad alternative vowel spellings, advanced morphology, long irregular word banks, and full handbook activity scripts from Letters and Sounds are not pre-A1 chapter goals. Point advanced literacy to later tiers."
+    }
+  ]
+}

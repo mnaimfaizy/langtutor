@@ -11,7 +11,5 @@ export function imageGenerateAbortSignal(
 }
 
 export function isAbortOrTimeoutError(cause: unknown): boolean {
-  return (
-    cause instanceof Error && (cause.name === "TimeoutError" || cause.name === "AbortError")
-  );
+  return cause instanceof Error && (cause.name === "TimeoutError" || cause.name === "AbortError");
 }

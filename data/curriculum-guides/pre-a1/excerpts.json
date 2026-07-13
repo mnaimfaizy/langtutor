@@ -1,0 +1,22 @@
+{
+  "id": "pre-a1-excerpts",
+  "title": "Short Starters / CEFR paraphrases (Lang-Tutor authored)",
+  "version": 1,
+  "sections": [
+    {
+      "key": "excerpts.starters.intent",
+      "title": "Cambridge Pre A1 Starters — cited intent (paraphrase)",
+      "body": "Cite: Cambridge English Qualifications — Pre A1 Starters (Young Learners). Lang-Tutor paraphrase (not handbook text): Starters-oriented beginners practise recognising letters, linking simple sounds and words, naming everyday pictures, and responding to short listening prompts. Use this as a pedagogical north star for topic families and skill balance — do not redistribute Cambridge wordlists, handbooks, or papers."
+    },
+    {
+      "key": "excerpts.starters.skill-families",
+      "title": "Starters-oriented skill families (paraphrase)",
+      "body": "Lang-Tutor paraphrase aligned to Starters-style early skills: (1) letters and basic phonics readiness; (2) concrete vocabulary via pictures; (3) listening for the right word or picture; (4) very short spoken recognising responses. Our chapter stages map these families to Alphabet → Phonics → Picture words → Listen & tap."
+    },
+    {
+      "key": "excerpts.cefr.pre-a1",
+      "title": "CEFR Pre-A1 framing (paraphrase)",
+      "body": "Cite: CEFR / Council of Europe Pre-A1 idea as level framing only. Lang-Tutor paraphrase: Pre-A1 describes foundations below A1 — recognising familiar words and letters, following very simple spoken prompts, and building confidence before independent A1 sentences and constructions. Prefer our spine over long descriptor tables; do not paste CoE handbook extracts into prompts."
+    }
+  ]
+}
