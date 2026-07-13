@@ -78,6 +78,18 @@ function makeFakeRepo(units: Unit[] = []): FakeRepo {
     async getProfile() {
       return undefined;
     },
+    async getSharedPathStages() {
+      const ids = ["alphabet", "phonics", "picture-words", "listen-tap"] as const;
+      return ids.map((id, order) => ({
+        id,
+        tier: "pre-A1" as const,
+        title: id,
+        spineSectionKey: `spine.stages.${id}`,
+        order,
+        readyForExam: true,
+        updatedAt: new Date(0),
+      }));
+    },
   } as unknown as FakeRepo;
 }
 

@@ -274,14 +274,27 @@ export async function completeAllPreA1Units(page: Page): Promise<void> {
   for (const template of templates) {
     await completeCatalogUnit(page, template.pathIndex, template.activities);
   }
+  // Starter catalog only marks Alphabet ready — exam gate needs all four stages (issue #128).
+  await markSharedStagesReadyForExam(page, true);
   await page.goto("/home");
   await expect(page.getByTestId("seed-ready")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("learning-path")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("unit--1")).toHaveAttribute("data-status", "completed", {
     timeout: 30_000,
   });
-  // Gate CTA must appear once pre-A1 is done and the chapter gate is not passed.
+  // Gate CTA must appear once pre-A1 is done, stages are ready, and the gate is not passed.
   await expect(page.getByTestId("chapter-gate-pending-cta")).toBeVisible({ timeout: 30_000 });
+}
+
+/** Admin enrichment bar for e2e — marks every shared pre-A1 stage ready (or not). */
+export async function markSharedStagesReadyForExam(
+  page: Page,
+  readyForExam: boolean,
+): Promise<void> {
+  const res = await page.request.post("/api/test/shared-path-stages-ready", {
+    data: { readyForExam },
+  });
+  expect(res.ok()).toBe(true);
 }
 
 export async function expectGatePendingCta(

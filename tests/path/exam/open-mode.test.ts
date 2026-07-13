@@ -145,6 +145,7 @@ describe("open mode end-to-end (issue #119)", () => {
       shouldShowPreA1ChapterGatePendingCta({
         units: [...completedPreA1, unit({ id: 10, index: 0, status: "available" })],
         gateStatus: "pending",
+        stagesReadyForExam: true,
       }),
     ).toBe(true);
     expect(
@@ -152,6 +153,7 @@ describe("open mode end-to-end (issue #119)", () => {
         profile,
         units: [...completedPreA1, unit({ id: 10, index: 0, status: "available" })],
         gateStatus: "pending",
+        stagesReadyForExam: true,
       }),
     ).toBe(false);
 
@@ -180,6 +182,7 @@ describe("open mode end-to-end (issue #119)", () => {
         profile,
         units: [...completedPreA1, unit({ id: 10, index: 0, status: "available" })],
         gateStatus: "pending",
+        stagesReadyForExam: true,
       }),
     ).toBe(false);
   });
@@ -204,6 +207,7 @@ describe("open mode end-to-end (issue #119)", () => {
         profile,
         units: [...completedPreA1, unit({ id: 10, index: 0, status: "locked" })],
         gateStatus: "failed_review",
+        stagesReadyForExam: true,
       }),
     ).toBe(true);
   });
@@ -228,6 +232,7 @@ describe("open mode end-to-end (issue #119)", () => {
         profile,
         units: [...completedPreA1, unit({ id: 10, index: 0, status: "locked" })],
         gateStatus: "failed_review",
+        stagesReadyForExam: true,
       }),
     ).toBe(true);
   });
