@@ -8,6 +8,7 @@ import {
   isA1BlockedByPreA1Gate,
   isPreA1ChapterComplete,
   resolveChapterGateStatus,
+  resolveStagesReadyForExam,
   shouldHoldUnlockForChapterGate,
   shouldShowPreA1ChapterGatePendingCta,
   shouldShowPreA1ChapterGrowingState,
@@ -104,6 +105,18 @@ describe("arePreA1StagesReadyForExam (issue #128)", () => {
 
   it("is true only when all four stages are ready", () => {
     expect(allReady()).toBe(true);
+  });
+});
+
+describe("resolveStagesReadyForExam (issue #130)", () => {
+  it("grandfathers learners who already have a gate row", () => {
+    expect(resolveStagesReadyForExam([], { status: "pending" })).toBe(true);
+    expect(resolveStagesReadyForExam([], { status: "passed" })).toBe(true);
+  });
+
+  it("defers to the shared enrichment bar when no gate exists yet", () => {
+    expect(resolveStagesReadyForExam([], undefined)).toBe(false);
+    expect(resolveStagesReadyForExam(stagesWithReady([...PRE_A1_STAGE_IDS]), undefined)).toBe(true);
   });
 });
 

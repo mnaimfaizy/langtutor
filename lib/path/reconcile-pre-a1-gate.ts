@@ -9,10 +9,10 @@ import type { ContentRepository } from "@/lib/db";
 
 import {
   PRE_A1_CHAPTER_TIER,
-  arePreA1StagesReadyForExam,
   isA1BlockedByPreA1Gate,
   isPreA1ChapterComplete,
   resolveChapterGateStatus,
+  resolveStagesReadyForExam,
 } from "./chapter-gate";
 
 /**
@@ -24,10 +24,10 @@ export async function reconcilePreA1ChapterBoundary(repo: ContentRepository): Pr
   if (!isPreA1ChapterComplete(units)) return;
 
   const stages = await repo.getSharedPathStages();
-  const stagesReadyForExam = arePreA1StagesReadyForExam(stages);
+  const existing = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
+  const stagesReadyForExam = resolveStagesReadyForExam(stages, existing);
   if (!stagesReadyForExam) return;
 
-  const existing = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
   if (!existing) {
     await repo.saveChapterGate({
       tier: PRE_A1_CHAPTER_TIER,

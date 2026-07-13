@@ -19,6 +19,7 @@ import {
   isPreA1ToA1Boundary,
   PRE_A1_CHAPTER_TIER,
   resolveChapterGateStatus,
+  resolveStagesReadyForExam,
   shouldHoldUnlockForChapterGate,
 } from "./chapter-gate";
 import { replenishPathBuffer } from "./replenish";
@@ -80,10 +81,14 @@ export async function completeUnitActivity(
     u.id === unitId ? { ...u, activities, status: "completed" as const } : u,
   );
 
+  const stages = await repo.getSharedPathStages();
+  const sharedStagesReady = arePreA1StagesReadyForExam(stages);
+
   if (isPreA1ChapterComplete(unitsAfter)) {
     const existing = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
-    // Only seed a pending gate when none exists — never overwrite fail/review/retake state.
-    if (!existing) {
+    // Seed pending only once stages are exam-ready — otherwise learners sit in the
+    // "chapter growing" state with no gate row (ADR 0054 / 0056).
+    if (!existing && sharedStagesReady) {
       await repo.saveChapterGate({
         tier: PRE_A1_CHAPTER_TIER,
         status: "pending",
@@ -99,7 +104,7 @@ export async function completeUnitActivity(
     if (isPreA1ToA1Boundary(unit, next)) {
       const profile = await repo.getProfile();
       const gate = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
-      const stagesReadyForExam = arePreA1StagesReadyForExam(await repo.getSharedPathStages());
+      const stagesReadyForExam = resolveStagesReadyForExam(stages, gate);
       hold = shouldHoldUnlockForChapterGate({
         completedUnit: unit,
         nextUnit: next,

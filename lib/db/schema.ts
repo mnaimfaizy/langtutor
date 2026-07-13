@@ -51,7 +51,7 @@ export type ChapterGateStatus = "pending" | "failed_review" | "ready_retake" | "
 /** One teacher-assigned review target within a failed chapter (ADR 0036). */
 export interface ChapterReviewAssignmentItem {
   id: string;
-  /** Pre-A1 unit index (e.g. -4 … -1). */
+  /** Pre-A1 catalog path index (negative; stage review targets use the stage's first unit). */
   unitIndex: number;
   /** Exam skill section to practice. */
   skill: string;
