@@ -641,6 +641,13 @@ export function AudioReviewClient({
         <span className={buttonClassName({ variant: "secondary", size: "sm" })} aria-current="page">
           Audio review
         </span>
+        <Link
+          href="/admin/path"
+          className={buttonClassName({ variant: "ghost", size: "sm" })}
+          data-testid="admin-shared-path-link"
+        >
+          Shared path
+        </Link>
       </nav>
 
       {banner && (

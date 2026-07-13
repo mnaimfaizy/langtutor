@@ -104,6 +104,13 @@ export function UsersClient({ initialUsers }: { initialUsers: AuthUser[] }) {
         >
           Audio review
         </Link>
+        <Link
+          href="/admin/path"
+          className={buttonClassName({ variant: "ghost", size: "sm" })}
+          data-testid="admin-shared-path-link"
+        >
+          Shared path
+        </Link>
       </nav>
 
       <Card className="mt-6">

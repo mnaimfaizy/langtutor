@@ -504,6 +504,13 @@ export function MediaReviewClient({
         >
           Audio review
         </Link>
+        <Link
+          href="/admin/path"
+          className={buttonClassName({ variant: "ghost", size: "sm" })}
+          data-testid="admin-shared-path-link"
+        >
+          Shared path
+        </Link>
       </nav>
 
       {banner && (

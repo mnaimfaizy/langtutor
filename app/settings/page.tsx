@@ -591,6 +591,25 @@ export default function SettingsPage() {
 
       {isAdmin && (
         <Card className="mt-6">
+          <CardTitle>Shared path cache</CardTitle>
+          <CardDescription>
+            Approve or reject shared pre-A1 drafts and mark stages ready for exam — one review for
+            every learner.
+          </CardDescription>
+          <CardContent>
+            <Link
+              href="/admin/path"
+              className={buttonClassName({ variant: "secondary", size: "sm" })}
+              data-testid="admin-shared-path-link"
+            >
+              Review shared path →
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {isAdmin && (
+        <Card className="mt-6">
           <CardTitle>User management</CardTitle>
           <CardDescription>Create, list, and delete user accounts.</CardDescription>
           <CardContent>
