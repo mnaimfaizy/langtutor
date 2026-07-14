@@ -1,6 +1,10 @@
 import { and, asc, eq, inArray, lte } from "drizzle-orm";
 
 import { env } from "@/lib/config/env";
+import {
+  decodeSharedPathTargetVocab,
+  encodeSharedPathTargetVocab,
+} from "@/lib/path/shared-path-target-vocab";
 
 import type { BackupData } from "../backup/schema";
 import type {
@@ -171,6 +175,7 @@ function rowToSharedPathStage(row: typeof sharedPathStagesTable.$inferSelect): S
 function rowToSharedPathUnitTemplate(
   row: typeof sharedPathUnitTemplatesTable.$inferSelect,
 ): SharedPathUnitTemplate {
+  const decoded = decodeSharedPathTargetVocab(row.targetVocab);
   return {
     id: row.id,
     tier: "pre-A1",
@@ -183,7 +188,8 @@ function rowToSharedPathUnitTemplate(
     richness: row.richness,
     approvalStatus: row.approvalStatus,
     provenance: row.provenance,
-    targetVocab: JSON.parse(row.targetVocab) as string[],
+    targetVocab: decoded.words,
+    ...(Object.keys(decoded.senses).length > 0 ? { targetVocabSenses: decoded.senses } : {}),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -1249,7 +1255,10 @@ export class SqliteContentRepository implements ContentRepository {
 
   async putSharedPathUnitTemplate(template: SharedPathUnitTemplate): Promise<void> {
     const activitiesJson = JSON.stringify(template.activities.map((a) => ({ skill: a.skill })));
-    const targetVocabJson = JSON.stringify(template.targetVocab);
+    const targetVocabJson = encodeSharedPathTargetVocab(
+      template.targetVocab,
+      template.targetVocabSenses,
+    );
     this.db
       .insert(sharedPathUnitTemplatesTable)
       .values({

@@ -6,7 +6,7 @@ import {
   proactiveGenerateWordImage,
 } from "@/lib/image/resolve-word-image";
 import { MockImageGenerator } from "@/lib/image/mock-image-generator";
-import { buildKidIllustrationPrompt } from "@/lib/image/prompts";
+import { buildKidIllustrationPrompt, wordImageSeed } from "@/lib/image/prompts";
 import { LangTutorDB } from "@/lib/db/database";
 import { DexieContentRepository } from "@/lib/db/dexie-content-repository";
 
@@ -130,6 +130,7 @@ describe("regenerateWordImage", () => {
 
     expect(generator.calls).toHaveLength(1);
     expect(generator.calls[0]?.prompt).toBe(buildKidIllustrationPrompt("ball"));
+    expect(generator.calls[0]?.options?.seed).not.toBe(wordImageSeed("ball"));
     expect(regenerated.data).toEqual(new Uint8Array([99]));
     expect(regenerated.approvalStatus).toBe("pending");
     expect(regenerated.prompt).toBe(buildKidIllustrationPrompt("ball"));

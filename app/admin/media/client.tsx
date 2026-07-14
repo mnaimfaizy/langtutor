@@ -64,6 +64,7 @@ function AssetPreview({ assetKey }: { assetKey: MediaAssetKey }) {
     let cancelled = false;
     // Depend on primitives — a fresh key object every parent render would re-fire
     // this effect after each server-action RSC refresh and loop forever.
+    // Parent remounts this component via `key={revision}` after regenerate.
     void getMediaAssetPreview({ kind, key, style })
       .then((url) => {
         if (!cancelled) setSrc(url);
@@ -144,6 +145,15 @@ function AssetPreview({ assetKey }: { assetKey: MediaAssetKey }) {
   );
 }
 
+function previewRevision(asset: MediaAssetRecord): string {
+  const created =
+    asset.createdAt instanceof Date
+      ? asset.createdAt.getTime()
+      : new Date(asset.createdAt).getTime();
+  // Prompt can change on regenerate even if clocks collide; include it for safety.
+  return `${created}:${asset.prompt ?? ""}`;
+}
+
 function AssetRow({
   asset,
   busy,
@@ -166,7 +176,7 @@ function AssetRow({
   return (
     <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
-        <AssetPreview assetKey={assetKey} />
+        <AssetPreview key={previewRevision(asset)} assetKey={assetKey} />
         <div className="min-w-0">
           <p className="text-foreground truncate text-sm font-medium">{asset.key}</p>
           <p className="text-muted mt-0.5 text-xs">{asset.style}</p>
@@ -582,7 +592,8 @@ export function MediaReviewClient({
       <Card className="mt-6" data-testid="media-curriculum-gaps">
         <CardTitle>Curriculum gaps</CardTitle>
         <CardDescription>
-          Pre-A1 vocabulary missing an image row. Generate one word at a time.
+          Pre-A1 vocabulary missing an image row — bundled activity words plus shared path draft
+          target vocab. Generate one word at a time.
         </CardDescription>
         <CardContent>
           {curriculumGaps.length === 0 ? (

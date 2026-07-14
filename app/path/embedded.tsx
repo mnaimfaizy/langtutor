@@ -47,3 +47,18 @@ export function EmbeddedUnitBanner({ unitId }: { unitId: number }) {
     </div>
   );
 }
+
+/** Admin try-out of a shared path draft — no learner progress is written. */
+export function PreviewTemplateBanner({ templateId }: { templateId: string }) {
+  return (
+    <div
+      data-testid="preview-template-banner"
+      className="border-warning/40 bg-warning/10 text-warning mb-6 flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm"
+    >
+      <span>Admin try-out — progress is not saved. Template {templateId}</span>
+      <Link href="/admin/path" className="font-medium underline-offset-2 hover:underline">
+        Back to shared path
+      </Link>
+    </div>
+  );
+}

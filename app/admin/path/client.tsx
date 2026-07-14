@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import type { PreA1StageId, SharedPathStage, SharedPathUnitTemplate } from "@/lib/db";
+import type { PreA1StageId, SharedPathStage } from "@/lib/db";
+import {
+  summarizeSharedPathMediaReadiness,
+  type SharedPathMediaPresence,
+  type SharedPathWordMediaStatus,
+} from "@/lib/path/shared-path-media-readiness";
 import {
   BackLink,
   Badge,
@@ -23,6 +28,7 @@ import {
   listSharedPathCatalog,
   markSharedPathStageReady,
   rejectSharedPathDraft,
+  type SharedPathUnitTemplateReview,
 } from "./actions";
 
 /** Mirrors `AI_DRAFTABLE_STAGE_IDS` — kept inline so this client file never imports guide loaders. */
@@ -37,24 +43,115 @@ function formatWhen(value: Date | string): string {
   return date.toLocaleString();
 }
 
+function presenceBadgeVariant(
+  presence: SharedPathMediaPresence,
+): "success" | "warning" | "neutral" {
+  if (presence === "approved") return "success";
+  if (presence === "pending") return "warning";
+  return "neutral";
+}
+
+function presenceLabel(kind: "img" | "aud", presence: SharedPathMediaPresence): string {
+  const short = kind === "img" ? "img" : "aud";
+  if (presence === "approved") return `${short} ready`;
+  if (presence === "pending") return `${short} pending`;
+  return `${short} missing`;
+}
+
+function VocabMediaList({
+  templateId,
+  mediaByWord,
+}: {
+  templateId: string;
+  mediaByWord: SharedPathWordMediaStatus[];
+}) {
+  if (mediaByWord.length === 0) {
+    return (
+      <p className="text-muted text-xs" data-testid={`shared-path-vocab-empty-${templateId}`}>
+        No target vocab on this template yet.
+      </p>
+    );
+  }
+
+  const summary = summarizeSharedPathMediaReadiness(mediaByWord);
+
+  return (
+    <div className="space-y-2" data-testid={`shared-path-vocab-${templateId}`}>
+      <ul className="flex flex-wrap gap-2">
+        {mediaByWord.map((row) => (
+          <li
+            key={row.word}
+            className="border-border bg-surface-2 flex flex-wrap items-center gap-1.5 rounded-md border px-2 py-1"
+            data-testid={`shared-path-vocab-word-${templateId}-${row.word}`}
+            data-image={row.image}
+            data-audio={row.audio}
+          >
+            <span className="text-foreground text-sm font-medium">{row.word}</span>
+            {row.sense ? (
+              <span className="text-muted text-xs" title={row.sense}>
+                {row.sense}
+              </span>
+            ) : null}
+            <Badge variant={presenceBadgeVariant(row.image)} size="sm">
+              {presenceLabel("img", row.image)}
+            </Badge>
+            <Badge variant={presenceBadgeVariant(row.audio)} size="sm">
+              {presenceLabel("aud", row.audio)}
+            </Badge>
+          </li>
+        ))}
+      </ul>
+      <p className="text-muted text-xs" data-testid={`shared-path-media-summary-${templateId}`}>
+        {summary.needsAttention === 0
+          ? `Media ready for all ${summary.wordCount} words (approved image + audio).`
+          : `${summary.needsAttention} of ${summary.wordCount} words still need image and/or audio (missing or pending). Generate on Image media / Audio review, then refresh.`}{" "}
+        <Link href="/admin/media" className="text-accent underline-offset-2 hover:underline">
+          Images
+        </Link>
+        {" · "}
+        <Link href="/admin/media/audio" className="text-accent underline-offset-2 hover:underline">
+          Audio
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+function tryOutHref(template: SharedPathUnitTemplateReview): string | null {
+  const skill = template.activities[0]?.skill;
+  if (!skill) return null;
+  if (skill === "alphabet") return `/alphabet?previewTemplate=${encodeURIComponent(template.id)}`;
+  if (skill === "phonics") return `/phonics?previewTemplate=${encodeURIComponent(template.id)}`;
+  if (skill === "picture-match") {
+    return `/picture-match?previewTemplate=${encodeURIComponent(template.id)}`;
+  }
+  if (skill === "listen-tap") {
+    return `/listen-tap?previewTemplate=${encodeURIComponent(template.id)}`;
+  }
+  return null;
+}
+
 function TemplateRow({
   template,
   busy,
   onApprove,
   onReject,
 }: {
-  template: SharedPathUnitTemplate;
+  template: SharedPathUnitTemplateReview;
   busy: boolean;
   onApprove?: () => void;
   onReject?: () => void;
 }) {
+  const activitySkills = template.activities.map((a) => a.skill).join(", ");
+  const previewHref = tryOutHref(template);
+
   return (
     <li
       className="border-border flex flex-col gap-3 border-b py-4 last:border-b-0 sm:flex-row sm:items-start sm:justify-between"
       data-testid={`shared-path-template-${template.id}`}
       data-approval={template.approvalStatus}
     >
-      <div className="min-w-0 space-y-1">
+      <div className="min-w-0 flex-1 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-foreground font-medium">{template.title}</p>
           <Badge variant="neutral">{template.stageId}</Badge>
@@ -63,35 +160,44 @@ function TemplateRow({
         </div>
         <p className="text-muted text-sm">{template.teacherNote}</p>
         <p className="text-muted text-xs">
-          pathIndex {template.pathIndex} · updated {formatWhen(template.updatedAt)}
+          Activities: {activitySkills || "—"} · pathIndex {template.pathIndex} · updated{" "}
+          {formatWhen(template.updatedAt)}
         </p>
+        <VocabMediaList templateId={template.id} mediaByWord={template.mediaByWord} />
       </div>
-      {(onApprove || onReject) && (
-        <div className="flex shrink-0 flex-wrap gap-2">
-          {onApprove && (
-            <Button
-              variant="primary"
-              size="sm"
-              disabled={busy}
-              data-testid={`shared-path-approve-${template.id}`}
-              onClick={onApprove}
-            >
-              Approve
-            </Button>
-          )}
-          {onReject && (
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={busy}
-              data-testid={`shared-path-reject-${template.id}`}
-              onClick={onReject}
-            >
-              Reject
-            </Button>
-          )}
-        </div>
-      )}
+      <div className="flex shrink-0 flex-wrap gap-2">
+        {previewHref && (
+          <Link
+            href={previewHref}
+            className={buttonClassName({ variant: "secondary", size: "sm" })}
+            data-testid={`shared-path-try-${template.id}`}
+          >
+            Try out
+          </Link>
+        )}
+        {onApprove && (
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={busy}
+            data-testid={`shared-path-approve-${template.id}`}
+            onClick={onApprove}
+          >
+            Approve
+          </Button>
+        )}
+        {onReject && (
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={busy}
+            data-testid={`shared-path-reject-${template.id}`}
+            onClick={onReject}
+          >
+            Reject
+          </Button>
+        )}
+      </div>
     </li>
   );
 }
@@ -141,9 +247,9 @@ export function SharedPathReviewClient({
   initialRejected,
   initialStages,
 }: {
-  initialPending: SharedPathUnitTemplate[];
-  initialApproved: SharedPathUnitTemplate[];
-  initialRejected: SharedPathUnitTemplate[];
+  initialPending: SharedPathUnitTemplateReview[];
+  initialApproved: SharedPathUnitTemplateReview[];
+  initialRejected: SharedPathUnitTemplateReview[];
   initialStages: SharedPathStage[];
 }) {
   const [pending, setPending] = useState(initialPending);
@@ -274,8 +380,8 @@ export function SharedPathReviewClient({
       <BackLink href="/settings" label="Settings" />
       <h1 className="text-foreground mt-2 text-2xl font-semibold">Shared path cache</h1>
       <p className="text-muted mt-1 text-sm">
-        Admin-only. Approve or reject shared pre-A1 drafts once for every learner — there is no
-        per-user approval queue.
+        Admin-only. Review each draft&apos;s target vocab and image/audio readiness, then approve or
+        reject once for every learner — there is no per-user approval queue.
       </p>
       <nav aria-label="Admin sections" className="mt-3 flex flex-wrap gap-2">
         <Link
@@ -373,9 +479,35 @@ export function SharedPathReviewClient({
       <Card className="mt-6" data-testid="shared-path-pending">
         <CardTitle>Pending drafts</CardTitle>
         <CardDescription>
-          AI or human drafts waiting for a single shared approval before learners can receive them.
+          AI or human drafts waiting for a single shared approval. Check target vocab and whether
+          each word already has approved image/audio before promoting.
         </CardDescription>
         <CardContent>
+          <div className="mb-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busyId !== null}
+              data-testid="shared-path-refresh"
+              onClick={() => {
+                setBusyId("refresh");
+                setBanner(null);
+                void refresh()
+                  .then(() => {
+                    setBanner({ tone: "ok", text: "Refreshed vocab media readiness." });
+                  })
+                  .catch((err: unknown) => {
+                    setBanner({
+                      tone: "error",
+                      text: err instanceof Error ? err.message : "Refresh failed",
+                    });
+                  })
+                  .finally(() => setBusyId(null));
+              }}
+            >
+              Refresh media readiness
+            </Button>
+          </div>
           {pending.length === 0 ? (
             <p className="text-muted text-sm" data-testid="shared-path-pending-empty">
               No pending drafts.

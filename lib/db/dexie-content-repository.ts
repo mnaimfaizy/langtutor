@@ -368,6 +368,9 @@ export class DexieContentRepository implements ContentRepository {
       ...template,
       activities: template.activities.map((a) => ({ skill: a.skill })),
       targetVocab: template.targetVocab.slice(),
+      ...(template.targetVocabSenses
+        ? { targetVocabSenses: { ...template.targetVocabSenses } }
+        : { targetVocabSenses: undefined }),
     });
   }
 

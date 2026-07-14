@@ -3,7 +3,11 @@ import type { ContentRepository } from "@/lib/db/content-repository";
 import { defaultMediaAssetApproval, type MediaAsset, type MediaAssetKey } from "@/lib/db/schema";
 
 import type { ImageGenerator } from "./image-generator";
-import { resolveKidIllustrationPrompt, wordImageSeed } from "./prompts";
+import {
+  regenerateWordImageSeed,
+  resolveKidIllustrationPrompt,
+  wordImageSeed,
+} from "./prompts";
 
 const DEFAULT_STYLE = "kid-illustration";
 /** Hosted NIM FLUX rejects 512; use an allowed square size (see nvidia-sizes.ts). */
@@ -32,12 +36,13 @@ async function produceWordImage(
   normalized: string,
   style: string,
   promptOverride?: string | null,
+  seed: number = wordImageSeed(normalized),
 ): Promise<MediaAsset> {
   const prompt = resolveKidIllustrationPrompt(normalized, promptOverride);
   const generated = await generator.generate(prompt, {
     width: IMAGE_WIDTH,
     height: IMAGE_HEIGHT,
-    seed: wordImageSeed(normalized),
+    seed,
   });
 
   return {
@@ -81,6 +86,9 @@ export async function resolveWordImage(
  * Does **not** delete first — if generation fails, the previous asset is kept.
  * Optional `promptOverride` steers the generation (ADR 0023); the effective prompt is
  * persisted on the new generated row (ADR 0024).
+ *
+ * Uses a fresh seed each call so Cloudflare seed+prompt safety rejects (HTTP 400 /
+ * NSFW 3030) can clear without editing the prompt.
  */
 export async function regenerateWordImage(
   repo: ContentRepository,
@@ -91,13 +99,14 @@ export async function regenerateWordImage(
 ): Promise<MediaAsset> {
   const normalized = normalizeWord(word);
   const key = mediaKey(normalized, style);
+  const seed = regenerateWordImageSeed(normalized);
 
   const asset = await resolveMediaAsset(
     repo,
     key,
     async () => {
       const resolved = await resolveGenerator(generator);
-      return produceWordImage(resolved, normalized, style, promptOverride);
+      return produceWordImage(resolved, normalized, style, promptOverride, seed);
     },
     {
       forceRegenerate: true,

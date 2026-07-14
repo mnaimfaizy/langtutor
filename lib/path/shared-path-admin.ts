@@ -11,6 +11,8 @@ import type {
   SharedPathUnitTemplate,
 } from "@/lib/db";
 
+import { withContiguousPreA1PathIndices } from "./shared-path-catalog";
+
 export class SharedPathAdminError extends Error {
   constructor(message: string) {
     super(message);
@@ -42,6 +44,31 @@ async function requireStage(
   return stage;
 }
 
+/** Temp pathIndex band while rewriting contiguous indices (unique path_index constraint). */
+const PATH_INDEX_REWRITE_BASE = -1_000_000;
+
+/**
+ * Persist approved templates with contiguous pathIndex values. Two-phase write avoids
+ * colliding with the shared `path_index` unique index mid-update.
+ */
+export async function persistReindexedApprovedTemplates(
+  repo: ContentRepository,
+  approved: readonly SharedPathUnitTemplate[],
+): Promise<SharedPathUnitTemplate[]> {
+  const reindexed = withContiguousPreA1PathIndices(approved);
+  for (let i = 0; i < reindexed.length; i++) {
+    const t = reindexed[i]!;
+    await repo.putSharedPathUnitTemplate({
+      ...t,
+      pathIndex: PATH_INDEX_REWRITE_BASE - i,
+    });
+  }
+  for (const t of reindexed) {
+    await repo.putSharedPathUnitTemplate(t);
+  }
+  return reindexed;
+}
+
 /** Promote a pending (or rejected) draft into the approved shared catalog. */
 export async function approveSharedPathUnitTemplate(
   repo: ContentRepository,
@@ -49,13 +76,23 @@ export async function approveSharedPathUnitTemplate(
   now: Date = new Date(),
 ): Promise<SharedPathUnitTemplate> {
   const template = await requireTemplate(repo, id);
-  const next: SharedPathUnitTemplate = {
-    ...template,
+  const alreadyApproved = await repo.querySharedPathUnitTemplates({
     approvalStatus: "approved",
-    updatedAt: now,
-  };
-  await repo.putSharedPathUnitTemplate(next);
-  return next;
+  });
+  const nextApproved = [
+    ...alreadyApproved.filter((row) => row.id !== template.id),
+    {
+      ...template,
+      approvalStatus: "approved" as const,
+      updatedAt: now,
+    },
+  ];
+  const reindexed = await persistReindexedApprovedTemplates(repo, nextApproved);
+  const saved = reindexed.find((row) => row.id === id);
+  if (!saved) {
+    throw new SharedPathAdminError(`Approved template missing after reindex: ${id}`);
+  }
+  return saved;
 }
 
 /**

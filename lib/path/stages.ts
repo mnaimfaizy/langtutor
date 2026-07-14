@@ -4,14 +4,21 @@
  * Learner `Unit` rows carry path indices only; stage identity and richness live on the shared
  * catalog. These helpers resolve catalog metadata so UIs can group many small units into the
  * four skill-family stages without a dry linear checklist.
+ *
+ * Always prefer the **live** approved catalog (densification remaps pathIndex). Bundled
+ * starter templates are only the fallback for thin tests / empty catalogs.
  */
-import type { PreA1StageId, SharedPathUnitRichness, Unit } from "@/lib/db";
+import type {
+  PreA1StageId,
+  SharedPathUnitRichness,
+  SharedPathUnitTemplate,
+  Unit,
+} from "@/lib/db";
 
 import { isPreA1Unit } from "./pre-a1";
 import {
   buildBundledSharedPathStages,
   buildBundledSharedPathUnitTemplates,
-  stageIdForPathIndex,
 } from "./shared-path-catalog";
 
 export interface PathStageGroup {
@@ -38,8 +45,42 @@ export const PLACEHOLDER_STAGE_BLURB =
 /** Friendly stage blurb for richly authored stages. */
 export const RICH_STAGE_BLURB = "Full adventure ready — play every stop on this shore.";
 
-export function richnessForPathIndex(pathIndex: number): SharedPathUnitRichness | undefined {
-  return buildBundledSharedPathUnitTemplates().find((t) => t.pathIndex === pathIndex)?.richness;
+function catalogTemplates(
+  templates?: readonly SharedPathUnitTemplate[],
+): readonly SharedPathUnitTemplate[] {
+  if (templates && templates.length > 0) {
+    return templates.filter((t) => t.tier === "pre-A1" && t.approvalStatus === "approved");
+  }
+  return buildBundledSharedPathUnitTemplates();
+}
+
+/** Stage for a path index against the live (or bundled) catalog. */
+export function stageIdForUnitPathIndex(
+  pathIndex: number,
+  templates?: readonly SharedPathUnitTemplate[],
+): PreA1StageId | undefined {
+  return catalogTemplates(templates).find((t) => t.pathIndex === pathIndex)?.stageId;
+}
+
+export function richnessForPathIndex(
+  pathIndex: number,
+  templates?: readonly SharedPathUnitTemplate[],
+): SharedPathUnitRichness | undefined {
+  return catalogTemplates(templates).find((t) => t.pathIndex === pathIndex)?.richness;
+}
+
+/**
+ * Resolve stage for a learner unit: prefer title (stable across densification remaps),
+ * then pathIndex against the catalog in use.
+ */
+export function stageIdForUnit(
+  unit: Pick<Unit, "index" | "title">,
+  templates?: readonly SharedPathUnitTemplate[],
+): PreA1StageId | undefined {
+  const catalog = catalogTemplates(templates);
+  const byTitle = catalog.find((t) => t.title === unit.title);
+  if (byTitle) return byTitle.stageId;
+  return catalog.find((t) => t.pathIndex === unit.index)?.stageId;
 }
 
 /**
@@ -64,13 +105,16 @@ function stageTitle(stageId: PreA1StageId): string {
   );
 }
 
-function stageRichness(stageId: PreA1StageId, units: readonly Unit[]): SharedPathUnitRichness {
-  const fromCatalog = buildBundledSharedPathUnitTemplates().filter((t) => t.stageId === stageId);
+function stageRichness(
+  stageId: PreA1StageId,
+  units: readonly Unit[],
+  templates?: readonly SharedPathUnitTemplate[],
+): SharedPathUnitRichness {
+  const fromCatalog = catalogTemplates(templates).filter((t) => t.stageId === stageId);
   if (fromCatalog.length > 0) {
     return fromCatalog.every((t) => t.richness === "placeholder") ? "placeholder" : "rich";
   }
-  // Fallback when units are not in the bundled catalog (tests with ad-hoc indices).
-  const unitRichness = units.map((u) => richnessForPathIndex(u.index));
+  const unitRichness = units.map((u) => richnessForPathIndex(u.index, templates));
   if (unitRichness.length > 0 && unitRichness.every((r) => r === "placeholder")) {
     return "placeholder";
   }
@@ -79,9 +123,14 @@ function stageRichness(stageId: PreA1StageId, units: readonly Unit[]): SharedPat
 
 /**
  * Groups contiguous pre-A1 units into the four skill-family stages (path-index order).
+ * Pass live approved catalog templates after densification — bundled pathIndex alone is stale.
  * Non–pre-A1 units are ignored — callers keep A1+ chapters via {@link groupUnitsByChapter}.
  */
-export function groupPreA1UnitsByStage(units: readonly Unit[]): PathStageGroup[] {
+export function groupPreA1UnitsByStage(
+  units: readonly Unit[],
+  templates?: readonly SharedPathUnitTemplate[],
+): PathStageGroup[] {
+  const catalog = catalogTemplates(templates);
   const preA1 = units
     .filter(isPreA1Unit)
     .slice()
@@ -89,7 +138,7 @@ export function groupPreA1UnitsByStage(units: readonly Unit[]): PathStageGroup[]
   const groups: PathStageGroup[] = [];
 
   for (const unit of preA1) {
-    const stageId = stageIdForPathIndex(unit.index);
+    const stageId = stageIdForUnit(unit, catalog);
     if (!stageId) continue;
     const current = groups[groups.length - 1];
     if (current && current.stageId === stageId) {
@@ -107,7 +156,7 @@ export function groupPreA1UnitsByStage(units: readonly Unit[]): PathStageGroup[]
   }
 
   for (const group of groups) {
-    group.richness = stageRichness(group.stageId, group.units);
+    group.richness = stageRichness(group.stageId, group.units, catalog);
     group.isComplete = group.units.length > 0 && group.units.every((u) => u.status === "completed");
   }
 
@@ -117,12 +166,15 @@ export function groupPreA1UnitsByStage(units: readonly Unit[]): PathStageGroup[]
 /**
  * Splits a full path into pre-A1 stage groups plus the remaining (A1+) units in encounter order.
  */
-export function splitUnitsByPreA1Stages(units: readonly Unit[]): {
+export function splitUnitsByPreA1Stages(
+  units: readonly Unit[],
+  templates?: readonly SharedPathUnitTemplate[],
+): {
   stages: PathStageGroup[];
   afterPreA1: Unit[];
 } {
   return {
-    stages: groupPreA1UnitsByStage(units),
+    stages: groupPreA1UnitsByStage(units, templates),
     afterPreA1: units.filter((u) => !isPreA1Unit(u)),
   };
 }

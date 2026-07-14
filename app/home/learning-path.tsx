@@ -8,6 +8,7 @@ import {
   type ChapterGateStatus,
   type ExperienceMode,
   type ProgressionMode,
+  type SharedPathUnitTemplate,
   type Unit,
 } from "@/lib/db";
 import {
@@ -60,6 +61,7 @@ const MODE_HEADING: Record<ExperienceMode, string> = {
  */
 export function LearningPath() {
   const [units, setUnits] = useState<Unit[] | null>(null);
+  const [catalogTemplates, setCatalogTemplates] = useState<SharedPathUnitTemplate[]>([]);
   const [mode, setMode] = useState<ExperienceMode>(DEFAULT_EXPERIENCE_MODE);
   const [progressionMode, setProgressionMode] = useState<ProgressionMode>(DEFAULT_PROGRESSION_MODE);
   const [gateStatus, setGateStatus] = useState<ChapterGateStatus>("pending");
@@ -86,11 +88,16 @@ export function LearningPath() {
         experienceMode: profile?.experienceMode,
       });
       await reconcilePreA1ChapterBoundary(repo);
-      const loaded = await repo.getUnits();
-      const gate = await repo.getChapterGate(PRE_A1_CHAPTER_TIER);
-      const stagesReady = resolveStagesReadyForExam(await repo.getSharedPathStages(), gate);
+      const [loaded, approved, sharedStages, gate] = await Promise.all([
+        repo.getUnits(),
+        repo.querySharedPathUnitTemplates({ tier: "pre-A1", approvalStatus: "approved" }),
+        repo.getSharedPathStages(),
+        repo.getChapterGate(PRE_A1_CHAPTER_TIER),
+      ]);
+      const stagesReady = resolveStagesReadyForExam(sharedStages, gate);
       if (active) {
         setUnits(loaded);
+        setCatalogTemplates(approved);
         setGateStatus(resolveChapterGateStatus(gate));
         setStagesReadyForExam(stagesReady);
       }
@@ -106,6 +113,12 @@ export function LearningPath() {
         setGateStatus(resolveChapterGateStatus(nextGate));
         setStagesReadyForExam(
           resolveStagesReadyForExam(await repo.getSharedPathStages(), nextGate),
+        );
+        setCatalogTemplates(
+          await repo.querySharedPathUnitTemplates({
+            tier: "pre-A1",
+            approvalStatus: "approved",
+          }),
         );
       }
     })();
@@ -162,7 +175,9 @@ export function LearningPath() {
       <ol className="mt-4 flex flex-col gap-2">
         {chapters.map((chapter, chapterIndex) => {
           const preA1Stages =
-            chapter.tier === "pre-A1" ? groupPreA1UnitsByStage(chapter.units) : null;
+            chapter.tier === "pre-A1"
+              ? groupPreA1UnitsByStage(chapter.units, catalogTemplates)
+              : null;
 
           return (
             <li key={chapter.tier}>
@@ -180,7 +195,7 @@ export function LearningPath() {
                               isCurrent={unit.id === current?.id}
                               playFillAnimation={fillingUnitIds.has(unit.id)}
                               onFillAnimationEnd={() => clearUnitFill(unit.id)}
-                              richness={richnessForPathIndex(unit.index)}
+                              richness={richnessForPathIndex(unit.index, catalogTemplates)}
                             />
                           </li>
                         ))}
@@ -198,13 +213,12 @@ export function LearningPath() {
                         isCurrent={unit.id === current?.id}
                         playFillAnimation={fillingUnitIds.has(unit.id)}
                         onFillAnimationEnd={() => clearUnitFill(unit.id)}
-                        richness={richnessForPathIndex(unit.index)}
+                        richness={richnessForPathIndex(unit.index, catalogTemplates)}
                       />
                     </li>
                   ))}
                 </ol>
-              )}
-              {chapter.isComplete && (
+              )}              {chapter.isComplete && (
                 <div className="mt-2">
                   <PathChapterMilestone
                     tier={chapter.tier}

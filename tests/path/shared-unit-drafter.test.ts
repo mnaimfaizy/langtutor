@@ -38,7 +38,12 @@ const MIGRATIONS_FOLDER = path.join(process.cwd(), "drizzle/migrations");
 const VALID_DRAFT = {
   title: "Pre-A1: Phonics — Short sounds",
   teacherNote: "Practice sounding out short words with friendly letter friends.",
-  targetVocab: ["cat", "sat", "mat", "pin"],
+  targetVocab: [
+    { word: "cat", sense: "a small pet with whiskers" },
+    { word: "sun", sense: "the bright yellow ball in the sky" },
+    { word: "pig", sense: "a pink farm animal" },
+    { word: "cup", sense: "a small drinking cup" },
+  ],
 };
 
 let sqlite: ReturnType<typeof Database>;
@@ -110,6 +115,8 @@ describe("shared unit draft prompts (issue #131)", () => {
     expect(blob).toMatch(/Phonics/i);
     expect(blob).toMatch(/GPC|grapheme|phoneme|short/i);
     expect(blob).toMatch(/Starters|paraphrase/i);
+    expect(blob).toMatch(/sense/i);
+    expect(blob).toMatch(/imageable|drawable|concrete/i);
     expect(blob).not.toMatch(/redistribute Cambridge wordlists into the JSON/i);
 
     for (const key of STAGE_DRAFT_GUIDE_KEYS.phonics) {
@@ -136,7 +143,13 @@ describe("draftSharedPathUnit — success", () => {
     expect(template.richness).toBe("rich");
     expect(template.stageId).toBe("phonics");
     expect(template.title).toBe(VALID_DRAFT.title);
-    expect(template.targetVocab).toEqual(VALID_DRAFT.targetVocab);
+    expect(template.targetVocab).toEqual(["cat", "sun", "pig", "cup"]);
+    expect(template.targetVocabSenses).toEqual({
+      cat: "a small pet with whiskers",
+      sun: "the bright yellow ball in the sky",
+      pig: "a pink farm animal",
+      cup: "a small drinking cup",
+    });
     expect(template.activities).toEqual([{ skill: "phonics" }]);
     expect(() => SharedUnitDraftSchema.parse(VALID_DRAFT)).not.toThrow();
 
@@ -170,7 +183,11 @@ describe("draftSharedPathUnit — success", () => {
         {
           title: "Pre-A1: Picture words — Pets",
           teacherNote: "Match pet pictures to short words.",
-          targetVocab: ["dog", "cat", "bird"],
+          targetVocab: [
+            { word: "dog", sense: "a friendly pet dog" },
+            { word: "cat", sense: "a small pet cat" },
+            { word: "bird", sense: "a small bird with wings" },
+          ],
         },
       ]),
       "picture-words",
@@ -295,12 +312,20 @@ describe("fillThinSharedPathStages — shared pending only", () => {
       {
         title: "Pre-A1: Picture words — Food",
         teacherNote: "Match food pictures to words.",
-        targetVocab: ["apple", "bread", "milk"],
+        targetVocab: [
+          { word: "apple", sense: "a round red fruit" },
+          { word: "bread", sense: "a loaf of bread" },
+          { word: "milk", sense: "a glass of milk" },
+        ],
       },
       {
         title: "Pre-A1: Listen & tap — Names",
         teacherNote: "Listen and tap the matching word.",
-        targetVocab: ["mom", "dad", "bag"],
+        targetVocab: [
+          { word: "mom", sense: "a mother" },
+          { word: "dad", sense: "a father" },
+          { word: "bag", sense: "a school bag" },
+        ],
       },
     ];
     const result = await fillThinSharedPathStages(admin, makeSequentialLLM(drafts), {
@@ -334,12 +359,20 @@ describe("fillThinSharedPathStages — shared pending only", () => {
         {
           title: "Pre-A1: Picture words — Colours",
           teacherNote: "Match colour words to pictures.",
-          targetVocab: ["red", "blue", "green"],
+          targetVocab: [
+            { word: "red", sense: "the colour red" },
+            { word: "blue", sense: "the colour blue" },
+            { word: "green", sense: "the colour green" },
+          ],
         },
         {
           title: "Pre-A1: Listen & tap — Animals",
           teacherNote: "Listen and tap the animal.",
-          targetVocab: ["dog", "cat", "bird"],
+          targetVocab: [
+            { word: "dog", sense: "a friendly pet dog" },
+            { word: "cat", sense: "a small pet cat" },
+            { word: "bird", sense: "a small bird with wings" },
+          ],
         },
       ]),
       { maxDrafts: 3 },

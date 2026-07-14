@@ -32,6 +32,29 @@ const CloudflareImageResponse = z
     message: "missing image base64",
   });
 
+const CloudflareErrorEnvelope = z.object({
+  errors: z
+    .array(z.object({ message: z.string().optional(), code: z.number().optional() }))
+    .optional(),
+  success: z.boolean().optional(),
+});
+
+/** Pull a short CF error detail for admin/debug messages (never throws). */
+async function cloudflareErrorDetail(response: Response): Promise<string> {
+  try {
+    const body: unknown = await response.json();
+    const parsed = CloudflareErrorEnvelope.safeParse(body);
+    const first = parsed.success ? parsed.data.errors?.[0] : undefined;
+    if (!first) return "";
+    const parts: string[] = [];
+    if (first.code !== undefined) parts.push(`code ${first.code}`);
+    if (first.message) parts.push(first.message);
+    return parts.length > 0 ? `: ${parts.join(" — ")}` : "";
+  } catch {
+    return "";
+  }
+}
+
 export interface CloudflareImageConfig {
   accountId: string;
   apiToken: string;
@@ -83,8 +106,9 @@ export class CloudflareWorkersAiImageGenerator implements ImageGenerator {
       }
 
       if (!response.ok) {
+        const detail = await cloudflareErrorDetail(response);
         throw new ImageProviderError(
-          `Cloudflare Workers AI image request failed (${response.status})`,
+          `Cloudflare Workers AI image request failed (${response.status})${detail}`,
           { status: response.status, provider: "cloudflare" },
         );
       }

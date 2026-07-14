@@ -156,22 +156,31 @@ export function buildBundledSharedPathUnitTemplates(
 }
 
 /** Stage id for a path index in the bundled starter (undefined if not pre-A1 catalog). */
-export function stageIdForPathIndex(pathIndex: number): PreA1StageId | undefined {
-  return buildBundledSharedPathUnitTemplates().find((t) => t.pathIndex === pathIndex)?.stageId;
+export function stageIdForPathIndex(
+  pathIndex: number,
+  templates: readonly SharedPathUnitTemplate[] = buildBundledSharedPathUnitTemplates(),
+): PreA1StageId | undefined {
+  return templates.find((t) => t.pathIndex === pathIndex)?.stageId;
 }
 
 /** Representative path index for exam-review practice (first unit of the stage). */
-export function reviewPathIndexForStage(stageId: PreA1StageId): number {
-  const templates = buildBundledSharedPathUnitTemplates().filter((t) => t.stageId === stageId);
-  const first = templates.sort((a, b) => a.stageOrder - b.stageOrder)[0];
+export function reviewPathIndexForStage(
+  stageId: PreA1StageId,
+  templates: readonly SharedPathUnitTemplate[] = buildBundledSharedPathUnitTemplates(),
+): number {
+  const inStage = templates.filter((t) => t.stageId === stageId);
+  const first = inStage.sort((a, b) => a.stageOrder - b.stageOrder)[0];
   if (!first) throw new Error(`No catalog unit for stage ${stageId}`);
   return first.pathIndex;
 }
 
 /** Last path index of a stage — used for stage-completion collectibles. */
-export function lastPathIndexForStage(stageId: PreA1StageId): number {
-  const templates = buildBundledSharedPathUnitTemplates().filter((t) => t.stageId === stageId);
-  const last = templates.sort((a, b) => a.stageOrder - b.stageOrder).at(-1);
+export function lastPathIndexForStage(
+  stageId: PreA1StageId,
+  templates: readonly SharedPathUnitTemplate[] = buildBundledSharedPathUnitTemplates(),
+): number {
+  const inStage = templates.filter((t) => t.stageId === stageId);
+  const last = inStage.sort((a, b) => a.stageOrder - b.stageOrder).at(-1);
   if (!last) throw new Error(`No catalog unit for stage ${stageId}`);
   return last.pathIndex;
 }
@@ -220,5 +229,39 @@ export function materializePreA1UnitsFromCatalog(
     status: i === 0 ? "available" : "locked",
     bufferStatus: "empty",
     createdAt: now,
+  }));
+}
+
+const STAGE_PATH_RANK: Record<PreA1StageId, number> = {
+  alphabet: 0,
+  phonics: 1,
+  "picture-words": 2,
+  "listen-tap": 3,
+};
+
+/** Stable curriculum order: stage spine, then stageOrder, then prior pathIndex. */
+export function sortSharedPathTemplatesForPath(
+  templates: readonly SharedPathUnitTemplate[],
+): SharedPathUnitTemplate[] {
+  return templates.slice().sort((a, b) => {
+    const stageDiff = STAGE_PATH_RANK[a.stageId] - STAGE_PATH_RANK[b.stageId];
+    if (stageDiff !== 0) return stageDiff;
+    if (a.stageOrder !== b.stageOrder) return a.stageOrder - b.stageOrder;
+    return a.pathIndex - b.pathIndex;
+  });
+}
+
+/**
+ * Assign contiguous negative pathIndex values ending at −1 so learner unlock
+ * (`index + 1`) stays valid after densification approvals.
+ */
+export function withContiguousPreA1PathIndices(
+  templates: readonly SharedPathUnitTemplate[],
+): SharedPathUnitTemplate[] {
+  const sorted = sortSharedPathTemplatesForPath(templates);
+  const n = sorted.length;
+  return sorted.map((t, i) => ({
+    ...t,
+    pathIndex: i - n,
   }));
 }

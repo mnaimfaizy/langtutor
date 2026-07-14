@@ -735,7 +735,8 @@ export function AudioReviewClient({
       <Card className="mt-6" data-testid="audio-curriculum-gaps">
         <CardTitle>Curriculum gaps</CardTitle>
         <CardDescription>
-          Pre-A1 vocabulary missing an audio row. Load a word into the form, then Generate.
+          Pre-A1 vocabulary missing an audio row — bundled activity words plus shared path draft
+          target vocab. Load a word into the form, then Generate.
         </CardDescription>
         <CardContent>
           {curriculumGaps.length === 0 ? (

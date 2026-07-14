@@ -16,6 +16,7 @@ import {
   timingFromImageResult,
   type ImageGenerateTiming,
 } from "@/lib/image/timing";
+import { listSharedPathCatalogVocabSenses } from "@/lib/path/shared-path-media-readiness";
 
 const DEFAULT_IMAGE_STYLE = "kid-illustration";
 
@@ -47,7 +48,7 @@ export type ProactiveGenerateResult =
 function adminImageProviderMessage(err: ImageProviderError): string {
   const tip =
     err.provider === "cloudflare"
-      ? " If this keeps happening, ensure NVIDIA_NIM_API_KEY is set so auto mode can fall back, or retry later."
+      ? " If this keeps happening, ensure NVIDIA_NIM_API_KEY is set so auto mode can fall back on safety/capacity errors, or retry regenerate (a new seed is used each time)."
       : err.provider === "nvidia"
         ? " NVIDIA free tier is capacity-limited; Cloudflare is preferred in auto mode."
         : "";
@@ -202,15 +203,25 @@ export async function getRegeneratePromptDraft(key: MediaAssetKey): Promise<stri
   await requireAdmin();
   const parsed = ImageMediaAssetKeySchema.parse(key);
   const repo = await getServerContentRepository();
-  const asset = await repo.getMediaAssetRaw(parsed);
-  return resolveKidIllustrationPrompt(parsed.key, asset?.prompt);
+  const [asset, senses] = await Promise.all([
+    repo.getMediaAssetRaw(parsed),
+    listSharedPathCatalogVocabSenses(repo),
+  ]);
+  return resolveKidIllustrationPrompt(
+    parsed.key,
+    asset?.prompt,
+    senses[parsed.key.toLowerCase().trim()],
+  );
 }
 
 /** Default kid-illustration prompt draft for proactive generate of @word. */
 export async function getProactivePromptDraft(word: string): Promise<string> {
   await requireAdmin();
   const parsed = z.string().trim().min(1).max(100).parse(word);
-  return buildKidIllustrationPrompt(parsed.toLowerCase());
+  const normalized = parsed.toLowerCase();
+  const repo = await getServerContentRepository();
+  const senses = await listSharedPathCatalogVocabSenses(repo);
+  return buildKidIllustrationPrompt(normalized, senses[normalized]);
 }
 
 export async function getMediaAssetPreview(key: MediaAssetKey): Promise<string | null> {

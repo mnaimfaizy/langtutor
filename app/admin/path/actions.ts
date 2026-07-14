@@ -22,6 +22,10 @@ import {
   type SharedPathBackgroundFillResult,
 } from "@/lib/path/shared-path-background-fill";
 import { ensureSharedPathCatalogSeeded } from "@/lib/path/shared-path-catalog";
+import {
+  assessSharedPathVocabMedia,
+  type SharedPathWordMediaStatus,
+} from "@/lib/path/shared-path-media-readiness";
 import { AiDraftableStageIdSchema, type AiDraftableStageId } from "@/lib/path/shared-unit-draft";
 import { draftSharedPathUnit, SharedUnitDraftError } from "@/lib/path/shared-unit-drafter";
 
@@ -32,12 +36,31 @@ const ReadySchema = z.object({
   readyForExam: z.boolean(),
 });
 
+/** Template plus per-word image/audio readiness for admin review (slice 1). */
+export type SharedPathUnitTemplateReview = SharedPathUnitTemplate & {
+  mediaByWord: SharedPathWordMediaStatus[];
+};
+
 export type SharedPathAdminSnapshot = {
-  pending: SharedPathUnitTemplate[];
-  approved: SharedPathUnitTemplate[];
-  rejected: SharedPathUnitTemplate[];
+  pending: SharedPathUnitTemplateReview[];
+  approved: SharedPathUnitTemplateReview[];
+  rejected: SharedPathUnitTemplateReview[];
   stages: SharedPathStage[];
 };
+
+async function withMediaReadiness(
+  repo: Awaited<ReturnType<typeof getServerContentRepository>>,
+  templates: SharedPathUnitTemplate[],
+): Promise<SharedPathUnitTemplateReview[]> {
+  return Promise.all(
+    templates.map(async (template) => ({
+      ...template,
+      mediaByWord: await assessSharedPathVocabMedia(repo, template.targetVocab, {
+        senses: template.targetVocabSenses,
+      }),
+    })),
+  );
+}
 
 /** Ensure starter rows exist, then return pending / approved / rejected + stages. */
 export async function listSharedPathCatalog(): Promise<SharedPathAdminSnapshot> {
@@ -50,10 +73,25 @@ export async function listSharedPathCatalog(): Promise<SharedPathAdminSnapshot> 
     repo.getSharedPathStages(),
   ]);
 
+  const [pending, approved, rejected] = await Promise.all([
+    withMediaReadiness(
+      repo,
+      templates.filter((t) => t.approvalStatus === "pending"),
+    ),
+    withMediaReadiness(
+      repo,
+      templates.filter((t) => t.approvalStatus === "approved"),
+    ),
+    withMediaReadiness(
+      repo,
+      templates.filter((t) => t.approvalStatus === "rejected"),
+    ),
+  ]);
+
   return {
-    pending: templates.filter((t) => t.approvalStatus === "pending"),
-    approved: templates.filter((t) => t.approvalStatus === "approved"),
-    rejected: templates.filter((t) => t.approvalStatus === "rejected"),
+    pending,
+    approved,
+    rejected,
     stages: stages.slice().sort((a, b) => a.order - b.order),
   };
 }

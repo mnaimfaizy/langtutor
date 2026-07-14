@@ -1,5 +1,9 @@
-import type { ContentRepository, CollectibleGrant } from "@/lib/db";
-import { lastPathIndexForStage, stageIdForPathIndex } from "@/lib/path/shared-path-catalog";
+import type { ContentRepository, CollectibleGrant, SharedPathUnitTemplate } from "@/lib/db";
+import {
+  buildBundledSharedPathUnitTemplates,
+  lastPathIndexForStage,
+  stageIdForPathIndex,
+} from "@/lib/path/shared-path-catalog";
 
 export interface CollectibleDef {
   id: string;
@@ -84,12 +88,15 @@ const PRE_A1_STAGE_COLLECTIBLE_IDS: Record<string, string> = {
 const PATH_POOL_IDS = ["creature-fox", "creature-owl", "creature-bunny", "creature-frog"] as const;
 
 /** Resolves the collectible definition earned by completing a unit at @unitIndex. */
-export function getCollectibleDefForUnitIndex(unitIndex: number): CollectibleDef | undefined {
+export function getCollectibleDefForUnitIndex(
+  unitIndex: number,
+  templates: readonly SharedPathUnitTemplate[] = buildBundledSharedPathUnitTemplates(),
+): CollectibleDef | undefined {
   if (unitIndex < 0) {
-    const stageId = stageIdForPathIndex(unitIndex);
+    const stageId = stageIdForPathIndex(unitIndex, templates);
     if (!stageId) return undefined;
     // Grant the themed creature when finishing the stage (last unit), not mid-runway.
-    if (lastPathIndexForStage(stageId) !== unitIndex) return undefined;
+    if (lastPathIndexForStage(stageId, templates) !== unitIndex) return undefined;
     const preA1Id = PRE_A1_STAGE_COLLECTIBLE_IDS[stageId];
     return preA1Id ? COLLECTIBLE_BY_ID.get(preA1Id) : undefined;
   }
@@ -99,7 +106,10 @@ export function getCollectibleDefForUnitIndex(unitIndex: number): CollectibleDef
   return COLLECTIBLE_BY_ID.get(PATH_POOL_IDS[poolIndex]!);
 }
 
-type CollectibleRepo = Pick<ContentRepository, "getCollectibles" | "grantCollectible">;
+type CollectibleRepo = Pick<
+  ContentRepository,
+  "getCollectibles" | "grantCollectible" | "querySharedPathUnitTemplates"
+>;
 
 function alreadyGrantedForUnit(grants: readonly CollectibleGrant[], unitId: number): boolean {
   return grants.some((g) => g.unitId === unitId);
@@ -115,7 +125,14 @@ export async function grantCollectibleForUnit(
   unitIndex: number,
   grantedAt: Date,
 ): Promise<CollectibleDef | null> {
-  const def = getCollectibleDefForUnitIndex(unitIndex);
+  const templates =
+    unitIndex < 0
+      ? await repo.querySharedPathUnitTemplates({
+          tier: "pre-A1",
+          approvalStatus: "approved",
+        })
+      : buildBundledSharedPathUnitTemplates();
+  const def = getCollectibleDefForUnitIndex(unitIndex, templates);
   if (!def) return null;
 
   const grants = await repo.getCollectibles();

@@ -44,7 +44,7 @@ export class FallbackImageGenerator implements ImageGenerator {
 
 function shouldTryFallback(err: unknown): boolean {
   if (err instanceof ImageProviderError) {
-    return isImageFallbackStatus(err.status);
+    return isImageFallbackStatus(err.status, err.message);
   }
   // Unknown errors (e.g. unexpected throw) — do not silently swap providers.
   return false;

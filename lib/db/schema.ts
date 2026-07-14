@@ -430,6 +430,11 @@ export interface SharedPathUnitTemplate {
   approvalStatus: SharedPathCatalogApprovalStatus;
   provenance: SharedPathProvenance;
   targetVocab: string[];
+  /**
+   * Optional kid-facing sense / image hint per normalized `targetVocab` word.
+   * Helps admins review ambiguous CVC drafts (mat ≠ Matt) and seed image prompts.
+   */
+  targetVocabSenses?: Record<string, string>;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -3,6 +3,10 @@ import "server-only";
 import { and, asc, eq, inArray, lte } from "drizzle-orm";
 
 import { env } from "@/lib/config/env";
+import {
+  decodeSharedPathTargetVocab,
+  encodeSharedPathTargetVocab,
+} from "@/lib/path/shared-path-target-vocab";
 
 import type { BackupData } from "../backup/schema";
 import type {
@@ -1272,8 +1276,9 @@ export class SupabaseContentRepository implements ContentRepository {
         rows = rows.filter((r) => r.approvalStatus === query.approvalStatus);
       }
       return rows
-        .map(
-          (row): SharedPathUnitTemplate => ({
+        .map((row): SharedPathUnitTemplate => {
+          const decoded = decodeSharedPathTargetVocab(row.targetVocab);
+          return {
             id: row.id,
             tier: "pre-A1",
             stageId: row.stageId,
@@ -1285,18 +1290,24 @@ export class SupabaseContentRepository implements ContentRepository {
             richness: row.richness,
             approvalStatus: row.approvalStatus,
             provenance: row.provenance,
-            targetVocab: JSON.parse(row.targetVocab) as string[],
+            targetVocab: decoded.words,
+            ...(Object.keys(decoded.senses).length > 0
+              ? { targetVocabSenses: decoded.senses }
+              : {}),
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
-          }),
-        )
+          };
+        })
         .sort((a, b) => a.pathIndex - b.pathIndex);
     });
   }
 
   async putSharedPathUnitTemplate(template: SharedPathUnitTemplate): Promise<void> {
     const activitiesJson = JSON.stringify(template.activities.map((a) => ({ skill: a.skill })));
-    const targetVocabJson = JSON.stringify(template.targetVocab);
+    const targetVocabJson = encodeSharedPathTargetVocab(
+      template.targetVocab,
+      template.targetVocabSenses,
+    );
     await this.scoped(async (db) => {
       await db
         .insert(sharedPathUnitTemplatesTable)

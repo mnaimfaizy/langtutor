@@ -148,6 +148,30 @@ describe("shared path admin queue (issue #129)", () => {
     ).toBe(true);
   });
 
+  it("already-seeded kids pick up a newly approved densification on ensurePath", async () => {
+    const admin = makeRepo("admin");
+    const learner = makeRepo("already-seeded");
+
+    await ensureSharedPathCatalogSeeded(admin);
+    await ensurePath(learner, kidProfile());
+
+    const before = (await learner.getUnits()).filter((u) => u.index < 0);
+    expect(before).toHaveLength(6);
+    expect(before.some((u) => u.title.includes("AI draft"))).toBe(false);
+
+    const draft = pendingDraft();
+    await admin.putSharedPathUnitTemplate(draft);
+    await approveSharedPathUnitTemplate(admin, draft.id);
+
+    await ensurePath(learner, kidProfile());
+
+    const after = (await learner.getUnits()).filter((u) => u.index < 0);
+    expect(after.some((u) => u.title === draft.title)).toBe(true);
+    // Unlock machine needs contiguous indices ending at −1.
+    const indexes = after.map((u) => u.index).sort((a, b) => a - b);
+    expect(indexes).toEqual(Array.from({ length: indexes.length }, (_, i) => i - indexes.length));
+  });
+
   it("mark ready-for-exam is shared — both learners see the same enrichment bar", async () => {
     const admin = makeRepo("admin");
     const learnerA = makeRepo("learner-a");

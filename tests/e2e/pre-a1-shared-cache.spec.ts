@@ -146,6 +146,18 @@ test("admin approves a seeded shared pending draft; shared-draft route stays stu
   await expect(pendingRow).toBeVisible();
   await expect(pendingRow).toHaveAttribute("data-approval", "pending");
   await expect(pendingRow).toContainText("E2E draft");
+  await expect(page.getByTestId(`shared-path-vocab-${E2E_PENDING_ID}`)).toBeVisible();
+  await expect(page.getByTestId(`shared-path-vocab-word-${E2E_PENDING_ID}-cat`)).toHaveAttribute(
+    "data-image",
+    "missing",
+  );
+  await expect(page.getByTestId(`shared-path-media-summary-${E2E_PENDING_ID}`)).toContainText(
+    /need image and\/or audio/i,
+  );
+  await expect(page.getByTestId(`shared-path-try-${E2E_PENDING_ID}`)).toHaveAttribute(
+    "href",
+    `/phonics?previewTemplate=${E2E_PENDING_ID}`,
+  );
 
   await page.getByTestId(`shared-path-approve-${E2E_PENDING_ID}`).click();
   await expect(page.getByTestId("shared-path-banner")).toContainText(/Approved/i);

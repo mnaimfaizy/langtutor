@@ -76,4 +76,52 @@ describe("listMissingPreA1ImageWords", () => {
     expect(missing).not.toContain("ball");
     expect(missing).toContain("cat");
   });
+
+  it("includes target vocab from pending shared path drafts (e.g. Pan)", async () => {
+    const now = new Date("2026-07-14T00:00:00.000Z");
+    await repo.putSharedPathUnitTemplate({
+      id: "pre-a1.picture-words.ai-pan",
+      tier: "pre-A1",
+      stageId: "picture-words",
+      stageOrder: 1,
+      pathIndex: -40,
+      title: "Pre-A1: Picture words — Pan",
+      teacherNote: "Draft with pan.",
+      activities: [{ skill: "picture-match" }],
+      richness: "rich",
+      approvalStatus: "pending",
+      provenance: "ai-draft",
+      targetVocab: ["Pan", "cup", "mug"],
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const missing = await listMissingPreA1ImageWords(repo);
+    expect(missing).toContain("pan");
+    expect(missing).toContain("cup");
+    expect(missing).toContain("mug");
+  });
+
+  it("does not list vocab from rejected shared path drafts", async () => {
+    const now = new Date("2026-07-14T00:00:00.000Z");
+    await repo.putSharedPathUnitTemplate({
+      id: "pre-a1.phonics.ai-rejected",
+      tier: "pre-A1",
+      stageId: "phonics",
+      stageOrder: 1,
+      pathIndex: -41,
+      title: "Rejected draft",
+      teacherNote: "Should not create gaps.",
+      activities: [{ skill: "phonics" }],
+      richness: "rich",
+      approvalStatus: "rejected",
+      provenance: "ai-draft",
+      targetVocab: ["xylophone-unique-gap-word"],
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const missing = await listMissingPreA1ImageWords(repo);
+    expect(missing).not.toContain("xylophone-unique-gap-word");
+  });
 });

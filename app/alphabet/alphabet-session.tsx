@@ -17,14 +17,17 @@ import { completeUnitActivity } from "@/lib/path/unit-player";
 import { getContentRepository } from "@/lib/registry";
 import { BackLink, Button, Card, Progress } from "@/ui";
 
-import { EmbeddedUnitBanner, useEmbeddedActivity } from "@/app/path/embedded";
+import { EmbeddedUnitBanner, PreviewTemplateBanner, useEmbeddedActivity } from "@/app/path/embedded";
+import { usePreA1ActivityVocab } from "@/app/path/use-pre-a1-activity-vocab";
 
 export function AlphabetSession() {
   const router = useRouter();
   const embedded = useEmbeddedActivity();
+  const vocab = usePreA1ActivityVocab();
   const [index, setIndex] = useState(0);
   const [completing, setCompleting] = useState(false);
   const completedRef = useRef(false);
+  const isPreview = vocab.status === "ready" && vocab.mode === "preview";
 
   const entry = alphabetEntryAt(index);
 
@@ -38,6 +41,10 @@ export function AlphabetSession() {
   }, [entry]);
 
   async function finishActivity() {
+    if (isPreview) {
+      router.push("/admin/path");
+      return;
+    }
     if (!embedded || completedRef.current) return;
     completedRef.current = true;
     setCompleting(true);
@@ -78,7 +85,9 @@ export function AlphabetSession() {
   return (
     <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-lg">
-        {embedded ? (
+        {isPreview && vocab.previewTemplateId ? (
+          <PreviewTemplateBanner templateId={vocab.previewTemplateId} />
+        ) : embedded ? (
           <EmbeddedUnitBanner unitId={embedded.unitId} />
         ) : (
           <BackLink href="/home" label="Home" className="mb-6" />
@@ -126,24 +135,30 @@ export function AlphabetSession() {
               disabled={completing}
               onClick={handleAdvance}
             >
-              {isLastAlphabetIndex(index) ? (completing ? "Saving…" : "Finish") : "Next letter"}
+              {isLastAlphabetIndex(index)
+                ? completing
+                  ? "Saving…"
+                  : isPreview
+                    ? "Done"
+                    : "Finish"
+                : "Next letter"}
             </Button>
           </div>
         </Card>
 
-        {!embedded && (
+        {!embedded && !isPreview && (
           <p className="text-muted mt-6 text-center text-sm">
             Open this from your learning path to track progress.
           </p>
         )}
 
-        {embedded && canAdvanceAlphabet(index) && (
+        {(embedded || isPreview) && canAdvanceAlphabet(index) && (
           <p className="text-muted mt-4 text-center text-xs">
             Tap through every letter to finish this activity.
           </p>
         )}
 
-        {!embedded && (
+        {!embedded && !isPreview && (
           <div className="mt-8 flex justify-center">
             <Link href="/home">
               <Button variant="ghost" size="sm">

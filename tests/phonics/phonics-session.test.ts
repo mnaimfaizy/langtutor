@@ -82,6 +82,22 @@ describe("isPhonicsComplete", () => {
   });
 });
 
+describe("word-anchored densification", () => {
+  it("exposes anchorWord and letter target for each vocab round", () => {
+    const config = {
+      wordRounds: [
+        { word: "cat", alphabetIndex: 2 },
+        { word: "sun", alphabetIndex: 18 },
+      ],
+    };
+    expect(phonicsRoundAt(0, config)?.anchorWord).toBe("cat");
+    expect(phonicsRoundAt(0, config)?.target.letter).toBe("c");
+    expect(phonicsRoundAt(1, config)?.anchorWord).toBe("sun");
+    expect(scorePhonicsTap("c", 0, config)).toBe("correct");
+    expect(scorePhonicsTap("s", 0, config)).toBe("incorrect");
+  });
+});
+
 describe("clampPhonicsRoundIndex", () => {
   it("clamps invalid values into range", () => {
     expect(clampPhonicsRoundIndex(-3)).toBe(0);

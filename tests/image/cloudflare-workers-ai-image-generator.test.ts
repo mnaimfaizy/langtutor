@@ -60,4 +60,23 @@ describe("CloudflareWorkersAiImageGenerator", () => {
       provider: "cloudflare",
     } satisfies Partial<ImageProviderError>);
   });
+
+  it("includes Cloudflare NSFW error code and message in the thrown error", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          errors: [{ code: 3030, message: "Input prompt contains NSFW content" }],
+        }),
+        { status: 400 },
+      ),
+    );
+    const gen = new CloudflareWorkersAiImageGenerator({
+      accountId: "abc",
+      apiToken: "tok",
+    });
+    await expect(gen.generate("floor mat")).rejects.toThrow(
+      /400.*3030.*NSFW content/i,
+    );
+  });
 });

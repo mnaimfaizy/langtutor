@@ -24,6 +24,12 @@ function makeFakeRepo(): ContentRepository & { grants: CollectibleGrant[] } {
       if (existing) return;
       state.grants.push({ collectibleId, unitId, grantedAt });
     },
+    async querySharedPathUnitTemplates() {
+      const { buildBundledSharedPathUnitTemplates } = await import(
+        "@/lib/path/shared-path-catalog"
+      );
+      return buildBundledSharedPathUnitTemplates();
+    },
   } as unknown as ContentRepository & { grants: CollectibleGrant[] };
 }
 

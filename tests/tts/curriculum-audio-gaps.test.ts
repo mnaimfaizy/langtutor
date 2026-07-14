@@ -70,4 +70,27 @@ describe("listMissingPreA1AudioWords", () => {
     const missing = await listMissingPreA1AudioWords(repo);
     expect(missing).toContain("apple");
   });
+
+  it("includes target vocab from pending shared path drafts", async () => {
+    const now = new Date("2026-07-14T00:00:00.000Z");
+    await repo.putSharedPathUnitTemplate({
+      id: "pre-a1.listen-tap.ai-pan",
+      tier: "pre-A1",
+      stageId: "listen-tap",
+      stageOrder: 1,
+      pathIndex: -42,
+      title: "Pre-A1: Listen & tap — Pan",
+      teacherNote: "Draft with pan.",
+      activities: [{ skill: "listen-tap" }],
+      richness: "rich",
+      approvalStatus: "pending",
+      provenance: "ai-draft",
+      targetVocab: ["Pan"],
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const missing = await listMissingPreA1AudioWords(repo);
+    expect(missing).toContain("pan");
+  });
 });

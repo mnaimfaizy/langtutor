@@ -133,14 +133,14 @@ const TRAIL_PATHS: Record<MapOrientation, string> = {
 
 /** The kid-only Pre-A1 home (ADR 0016) — hands off to the standard path home at unit 0. */
 export function KidIslandHome() {
-  const { units, loading } = useKidIslandUnits();
+  const { units, templates, loading } = useKidIslandUnits();
   const [muted, setMuted] = useState(false);
   const [bgReady, setBgReady] = useState(false);
   const [bgFailed, setBgFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const reduced = useReducedMotion() ?? false;
   const current = currentUnit(units);
-  const stages = groupPreA1UnitsByStage(units);
+  const stages = groupPreA1UnitsByStage(units, templates);
   const done = units.filter((unit) => unit.status === "completed").length;
   const currentStage =
     stages.find((s) => s.units.some((u) => u.id === current?.id)) ?? stages[0] ?? null;

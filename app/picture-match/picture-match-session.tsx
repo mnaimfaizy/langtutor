@@ -11,31 +11,50 @@ import {
   nextPictureMatchRoundIndex,
   pictureMatchAudioKeyAt,
   pictureMatchRoundAt,
+  pictureMatchRoundCount,
   scorePictureMatchTap,
+  type PictureMatchSessionConfig,
   type PictureMatchTapResult,
 } from "@/lib/picture-match/picture-match-session";
 import { pictureMatchAudioUrl, pictureMatchImageUrl } from "@/lib/picture-match/media-urls";
-import { PICTURE_MATCH_ROUND_COUNT } from "@/lib/picture-match/vocab";
+import { buildPictureMatchVocabSession } from "@/lib/path/pre-a1-vocab-rounds";
 import { completeUnitActivity } from "@/lib/path/unit-player";
 import { getContentRepository } from "@/lib/registry";
 import { cn } from "@/ui/cn";
 import { BackLink, Button, Card, Progress } from "@/ui";
 
-import { EmbeddedUnitBanner, useEmbeddedActivity } from "@/app/path/embedded";
+import {
+  EmbeddedUnitBanner,
+  PreviewTemplateBanner,
+  useEmbeddedActivity,
+} from "@/app/path/embedded";
+import { usePreA1ActivityVocab } from "@/app/path/use-pre-a1-activity-vocab";
 
 export function PictureMatchSession() {
   const router = useRouter();
   const embedded = useEmbeddedActivity();
+  const vocab = usePreA1ActivityVocab();
   const [roundIndex, setRoundIndex] = useState(0);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [tapResult, setTapResult] = useState<PictureMatchTapResult | null>(null);
   const [completing, setCompleting] = useState(false);
   const completedRef = useRef(false);
 
-  const round = pictureMatchRoundAt(roundIndex);
-  const choices = useMemo(() => buildPictureMatchChoices(roundIndex), [roundIndex]);
+  const sessionConfig: PictureMatchSessionConfig | undefined = useMemo(() => {
+    if (vocab.status !== "ready" || vocab.words.length === 0) return undefined;
+    const built = buildPictureMatchVocabSession(vocab.words);
+    return built ?? undefined;
+  }, [vocab]);
+
+  const roundCount = pictureMatchRoundCount(sessionConfig);
+  const round = pictureMatchRoundAt(roundIndex, sessionConfig);
+  const choices = useMemo(
+    () => buildPictureMatchChoices(roundIndex, undefined, sessionConfig),
+    [roundIndex, sessionConfig],
+  );
   const isWordToPicture = round?.def.direction === "word-to-picture";
-  const audioKey = pictureMatchAudioKeyAt(roundIndex);
+  const audioKey = pictureMatchAudioKeyAt(roundIndex, sessionConfig);
+  const isPreview = vocab.status === "ready" && vocab.mode === "preview";
 
   useEffect(() => {
     if (!round || !isWordToPicture || !audioKey || selectedWord !== null) return;
@@ -47,6 +66,10 @@ export function PictureMatchSession() {
   }, [round, isWordToPicture, audioKey, selectedWord]);
 
   async function finishActivity() {
+    if (isPreview) {
+      router.push("/admin/path");
+      return;
+    }
     if (!embedded || completedRef.current) return;
     completedRef.current = true;
     setCompleting(true);
@@ -62,7 +85,7 @@ export function PictureMatchSession() {
   function handleChoiceTap(word: string) {
     if (!round || selectedWord !== null) return;
     setSelectedWord(word);
-    setTapResult(scorePictureMatchTap(word, roundIndex));
+    setTapResult(scorePictureMatchTap(word, roundIndex, sessionConfig));
   }
 
   function handleReplaySound() {
@@ -72,11 +95,11 @@ export function PictureMatchSession() {
 
   function handleAdvance() {
     if (!round) return;
-    if (isPictureMatchComplete(roundIndex)) {
+    if (isPictureMatchComplete(roundIndex, sessionConfig)) {
       void finishActivity();
       return;
     }
-    const next = nextPictureMatchRoundIndex(roundIndex);
+    const next = nextPictureMatchRoundIndex(roundIndex, sessionConfig);
     if (next !== null) {
       setRoundIndex(next);
       setSelectedWord(null);
@@ -84,7 +107,15 @@ export function PictureMatchSession() {
     }
   }
 
-  if (!round) {
+  if (vocab.status === "loading") {
+    return (
+      <div className="flex flex-1 items-center justify-center px-6 py-16">
+        <p className="text-muted text-sm">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!round || roundCount === 0) {
     return (
       <div className="flex flex-1 items-center justify-center px-6 py-16">
         <p className="text-muted text-sm">Nothing to show.</p>
@@ -92,13 +123,15 @@ export function PictureMatchSession() {
     );
   }
 
-  const progressValue = ((roundIndex + 1) / PICTURE_MATCH_ROUND_COUNT) * 100;
+  const progressValue = ((roundIndex + 1) / roundCount) * 100;
   const awaitingAdvance = selectedWord !== null;
 
   return (
     <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-lg">
-        {embedded ? (
+        {isPreview && vocab.previewTemplateId ? (
+          <PreviewTemplateBanner templateId={vocab.previewTemplateId} />
+        ) : embedded ? (
           <EmbeddedUnitBanner unitId={embedded.unitId} />
         ) : (
           <BackLink href="/home" label="Home" className="mb-6" />
@@ -107,7 +140,7 @@ export function PictureMatchSession() {
         <div className="mb-6">
           <Progress value={progressValue} aria-label="Picture match progress" />
           <p className="text-muted mt-2 text-center text-xs">
-            Round {roundIndex + 1} of {PICTURE_MATCH_ROUND_COUNT}
+            Round {roundIndex + 1} of {roundCount}
           </p>
         </div>
 
@@ -247,22 +280,24 @@ export function PictureMatchSession() {
               disabled={completing}
               onClick={handleAdvance}
             >
-              {isLastPictureMatchRound(roundIndex)
+              {isLastPictureMatchRound(roundIndex, sessionConfig)
                 ? completing
                   ? "Saving…"
-                  : "Finish"
+                  : isPreview
+                    ? "Done"
+                    : "Finish"
                 : "Next round"}
             </Button>
           )}
         </Card>
 
-        {!embedded && (
+        {!embedded && !isPreview && (
           <p className="text-muted mt-6 text-center text-sm">
             Open this from your learning path to track progress.
           </p>
         )}
 
-        {embedded && !awaitingAdvance && (
+        {(embedded || isPreview) && !awaitingAdvance && (
           <p className="text-muted mt-4 text-center text-xs">
             {isWordToPicture
               ? "Listen, then tap the matching picture."
@@ -270,7 +305,7 @@ export function PictureMatchSession() {
           </p>
         )}
 
-        {!embedded && (
+        {!embedded && !isPreview && (
           <div className="mt-8 flex justify-center">
             <Link href="/home">
               <Button variant="ghost" size="sm">

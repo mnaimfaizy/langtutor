@@ -23,6 +23,7 @@ import {
   type AiDraftableStageId,
   type SharedUnitDraftPayload,
 } from "./shared-unit-draft";
+import { flattenTargetVocabItems } from "./shared-path-target-vocab";
 
 export const SHARED_UNIT_DRAFT_TOPIC_PREFIX = "shared-path-draft:pre-A1:";
 
@@ -78,6 +79,7 @@ export function buildPendingSharedTemplate(opts: {
   now?: Date;
 }): SharedPathUnitTemplate {
   const now = opts.now ?? new Date();
+  const { words, senses } = flattenTargetVocabItems(opts.draft.targetVocab);
   return {
     id: newDraftId(opts.stageId, now),
     tier: "pre-A1",
@@ -90,7 +92,8 @@ export function buildPendingSharedTemplate(opts: {
     richness: "rich",
     approvalStatus: "pending",
     provenance: "ai-draft",
-    targetVocab: opts.draft.targetVocab.slice(),
+    targetVocab: words,
+    ...(Object.keys(senses).length > 0 ? { targetVocabSenses: senses } : {}),
     createdAt: now,
     updatedAt: now,
   };

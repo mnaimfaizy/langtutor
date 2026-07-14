@@ -9,6 +9,7 @@ import type { Cefr, ContentRepository, Profile } from "@/lib/db";
 import { seedBackbonePath } from "./backbone-planner";
 import { migrateLegacyPreA1Units } from "./migrate-legacy-pre-a1";
 import { hasReachedFirstA1Unit, shouldSeedPreA1 } from "./pre-a1";
+import { reconcileLearnerPreA1WithCatalog } from "./reconcile-learner-pre-a1";
 import {
   ensureSharedPathCatalogSeeded,
   materializePreA1UnitsFromCatalog,
@@ -81,6 +82,16 @@ async function _doSyncPreA1Units(repo: ContentRepository, profile: Profile): Pro
     if (unit0?.status === "available") {
       await repo.updateUnit(unit0.id, { status: "locked" });
     }
+    return;
+  }
+
+  if (wantPreA1 && existingPreA1.length > 0) {
+    await ensureSharedPathCatalogSeeded(repo);
+    const templates = await repo.querySharedPathUnitTemplates({
+      tier: "pre-A1",
+      approvalStatus: "approved",
+    });
+    await reconcileLearnerPreA1WithCatalog(repo, templates);
     return;
   }
 

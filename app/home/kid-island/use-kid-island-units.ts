@@ -2,13 +2,18 @@
 
 import { useEffect, useState } from "react";
 
-import type { Unit } from "@/lib/db";
+import type { SharedPathUnitTemplate, Unit } from "@/lib/db";
 import { ensurePath } from "@/lib/path/seed";
 import { getContentRepository } from "@/lib/registry";
 
-/** Loads the real path units for the kid-island home — same repo/seed calls as the standard path. */
-export function useKidIslandUnits(): { units: Unit[]; loading: boolean } {
+/** Loads the real path units + approved catalog for the kid-island home. */
+export function useKidIslandUnits(): {
+  units: Unit[];
+  templates: SharedPathUnitTemplate[];
+  loading: boolean;
+} {
   const [units, setUnits] = useState<Unit[]>([]);
+  const [templates, setTemplates] = useState<SharedPathUnitTemplate[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,8 +30,18 @@ export function useKidIslandUnits(): { units: Unit[]; loading: boolean } {
           settings: profile?.settings ?? {},
           experienceMode: profile?.experienceMode,
         });
-        const loaded = await repo.getUnits();
-        if (active) setUnits(loaded.slice(0, 8));
+        const [loaded, approved] = await Promise.all([
+          repo.getUnits(),
+          repo.querySharedPathUnitTemplates({
+            tier: "pre-A1",
+            approvalStatus: "approved",
+          }),
+        ]);
+        if (active) {
+          // Island is pre-A1 only — include every densified unit, not a hardcoded cap.
+          setUnits(loaded.filter((u) => u.index < 0).sort((a, b) => a.index - b.index));
+          setTemplates(approved);
+        }
       } catch (error) {
         console.error("[kid-island] failed to load path units", error);
       } finally {
@@ -39,5 +54,5 @@ export function useKidIslandUnits(): { units: Unit[]; loading: boolean } {
     };
   }, []);
 
-  return { units, loading };
+  return { units, templates, loading };
 }

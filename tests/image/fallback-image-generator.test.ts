@@ -62,6 +62,36 @@ describe("FallbackImageGenerator", () => {
     expect(fallback.generate).not.toHaveBeenCalled();
   });
 
+  it("falls through on Cloudflare NSFW 400 so auto mode can try NVIDIA", async () => {
+    const primary = stub(
+      vi.fn().mockRejectedValue(
+        new ImageProviderError(
+          "Cloudflare Workers AI image request failed (400): code 3030 — Input prompt contains NSFW content",
+          { status: 400, provider: "cloudflare" },
+        ),
+      ),
+    );
+    const fallback = stub(vi.fn().mockResolvedValue(okResult(4)));
+    const gen = new FallbackImageGenerator(primary, fallback);
+
+    const result = await gen.generate("floor mat");
+    expect(result.data).toEqual(new Uint8Array([4]));
+    expect(result.usedFallback).toBe(true);
+  });
+
+  it("does not fall through on generic 400 without NSFW/safety signal", async () => {
+    const err = new ImageProviderError("Cloudflare Workers AI image request failed (400)", {
+      status: 400,
+      provider: "cloudflare",
+    });
+    const primary = stub(vi.fn().mockRejectedValue(err));
+    const fallback = stub(vi.fn().mockResolvedValue(okResult(2)));
+    const gen = new FallbackImageGenerator(primary, fallback);
+
+    await expect(gen.generate("x")).rejects.toBe(err);
+    expect(fallback.generate).not.toHaveBeenCalled();
+  });
+
   it("falls through on network errors without a status", async () => {
     const primary = stub(
       vi.fn().mockRejectedValue(

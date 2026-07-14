@@ -9,30 +9,49 @@ import {
   isLastListenTapRound,
   isListenTapComplete,
   listenTapRoundAt,
+  listenTapRoundCount,
   nextListenTapRoundIndex,
   scoreListenTapTap,
+  type ListenTapSessionConfig,
   type ListenTapTapResult,
 } from "@/lib/listen-tap/listen-tap-session";
 import { listenTapAudioUrl, listenTapImageUrl } from "@/lib/listen-tap/media-urls";
-import { LISTEN_TAP_ROUND_COUNT } from "@/lib/listen-tap/vocab";
+import { buildListenTapVocabSession } from "@/lib/path/pre-a1-vocab-rounds";
 import { completeUnitActivity } from "@/lib/path/unit-player";
 import { getContentRepository } from "@/lib/registry";
 import { cn } from "@/ui/cn";
 import { BackLink, Button, Card, Progress } from "@/ui";
 
-import { EmbeddedUnitBanner, useEmbeddedActivity } from "@/app/path/embedded";
+import {
+  EmbeddedUnitBanner,
+  PreviewTemplateBanner,
+  useEmbeddedActivity,
+} from "@/app/path/embedded";
+import { usePreA1ActivityVocab } from "@/app/path/use-pre-a1-activity-vocab";
 
 export function ListenTapSession() {
   const router = useRouter();
   const embedded = useEmbeddedActivity();
+  const vocab = usePreA1ActivityVocab();
   const [roundIndex, setRoundIndex] = useState(0);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [tapResult, setTapResult] = useState<ListenTapTapResult | null>(null);
   const [completing, setCompleting] = useState(false);
   const completedRef = useRef(false);
 
-  const round = listenTapRoundAt(roundIndex);
-  const choices = useMemo(() => buildListenTapChoices(roundIndex), [roundIndex]);
+  const sessionConfig: ListenTapSessionConfig | undefined = useMemo(() => {
+    if (vocab.status !== "ready" || vocab.words.length === 0) return undefined;
+    const built = buildListenTapVocabSession(vocab.words);
+    return built ?? undefined;
+  }, [vocab]);
+
+  const roundCount = listenTapRoundCount(sessionConfig);
+  const round = listenTapRoundAt(roundIndex, sessionConfig);
+  const choices = useMemo(
+    () => buildListenTapChoices(roundIndex, undefined, sessionConfig),
+    [roundIndex, sessionConfig],
+  );
+  const isPreview = vocab.status === "ready" && vocab.mode === "preview";
 
   useEffect(() => {
     if (!round || selectedWord !== null) return;
@@ -44,6 +63,10 @@ export function ListenTapSession() {
   }, [round, selectedWord]);
 
   async function finishActivity() {
+    if (isPreview) {
+      router.push("/admin/path");
+      return;
+    }
     if (!embedded || completedRef.current) return;
     completedRef.current = true;
     setCompleting(true);
@@ -59,7 +82,7 @@ export function ListenTapSession() {
   function handleChoiceTap(word: string) {
     if (!round || selectedWord !== null) return;
     setSelectedWord(word);
-    setTapResult(scoreListenTapTap(word, roundIndex));
+    setTapResult(scoreListenTapTap(word, roundIndex, sessionConfig));
   }
 
   function handleReplaySound() {
@@ -69,11 +92,11 @@ export function ListenTapSession() {
 
   function handleAdvance() {
     if (!round) return;
-    if (isListenTapComplete(roundIndex)) {
+    if (isListenTapComplete(roundIndex, sessionConfig)) {
       void finishActivity();
       return;
     }
-    const next = nextListenTapRoundIndex(roundIndex);
+    const next = nextListenTapRoundIndex(roundIndex, sessionConfig);
     if (next !== null) {
       setRoundIndex(next);
       setSelectedWord(null);
@@ -81,7 +104,15 @@ export function ListenTapSession() {
     }
   }
 
-  if (!round) {
+  if (vocab.status === "loading") {
+    return (
+      <div className="flex flex-1 items-center justify-center px-6 py-16">
+        <p className="text-muted text-sm">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!round || roundCount === 0) {
     return (
       <div className="flex flex-1 items-center justify-center px-6 py-16">
         <p className="text-muted text-sm">Nothing to show.</p>
@@ -89,13 +120,15 @@ export function ListenTapSession() {
     );
   }
 
-  const progressValue = ((roundIndex + 1) / LISTEN_TAP_ROUND_COUNT) * 100;
+  const progressValue = ((roundIndex + 1) / roundCount) * 100;
   const awaitingAdvance = selectedWord !== null;
 
   return (
     <div className="flex flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-lg">
-        {embedded ? (
+        {isPreview && vocab.previewTemplateId ? (
+          <PreviewTemplateBanner templateId={vocab.previewTemplateId} />
+        ) : embedded ? (
           <EmbeddedUnitBanner unitId={embedded.unitId} />
         ) : (
           <BackLink href="/home" label="Home" className="mb-6" />
@@ -104,7 +137,7 @@ export function ListenTapSession() {
         <div className="mb-6">
           <Progress value={progressValue} aria-label="Listen and tap progress" />
           <p className="text-muted mt-2 text-center text-xs">
-            Round {roundIndex + 1} of {LISTEN_TAP_ROUND_COUNT}
+            Round {roundIndex + 1} of {roundCount}
           </p>
         </div>
 
@@ -187,28 +220,30 @@ export function ListenTapSession() {
               disabled={completing}
               onClick={handleAdvance}
             >
-              {isLastListenTapRound(roundIndex)
+              {isLastListenTapRound(roundIndex, sessionConfig)
                 ? completing
                   ? "Saving…"
-                  : "Finish"
+                  : isPreview
+                    ? "Done"
+                    : "Finish"
                 : "Next round"}
             </Button>
           )}
         </Card>
 
-        {!embedded && (
+        {!embedded && !isPreview && (
           <p className="text-muted mt-6 text-center text-sm">
             Open this from your learning path to track progress.
           </p>
         )}
 
-        {embedded && !awaitingAdvance && (
+        {(embedded || isPreview) && !awaitingAdvance && (
           <p className="text-muted mt-4 text-center text-xs">
             Listen, then tap the picture that matches.
           </p>
         )}
 
-        {!embedded && (
+        {!embedded && !isPreview && (
           <div className="mt-8 flex justify-center">
             <Link href="/home">
               <Button variant="ghost" size="sm">
